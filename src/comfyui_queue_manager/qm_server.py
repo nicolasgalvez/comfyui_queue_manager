@@ -5,7 +5,7 @@ from server import PromptServer
 import json
 from datetime import datetime, timezone
 
-from .helpers import sanitize_filename
+from .helpers import sanitize_filename, requestJson
 from .inc.exceptions import BadRouteException
 from .qm_log import qm_log
 
@@ -29,7 +29,7 @@ class QM_Server:
 
             # pending items
             # TODO: Get page size from extension settings
-            running, pending, info = self.queue.get_current_queue(page, 100, route=route, filters=filters)
+            running, pending, info = self.queue.get_current_queue(page, 100, route=route, filters=filters, return_meta=True)
 
             # Return the archive object as JSON
             return web.json_response({"running": running, "pending": pending, "info": info})
@@ -304,16 +304,24 @@ class QM_Server:
             if request.method == "POST":
                 match request.path:
                     case "/api/queue":
-                        json_data = await request.json()
+                        json_data = await requestJson(request)
                         if "clear" in json_data:
                             if json_data["clear"]:
                                 self.queue.wipe_queue()
                         if "delete" in json_data:
                             self.queue.delete_items(json_data["delete"])
                     case "/api/interrupt":
-                        # delete the currently running item
-                        total = self.queue.delete_running()
-                        qm_log.info(f"Deleted {total} items from the queue")
+                        json_data = await requestJson(request)
+                        total = 0
+
+                        if ("prompt_id" in json_data) and (json_data["prompt_id"] is not None):
+                            # delete specific item
+                            total = self.queue.delete_running(json_data["prompt_id"])
+                            # logging.info(f"[Queue Manager] Interrupting item {json_data["prompt_id"]}")
+                        else:
+                            # delete the currently running item
+                            total = self.queue.delete_running()
+                            qm_log.info(f"[Queue Manager] Deleted {total} items from the queue")
 
             return await handler(request)
 

@@ -1,4 +1,5 @@
 import re
+import json
 import os
 import subprocess
 import platform
@@ -33,3 +34,14 @@ def reveal_file(path):
     else:  # Linux / Unix
         folder = os.path.dirname(path)
         subprocess.run(["xdg-open", folder])
+
+
+async def requestJson(request):
+    """
+    Safely parse JSON from an async request object and return an empty dict on parse error.
+    """
+    try:
+        json_data = await request.json()
+    except json.JSONDecodeError:
+        json_data = {}
+    return json_data

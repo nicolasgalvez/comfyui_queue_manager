@@ -4,11 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "comfyui_queue_manager"
-version = "0.0.3"
+version = "0.0.8"
 description = "An extension supporting more streamlined prompt queue management."
-authors = [
-  {name = "Edgerunner"}
-]
 readme = "README.md"
 license = {file = "LICENSE"}
 classifiers = []
@@ -27,15 +24,14 @@ dev = [
 ]
 
 [project.urls]
-bugs = "https://github.com/QuietNoise/ComfyUI-Queue-Manager/issues"
-homepage = "https://github.com/QuietNoise/ComfyUI-Queue-Manager"
-Repository = "https://github.com/QuietNoise/ComfyUI-Queue-Manager"
+Repository = "https://github.com/QuietNoise/comfyui_queue_manager"
+#  Used by Comfy Registry https://comfyregistry.org
 
 
 [tool.comfy]
 PublisherId = "edgerunner"
 DisplayName = "ComfyUI Queue Manager"
-Icon = "https://raw.githubusercontent.com/QuietNoise/ComfyUI-Queue-Manager/refs/heads/main/queue-icon.svg"
+Icon = "https://raw.githubusercontent.com/QuietNoise/comfyui_queue_manager/refs/heads/main/queue-icon.svg"
 
 [tool.setuptools.package-data]
 "*" = ["*.*"]
