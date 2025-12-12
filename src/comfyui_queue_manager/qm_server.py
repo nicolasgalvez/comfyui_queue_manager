@@ -28,8 +28,13 @@ class QM_Server:
             route = self.get_the_route(request)
 
             # pending items
-            # TODO: Get page size from extension settings
+            # SIML: Get page size from extension settings
             running, pending, info = self.queue.get_current_queue(page, 100, route=route, filters=filters, return_meta=True)
+
+            # Remove sensitive data
+            remove_sensitive = lambda queue: [x[:5] for x in queue]
+            running = remove_sensitive(running)
+            pending = remove_sensitive(pending)
 
             # Return the archive object as JSON
             return web.json_response({"running": running, "pending": pending, "info": info})
@@ -58,7 +63,7 @@ class QM_Server:
                 filters = json_data["filters"]
 
             moved = self.queue.play_archive(client_id, filters)
-            return web.json_response({"archived": moved})
+            return web.json_response({"queued": moved})
 
         # Toggle Play/Pause of the queue
         @PromptServer.instance.routes.get("/queue_manager/toggle")
@@ -114,6 +119,7 @@ class QM_Server:
 
             client_id = None
             is_archive = False
+            api_key_comfy_org = None
 
             while True:
                 field = await reader.next()
@@ -123,6 +129,8 @@ class QM_Server:
                     client_id = await field.read()
                 if field.name == "archive":
                     is_archive = True
+                if field.name == "api_key_comfy_org":
+                    api_key_comfy_org = await field.read()
 
             try:
                 json_data = json.loads(content)
@@ -132,8 +140,11 @@ class QM_Server:
             if client_id is not None:
                 client_id = client_id.decode("ascii")
 
+            if api_key_comfy_org is not None:
+                api_key_comfy_org = api_key_comfy_org.decode("ascii")
+
             qm_log.info("Importing %s", "to archive." if is_archive else "to queue.")
-            imported, total = self.queue.import_queue(json_data, client_id, 3 if is_archive else 0)
+            imported, total = self.queue.import_queue(json_data, client_id, 3 if is_archive else 0, api_key_comfy_org)
             qm_log.info(
                 "Imported %d of %d total submitted entries %s",
                 imported,
@@ -152,6 +163,11 @@ class QM_Server:
 
             # Export the queue
             json_data = self.queue.get_full_queue(route, filters)
+
+            # Remove sensitive data from items. json_data is a list of lists, check each item if it 6 elements long and remove the 6th element
+            for i in range(len(json_data)):
+                if len(json_data[i]) >= 6:
+                    del json_data[i][5]
 
             # Get filter values from the request so we can include them in the export filename
             filter_values = []

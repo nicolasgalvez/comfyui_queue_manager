@@ -27,7 +27,7 @@ const QueueItemRow = memo(function QueueItemRow({item, className, loader, index,
   const {appStatus, setAppStatus, onMediaItemClick} = useContext(AppContext)
 
   async function cancelQueueItem() {
-    const route = mode === 'running' ? 'interrupt' : 'queue';
+    const route = (mode === 'running' || mode === 'external') ? 'interrupt' : 'queue';
 
     await apiCall(`api/${route}`, {
       delete: [item[1]],
@@ -103,7 +103,10 @@ const QueueItemRow = memo(function QueueItemRow({item, className, loader, index,
             >{item[3].total_files}</span>
           }
           <button className={'plain'} onClick={filterByWorkflow} title={"Filter view by the workflow"}>
-            {item[3].extra_pnginfo.workflow.workflow_name ? item[3].extra_pnginfo.workflow.workflow_name : ""}
+            {mode === 'external'
+              ? "External job"
+              : (item[3].extra_pnginfo.workflow.workflow_name ? item[3].extra_pnginfo.workflow.workflow_name : "")
+            }
           </button>
           </div>
 
@@ -113,7 +116,10 @@ const QueueItemRow = memo(function QueueItemRow({item, className, loader, index,
         <TableCell className={'px-3 py-1 text-right actions'}>
           <Stack direction="row" sx={{ justifyContent: "flex-end" }} spacing={1}>
             <Button variant="contained" size="small" color="error"  onClick={cancelQueueItem} title="Delete workflow from queue">Delete</Button>
-            <Button variant="contained" size="small" color="success" onClick={loadQueueItem} title="Load workflow">Load</Button>
+
+            {mode !== 'external' &&
+              <Button variant="contained" size="small" color="success" onClick={loadQueueItem} title="Load workflow">Load</Button>
+            }
             {appStatus.route === 'queue' && mode !== 'running' &&
               <Button variant="contained" size="small" color="warning" onClick={archiveQueueItem} title="Move to the archive">Archive</Button>
             }

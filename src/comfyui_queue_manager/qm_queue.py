@@ -196,7 +196,7 @@ class QM_Queue:
                 WHERE status = 0 OR status = 1
             """)[0]  # total
 
-    def task_done(self, item_id, history_result, status: Optional["PromptQueue.ExecutionStatus"]):
+    def task_done(self, item_id, history_result, status: Optional["PromptQueue.ExecutionStatus"], process_item=None):
         with self.native_queue.mutex:
             # log debug arguments
             # qm_log.info("Task done: item_id=%s, history_result=%s, status=%s", item_id, history_result, status)
@@ -265,11 +265,25 @@ class QM_Queue:
                         )
 
                 # Call the original task_done method
-                self.original_task_done(item_id, history_result, status)
+                if (process_item is None) or (not process_item):  # accommodate original method signature
+                    self.original_task_done(item_id, history_result, status)
+                    return
 
+                self.original_task_done(item_id, history_result, status, process_item)
+
+    # Put item for execution
     # NOTE: We keep only up to one item in native "pending" queue (to avoid bottleneck for large queues).
     def queue_put(self, item):  # comfy server calls this method
+        # logging.info(json.dumps(item))
+
         with self.native_queue.mutex:
+            # if item[3]["extra_pnginfo"] is not set then we pass it to original put
+            # It suggests request does not come from ComfyUI but from external source (like API or some app's plugin) - as such they won't benefit from queue manager features
+            if "extra_pnginfo" not in item[3] or "workflow" not in item[3]["extra_pnginfo"]:
+                # item = tuple(item)
+                self.original_put(tuple(item))
+                return
+
             # Add the item to the database
             write_query(
                 """
@@ -304,6 +318,11 @@ class QM_Queue:
                 if item is not None:
                     # Convert the item to a tuple
                     item = tuple(json.loads(item[1]))
+
+                    # Backwards compatibility: if item[5] does not exist, create it with empty dict
+                    if len(item) < 6:
+                        item = item + ({},)
+
                     self.original_put(item)
             else:  # just notify frontend that we have a new item
                 PromptServer.instance.queue_updated()
@@ -340,6 +359,10 @@ class QM_Queue:
 
                     # Native format is a tuple
                     item = tuple(item)
+
+                    # Backwards compatibility: if item[5] does not exist, create it with empty dict
+                    if len(item) < 6:
+                        item = item + ({},)
 
                     heapq.heappush(self.native_queue.queue, item)
 
@@ -531,6 +554,10 @@ class QM_Queue:
                 prompt = json.loads(row[0])
                 prompt[3]["client_id"] = client_id
 
+                # Backwards compatibility: if prompt[5] does not exist, create it with empty dict
+                if len(prompt) < 6:
+                    prompt.append({})
+
                 moved += write_query(
                     """
                     UPDATE queue
@@ -635,7 +662,7 @@ class QM_Queue:
             return deleted
 
     # Import queue from uploaded json file
-    def import_queue(self, items, client_id=None, status=0):
+    def import_queue(self, items, client_id=None, status=0, api_key_comfy_org=None):
         theServer = PromptServer.instance
         theQueue = theServer.prompt_queue
         with theQueue.mutex:
@@ -649,6 +676,11 @@ class QM_Queue:
 
                 if client_id is not None:
                     item[3]["client_id"] = client_id
+
+                if api_key_comfy_org is not None:
+                    if len(item) < 6:
+                        item.append({})
+                    item[5] = {"api_key_comfy_org": api_key_comfy_org} if api_key_comfy_org is not None else {}
 
                 PromptServer.instance.number += 1
                 query_params.append(
