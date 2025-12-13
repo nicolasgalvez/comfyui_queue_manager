@@ -8,6 +8,7 @@ import DriveFolderUploadOutlinedIcon from "@mui/icons-material/DriveFolderUpload
 import ImageNotSupportedSharpIcon from '@mui/icons-material/ImageNotSupportedSharp';
 import WallpaperSharpIcon from '@mui/icons-material/WallpaperSharp';
 import ViewModuleSharpIcon from '@mui/icons-material/ViewModuleSharp';
+import { styled } from '@mui/material/styles';
 
 import TopMenu from "@/components/TopMenu";
 import {Queue} from "@/components/Queue";
@@ -20,6 +21,18 @@ import {apiCall} from "@/internals/functions";
 import useEvent from "react-use-event-hook";
 import {AppContext} from "@/internals/app-context";
 import ThumbSlider from "@/components/ThumbSlider";
+
+const VisuallyHiddenInput = styled('input')({
+  clip: 'rect(0 0 0 0)',
+  clipPath: 'inset(50%)',
+  height: 1,
+  overflow: 'hidden',
+  position: 'absolute',
+  bottom: 0,
+  left: 0,
+  whiteSpace: 'nowrap',
+  width: 1,
+});
 
 export default function Home() {
   const [appStatus, setAppStatus] = useState({
@@ -739,20 +752,17 @@ export default function Home() {
               encType="multipart/form-data"
               className={"import-form"}
             >
-              <input
-                id="uploadQueueForm"
-                type="file"
-                name="queue_json"
-                accept=".json"
-                required
-                hidden
-                onChange={uploadQueue}
-              />
-              <label htmlFor={"uploadQueueForm"}>
-                <Button variant="contained" color="secondary" size="small">
-                  <DriveFolderUploadOutlinedIcon />&nbsp;&nbsp;Import {appStatus.route === 'queue' ? 'Queue' : 'Archive'}
-                </Button>
-              </label>
+              <Button variant="contained" color="secondary" size="small" component="label">
+                <DriveFolderUploadOutlinedIcon />&nbsp;&nbsp;Import {appStatus.route === 'queue' ? 'Queue' : 'Archive'}
+                <VisuallyHiddenInput
+                  type="file"
+                  onChange={uploadQueue}
+                  multiple
+                  name="queue_json"
+                  accept=".json"
+                  required
+                />
+              </Button>
             </form>
           }
 
