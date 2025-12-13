@@ -294,6 +294,11 @@ export default function Home() {
     formData.append("queue_json", file);
     formData.append("client_id", appStatus.clientId);
 
+    const comfyApiKey = localStorage.getItem("comfy_api_key");
+    if (comfyApiKey) {
+      formData.append("api_key_comfy_org", comfyApiKey);
+    }
+
     if (appStatus.route === 'archive') {
       formData.append("archive", true);
     }

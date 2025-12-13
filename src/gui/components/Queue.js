@@ -170,7 +170,7 @@ const QueueItems = memo(function QueueItems({running, pending, error, isLoading,
   return (
     <>
       {running.map(item => (
-        <QueueItemRow item={item} key={item[1]} className={'running'} loader={true} mode={'running'} info={info}/>
+        <QueueItemRow item={item} key={item[1]} className={'running'} loader={true} mode={ item[3].extra_pnginfo ? 'running' : 'external'}  info={info} />
       ))}
       {pending.map((item, index) => (
         <QueueItemRow item={item} key={item[3].db_id} className={'pending'} index={index} info={info}/>
