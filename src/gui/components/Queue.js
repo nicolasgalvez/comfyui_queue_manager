@@ -189,7 +189,7 @@ function LoaderSpinner() {
 }
 
 // take items from parent component
-export const Queue = memo(function Queue( { data, isLoading, error } ) {
+export const Queue = memo(function Queue( { data, isLoading, error, progress } ) {
   const {appStatus, setAppStatus} = useContext(AppContext)
 
   const [state, setState] = useState({
@@ -209,7 +209,7 @@ export const Queue = memo(function Queue( { data, isLoading, error } ) {
 
 
   return (
-    <div className={"overflow-x-auto table-wrapper" + (isLoading ? ' loading' : '')}>
+    <div className={"overflow-x-auto table-wrapper" + (isLoading ? ' loading' : '')} style={{"--job-progress": progress + "%"}}>
       <Paper sx={{ width: '100%', overflow: 'hidden' }}>
         <TableContainer>
           <Table className="min-w-full border border-0" size="small" stickyHeader>

@@ -610,7 +610,7 @@ export default function Home() {
         <Queue data={appStatus.queue}
                error={appStatus.error}
                isLoading={appStatus.loading}
-               // progress={currentJob.progress}
+               progress={currentJob.progress}
                route={appStatus.route}
                shiftDown={appStatus.shiftDown}
         />
