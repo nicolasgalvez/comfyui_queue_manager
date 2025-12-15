@@ -29,4 +29,6 @@ app.registerExtension({
 
     injectWorkflowName();
   },
+
+  settings:extensionSettings()
 })

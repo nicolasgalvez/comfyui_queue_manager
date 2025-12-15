@@ -194,11 +194,12 @@ export function handleIframeMessages() {
 
       // Handshake message from iframe
       if (type === "QM_QueueManager_Hello") {
+        const settings = extensionSettings('values');
         // send back clientId to iframe
         event.source.postMessage(
           { type: "QM_QueueManager_Hello",
             clientId: app.api.clientId,
-
+            settings
           },
           event.origin
         );
@@ -326,6 +327,110 @@ export function injectWorkflowName() {
   };
 }
 
+export function extensionSettings(mode = 'default') {
+  const settings =  [
+    // General settings
+    {
+      id: 'QueueManager.Basic.PageSize',
+      name: 'Jobs per page',
+      category: ['Queue Manager', 'Basic', 'Jobs per page'],
+      tooltip: 'Number of jobs to display per page in the Queue Manager.',
+      type: 'number',
+      defaultValue: 100,
+      attrs: {
+        min: 1,
+        step: 1,
+        max: 200,
+      },
+    },
+    {
+      id: 'QueueManager.Basic.StartMode',
+      name: 'Run mode on start',
+      category: ['Queue Manager', 'Basic', 'Run mode on start'],
+      tooltip: 'Whether the queue should automatically play or be paused when ComfyUI starts.',
+      type: 'combo',
+      options: [
+        'Play',
+        'Pause',
+        'Last state',
+      ],
+      defaultValue: 'Play',
+    },
 
+    // Gallery settings
+    {
+      id: 'QueueManager.Gallery.GridThumbMode',
+      name: 'Grid thumbnail mode',
+      category: ['Queue Manager', 'Gallery', 'Grid thumbnail mode'],
+      tooltip: 'How thumbnails are displayed in Grid mode.',
+      type: 'combo',
+      options: [
+        'Square Cropped',
+        'Square Fit',
+        'As is',
+      ],
+      defaultValue: 'Square Fit',
+    },
+    {
+      id: 'QueueManager.Gallery.CoverThumbMode',
+      name: 'Cover thumbnail mode',
+      category: ['Queue Manager', 'Gallery', 'Cover thumbnail mode'],
+      tooltip: 'How thumbnails are displayed in Cover mode.',
+      type: 'combo',
+      options: [
+        'Cropped',
+        'Fit',
+      ],
+      defaultValue: 'Cropped',
+    },
+    {
+      id: 'QueueManager.Gallery.AutoPlayVideos',
+      name: 'Auto-play videos',
+      category: ['Queue Manager', 'Gallery', 'Auto-play videos'],
+      tooltip: 'Automatically play videos in the Completed tab.',
+      type: 'boolean',
+      defaultValue: true,
+    },
+    {
+      id: 'QueueManager.Gallery.HideImagesWhenVideoExists',
+      name: 'Hide images when video exists',
+      category: ['Queue Manager', 'Gallery', 'Hide images when video exists'],
+      tooltip: 'If a video was generated in the workflow then hide images in the Completed tab.',
+      type: 'boolean',
+      defaultValue: true,
+    },
+    {
+      id: 'QueueManager.Gallery.ShowVideos',
+      name: 'Show videos',
+      category: ['Queue Manager', 'Gallery', 'Show videos'],
+      tooltip: 'Show generated videos in the Completed tab.',
+      type: 'boolean',
+      defaultValue: true,
+    },
+    {
+      id: 'QueueManager.Gallery.ShowImages',
+      name: 'Show images',
+      category: ['Queue Manager', 'Gallery', 'Show images'],
+      tooltip: 'Show generated images in the Completed tab.',
+      type: 'boolean',
+      defaultValue: true,
+    },
+  ];
+
+  if (mode === 'default') {
+    return settings;
+  }
+
+  if (mode === 'values') {
+    // pull values for all settings
+    const values = {};
+    for (const setting of settings) {
+      const id = setting.id.split('.').pop();
+      values[id] = app.extensionManager.setting.get(setting.id);
+    }
+    return values;
+  }
+
+}
 
 

@@ -92,7 +92,7 @@ export default function Home() {
   async function fetchOptions() {
     const options = await apiCall(`queue_manager/options`, null, "GET");
       if (options) {
-        setAppStatus(prev => ({...prev, options}));
+        setAppStatus(prev => ({...prev, options: {...prev.options, ...options}}));
         updateThumbnailSize(null, options.thumb_size ? options.thumb_size : 150);
         updateCoverSize(null, options.cover_size ? options.cover_size : 50);
       } else {
@@ -289,7 +289,8 @@ export default function Home() {
         onParentKeypress(event.data.message);
         break;
       case "QM_QueueManager_Hello":
-        setAppStatus(prev => ({ ...prev, clientId: event.data.clientId }));
+        console.log("QM_QueueManager_Hello", event.data);
+        setAppStatus(prev => ({ ...prev, clientId: event.data.clientId, options: {...appStatus.options, ...event.data.settings} }));
         break;
     }
   });
@@ -495,6 +496,10 @@ export default function Home() {
 
     fetchQueueItems();
   }, [appStatus.route]);
+
+  useEffect(() => {
+    console.log("Options updated: ", appStatus.options);
+  }, [appStatus.options]);
 
   // on mount get the queue items from the server
   useEffect(() => {
