@@ -3,7 +3,6 @@ from typing import Optional
 
 from execution import PromptQueue
 from server import PromptServer
-from app.user_manager import UserManager
 
 import json
 import heapq
@@ -18,7 +17,7 @@ from .qm_log import qm_log
 class QM_Queue:
     def __init__(self, queue_manager):
         self.queue_manager = queue_manager
-        self.user_manager = UserManager()
+        self.user_manager = PromptServer.instance.user_manager
         self.restored = False
 
         settings = self.user_manager.settings.get_settings(None)
