@@ -292,6 +292,12 @@ export default function Home() {
         console.log("QM_QueueManager_Hello", event.data);
         setAppStatus(prev => ({ ...prev, clientId: event.data.clientId, options: {...appStatus.options, ...event.data.settings} }));
         break;
+      case "QM_Setting_Changed":
+        // update the setting in options only if it exists
+        if (appStatus.options.hasOwnProperty(event.data.setting)) {
+          setAppStatus(prev => ({...prev, options: {...prev.options, [event.data.setting]: event.data.newValue}}));
+        }
+        break;
     }
   });
 

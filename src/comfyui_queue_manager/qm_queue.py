@@ -3,6 +3,8 @@ from typing import Optional
 
 from execution import PromptQueue
 from server import PromptServer
+from app.user_manager import UserManager
+
 import json
 import heapq
 import folder_paths
@@ -16,9 +18,20 @@ from .qm_log import qm_log
 class QM_Queue:
     def __init__(self, queue_manager):
         self.queue_manager = queue_manager
+        self.user_manager = UserManager()
         self.restored = False
 
-        self.paused = queue_manager.options.get("queue_paused", False)
+        settings = self.user_manager.settings.get_settings(None)
+        start_mode = settings.get("QueueManager.Basic.StartMode", "Last state")
+        current_state = queue_manager.options.get("queue_paused", False)
+
+        if start_mode == "Last state":
+            self.paused = current_state
+        else:
+            self.paused = start_mode == "Pause"
+            if self.paused != current_state:
+                queue_manager.options.set("queue_paused", self.paused)
+
         qm_log.info("Queue status: %s", "not paused" if not self.paused else "paused")
 
         client_id, timestamp = queue_manager.options.get("takeover_client", False, True)

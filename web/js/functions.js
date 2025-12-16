@@ -90,7 +90,7 @@ export async function AddPlayPauseButton(actionsContainer) {
     try {
       const response = await fetch(`/queue_manager/playback`);
     } catch (error) {
-      console.error("Error fetching queue items:", error);
+      console.error("Error fetching playback status:", error);
     }
 }
 
@@ -145,6 +145,15 @@ export function handleAPIEvents() {
 
     app.api.addEventListener("status", function (e) {
       postStatusMessageToIframe(e)
+    });
+
+    app.api.addEventListener("reconnected", async function (e) {
+      // On reconnect fetch current playback status since it might have changed
+      try {
+        await fetch(`/queue_manager/playback`);
+      } catch (error) {
+        console.error("Error fetching playback status:", error);
+      }
     });
 
     app.api.addEventListener("execution_start", function (e) {
@@ -327,6 +336,14 @@ export function injectWorkflowName() {
   };
 }
 
+function postSettingToIframe(setting, newVal, oldVal) {
+  postMessageToIframe({
+    setting: setting,
+    newValue: newVal,
+    oldValue: oldVal
+  }, 'QM_Setting_Changed');
+}
+
 export function extensionSettings(mode = 'default') {
   const settings =  [
     // General settings
@@ -354,7 +371,7 @@ export function extensionSettings(mode = 'default') {
         'Pause',
         'Last state',
       ],
-      defaultValue: 'Play',
+      defaultValue: 'Last state',
     },
 
     // Gallery settings
@@ -418,6 +435,13 @@ export function extensionSettings(mode = 'default') {
   ];
 
   if (mode === 'default') {
+    // append onChange handler to every setting
+    for (const setting of settings) {
+      setting.onChange = function(newVal, oldVal) {
+        const id = setting.id.split('.').pop();
+        postSettingToIframe(id, newVal, oldVal);
+      }
+    }
     return settings;
   }
 
