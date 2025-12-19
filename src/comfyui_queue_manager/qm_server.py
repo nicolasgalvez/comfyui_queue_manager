@@ -15,6 +15,7 @@ class QM_Server:
         self.queue_manager = queue_manager
         self.queue = queue_manager.queue
         self.gallery = queue_manager.gallery
+        self.user_manager = PromptServer.instance.user_manager
         self.__version__ = __version__
 
         # Get queue items
@@ -27,9 +28,12 @@ class QM_Server:
 
             route = self.get_the_route(request)
 
+            # Get page size from extension settings
+            settings = self.user_manager.settings.get_settings(None)
+            page_size = settings.get("QueueManager.Basic.PageSize", 100)
+
             # pending items
-            # SIML: Get page size from extension settings
-            running, pending, info = self.queue.get_current_queue(page, 100, route=route, filters=filters, return_meta=True)
+            running, pending, info = self.queue.get_current_queue(page, page_size, route=route, filters=filters, return_meta=True)
 
             # Remove sensitive data
             remove_sensitive = lambda queue: [x[:5] for x in queue]
