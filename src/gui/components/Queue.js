@@ -16,6 +16,7 @@ import TableRow from '@mui/material/TableRow';
 import Paper from '@mui/material/Paper';
 import PlayArrowOutlinedIcon from '@mui/icons-material/PlayArrowOutlined';
 import {memo} from "react";
+import {CoverMedia} from "@/components/CoverMedia";
 
 /**
  *
@@ -82,14 +83,10 @@ const QueueItemRow = memo(function QueueItemRow({item, className, loader, index,
         </TableCell>
 
         {/* Thumbnail in Cover mode */}
-        {appStatus.route === 'completed' && appStatus.options.thumb_mode === "cover" &&
+        {appStatus.route === 'completed' && appStatus.options.thumb_mode === "cover" && (appStatus.options.ShowImages || appStatus.options.ShowVideos) &&
           <TableCell className="px-3 py-1 cover">
             {item[3].outputs && Object.values(item[3].outputs).length > 0 &&
-              <MediaItem
-                filename={Object.values(item[3].outputs)[0].images[0].filename}
-                subfolder={Object.values(item[3].outputs)[0].images[0].subfolder}
-                galleryData={{dbID: item[3].db_id, nodeKey: Object.keys(item[3].outputs)[0], fileIndex: 0}}
-              />
+              <CoverMedia item={item[3]} />
             }
           </TableCell>
         }
@@ -137,11 +134,12 @@ const QueueItemRow = memo(function QueueItemRow({item, className, loader, index,
         * Queue Item Outputs
         *
         */}
-      {item[3].total_files > 0 && appStatus.route === 'completed' && appStatus.options.thumb_mode === "grid" &&
+      {item[3].total_files > 0 && appStatus.route === 'completed' && appStatus.options.thumb_mode === "grid" && (appStatus.options.ShowImages || appStatus.options.ShowVideos) &&
         <tr className="dark:odd:bg-neutral-900 odd:bg-neutral-100 gallery" key={"gallery" + item[3].db_id}>
           <td colSpan={3} className="px-3 py-1">
             <div className="flex flex-wrap gap-2 items">
               {Object.keys(item[3].outputs).map(nodeID => {
+                console.log("Outputs:", item[3].outputs);
                 const output = item[3].outputs[nodeID];
                 const images = output.images ?? output.gifs ?? [];
                 return images.map((image, fileIndex) => (
@@ -216,7 +214,7 @@ export const Queue = memo(function Queue( { data, isLoading, error, progress } )
             <TableHead className="dark:bg-neutral-800 bg-neutral-200 text-xs uppercase">
               <TableRow>
                 <TableCell className="px-3 py-2 text-left">#</TableCell>
-                {appStatus.route === 'completed' && appStatus.options.thumb_mode === "cover" &&
+                {appStatus.route === 'completed' && appStatus.options.thumb_mode === "cover" && (appStatus.options.ShowImages || appStatus.options.ShowVideos) &&
                   <TableCell className="px-3 py-2 cover">Thumbnail</TableCell>
                 }
                 <TableCell className="px-3 py-2 text-left">Workflow</TableCell>

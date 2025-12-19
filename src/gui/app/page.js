@@ -289,13 +289,13 @@ export default function Home() {
         onParentKeypress(event.data.message);
         break;
       case "QM_QueueManager_Hello":
-        console.log("QM_QueueManager_Hello", event.data);
+        // console.log("QM_QueueManager_Hello", event.data);
         setAppStatus(prev => ({ ...prev, clientId: event.data.clientId, options: {...appStatus.options, ...event.data.settings} }));
         break;
       case "QM_Setting_Changed":
         // update the setting in options only if it exists
-        if (appStatus.options.hasOwnProperty(event.data.setting)) {
-          setAppStatus(prev => ({...prev, options: {...prev.options, [event.data.setting]: event.data.newValue}}));
+        if (appStatus.options.hasOwnProperty(event.data.message.setting)) {
+          setAppStatus(prev => ({...prev, options: {...prev.options, [event.data.message.setting]: event.data.message.newValue}}));
         }
         break;
     }
@@ -634,7 +634,7 @@ export default function Home() {
         */}
       <footer className={"footer"}>
         {/* On Complete route show thumbnail mode and size controls */}
-        {appStatus.route === 'completed' &&
+        {appStatus.route === 'completed' && (appStatus.options.ShowImages || appStatus.options.ShowVideos) &&
           <Stack spacing={1} direction="row" sx={{ alignItems: 'center' }}>
             <Stack spacing={1} className={"thumb-mode"} direction="row" sx={{ alignItems: 'center', justifyContent: 'start', flex:1 }} p={1}>
               <div title="No thumbnails">
