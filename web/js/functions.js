@@ -173,7 +173,10 @@ async function AddStopButton(actionsContainer) {
 }
 
 async function AddButtons(actionsContainer) {
-  await AddStopButton(actionsContainer);
+  if (compareVersions(__COMFYUI_FRONTEND_VERSION__, '1.33.1') >= 0) {
+    // the new ui version has no stop button, and no counter, so we add our own
+    await AddStopButton(actionsContainer);
+  }
   await AddPlayPauseButton(actionsContainer);
 }
 
