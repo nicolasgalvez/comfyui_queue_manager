@@ -180,6 +180,21 @@ export default function Home() {
     }
   }
 
+  async function clearPending() {
+    try {
+        // POST {"clear":true} to /api/queue
+        const response = await fetch(`${baseURL}api/queue`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({clear: true})
+        });
+      } catch (error) {
+        console.error("Error fetching queue items:", error);
+      }
+  }
+
   function isFilterOn() {
     return appStatus.filters && Object.keys(appStatus.filters).length > 0;
   }
@@ -720,9 +735,14 @@ export default function Home() {
                   <Button variant="contained" color="secondary" size="small"  href={baseURL + "queue_manager/export" + appendFilters("")}>
                     <FileDownloadOutlinedIcon />&nbsp;&nbsp;Export {isFilterOn() ? "*" : "Queue"}
                   </Button>
-                  {isFilterOn() &&
+                  {isFilterOn()
+                    ?
                     <Button variant="contained" color="error" size="small" onClick={deleteFromQueue} className={"order-last"} sx={{ ml: 'auto' }}>
-                      🗑️ Delete All *
+                      <DeleteOutlineSharpIcon />&nbsp;&nbsp;Delete All *
+                    </Button>
+                    :
+                    <Button variant="contained" color="error" size="small" onClick={clearPending} className={"order-last"} sx={{ ml: 'auto' }}>
+                      <DeleteOutlineSharpIcon />&nbsp;&nbsp;Delete All Pending
                     </Button>
                   }
                 </>
