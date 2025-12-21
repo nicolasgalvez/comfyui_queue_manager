@@ -21,6 +21,7 @@ import {apiCall} from "@/internals/functions";
 import useEvent from "react-use-event-hook";
 import {AppContext} from "@/internals/app-context";
 import ThumbSlider from "@/components/ThumbSlider";
+import Gallery from "@/components/Gallery";
 
 const VisuallyHiddenInput = styled('input')({
   clip: 'rect(0 0 0 0)',
@@ -44,6 +45,7 @@ export default function Home() {
     clientId: null,
     filters: null,
     options: {},
+    mode: 'queue', // queue, gallery
   });
 
   const [currentJob, setProgress] = useState({
@@ -347,7 +349,7 @@ export default function Home() {
   /**
    * Pack outputs and sent to gallery iframe
    */
-  function onMediaItemClick(imageGalleryData) {
+  function onMediaItemClick(mediaItem) {
     // console.log("imageGalleryData", imageGalleryData);
     let items = [];
 
@@ -360,7 +362,7 @@ export default function Home() {
             Object.keys(item[3].outputs).map((nodeKey) => {
               outputs.push({
                 nodeKey: nodeKey,
-                images: item[3].outputs[nodeKey].images,
+                files: item[3].outputs[nodeKey].images || item[3].outputs[nodeKey].gifs,
               })
             })
           }
@@ -373,34 +375,33 @@ export default function Home() {
           });
         }
       });
-
-      setGallery({
-        items:items
-      });
-
-      postGalleryData({
-        ...imageGalleryData,
-        items:items,
-      })
-
     } else {
-      postGalleryData(imageGalleryData);
+      items = galleryData.items;
     }
 
+    // in items find one that has dbID equal to data.dbID
+    if (!items || items.length === 0) {
+      console.error('No items found in gallery data:', galleryData);
+      return;
+    }
 
+    setGallery({
+      items: items,
+      activeItem: mediaItem
+    })
 
+    openGallery(mediaItem);
   }
 
-  function postGalleryData(galleryData = null) {
+  function openGallery(galleryData = null) {
     if (galleryData) {
       window.parent.postMessage({
         type: "QM_Gallery_Show",
       }, "*");
-      // send message to parent window with outputs
-      window.parent.frames["qm_gallery_iframe"].postMessage({
-        type: "QM_Gallery_Load",
-        galleryData: galleryData
-      }, "*");
+      setAppStatus((prev) => ({ ...prev, mode: 'gallery' }));
+
+      // add class to body
+      document.body.classList.add('gallery-open');
     }
   }
 
@@ -530,7 +531,7 @@ export default function Home() {
   }, []);
 
   return (
-    <div className={`route-${appStatus.route} qm-container`}>
+    <div className={`route-${appStatus.route} qm-container mode-${appStatus.mode}`}>
       <AppContext.Provider value={{appStatus, setAppStatus, onMediaItemClick}}>
       <TopMenu />
 
@@ -780,6 +781,9 @@ export default function Home() {
           </Stack>
         </div>
       </footer>
+      {appStatus.mode === 'gallery' &&
+        <Gallery items={galleryData.items} activeItem={galleryData.activeItem} />
+      }
       </AppContext.Provider>
     </div>
   );

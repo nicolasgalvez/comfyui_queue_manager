@@ -1,6 +1,6 @@
 "use client";
 
-import {useEffect, useState} from "react";
+import {useContext, useEffect, useState} from "react";
 
 import IconButton from "@mui/material/IconButton";
 import DisabledByDefaultIcon from '@mui/icons-material/DisabledByDefault';
@@ -19,8 +19,9 @@ import DeleteOutlineSharpIcon from "@mui/icons-material/DeleteOutlineSharp";
 import {apiCall, msgLoadWorkflow} from "@/internals/functions";
 import GalleryProgressBar from "@/components/GalleryProgressBar";
 import {CoverMedia} from "@/components/CoverMedia";
+import {AppContext} from "@/internals/app-context";
 
-export default function Gallery() {
+export default function Gallery({items, activeItem}) {
   /**
    * Gallery state
    * @type {Array} - array of gallery items
@@ -31,16 +32,27 @@ export default function Gallery() {
     actionsMenuOpen: false,
   });
 
+  const { appStatus, setAppStatus } = useContext(AppContext);
+
   function closeGallery() {
     // Post message to parent window to close gallery
     window.parent.postMessage({ type: "QM_Gallery_Close" }, "*");
+
+    // remove class from body
+    document.body.classList.remove('gallery-open');
+
+    // set app status galleryOpen to false
+    setAppStatus((prev) => ({
+      ...prev,
+      mode: 'queue',
+    }));
   }
 
-  function totalItemImages(item) {
-    // Calculate total of all images in all nodes of the queue item, queueItem.outputs is an array with nodes
+  function totalItemFiles(item) {
+    // Calculate total of all files in all nodes of the queue item, queueItem.outputs is an array with nodes
     return item.outputs.reduce((acc, node) => {
-      if (node.images && Array.isArray(node.images)) {
-        return acc + node.images.length;
+      if (node.files && Array.isArray(node.files)) {
+        return acc + node.files.length;
       }
       return acc;
     }, 0);
@@ -53,7 +65,7 @@ export default function Gallery() {
       setMediaItem(prev => ({
         ...prev,
         fileIndex: mediaItem.fileIndex - 1,
-        file: mediaItem.node.images[mediaItem.fileIndex - 1]
+        file: mediaItem.node.files[mediaItem.fileIndex - 1]
       }));
 
       return;
@@ -69,14 +81,14 @@ export default function Gallery() {
       const prevNodeIndex = mediaItem.nodeIndex - 1;
       const prevNode = mediaItem.queueItem.outputs[prevNodeIndex];
       // if showLastFile is true, then show last file in the previous node
-      const prevFileIndex = showLastFile ? prevNode.images.length - 1 : 0;
+      const prevFileIndex = showLastFile ? prevNode.files.length - 1 : 0;
 
       setMediaItem(prev => ({
         ...prev,
         nodeIndex: prevNodeIndex,
         node: prevNode,
         fileIndex: prevFileIndex,
-        file: prevNode.images[prevFileIndex]
+        file: prevNode.files[prevFileIndex]
       }));
 
       return;
@@ -94,7 +106,7 @@ export default function Gallery() {
       // if showLastFile is true, then show last file in the previous node
       const prevNodeIndex = showLastFile ? prevQueueItem.outputs.length - 1 : 0;
       const prevNode = prevQueueItem.outputs[prevNodeIndex];
-      const prevFileIndex = showLastFile ? prevNode.images.length - 1 : 0;
+      const prevFileIndex = showLastFile ? prevNode.files.length - 1 : 0;
 
       setMediaItem(prev => ({
         ...prev,
@@ -103,8 +115,8 @@ export default function Gallery() {
         nodeIndex: prevNodeIndex,
         node: prevNode,
         fileIndex: prevFileIndex,
-        file: prevNode.images[prevFileIndex],
-        totalImages: totalItemImages(prevQueueItem)
+        file: prevNode.files[prevFileIndex],
+        totalFiles: totalItemFiles(prevQueueItem)
       }));
     }
   }
@@ -113,11 +125,11 @@ export default function Gallery() {
     let newData = null;
 
     // us there next file in the current node?
-    if (mediaItem.fileIndex < mediaItem.node.images.length - 1) {
+    if (mediaItem.fileIndex < mediaItem.node.files.length - 1) {
       setMediaItem(prev => ({
         ...prev,
         fileIndex: mediaItem.fileIndex + 1,
-        file: mediaItem.node.images[mediaItem.fileIndex + 1]
+        file: mediaItem.node.files[mediaItem.fileIndex + 1]
       }));
 
       return;
@@ -138,7 +150,7 @@ export default function Gallery() {
         nodeIndex: nextNodeIndex,
         node: nextNode,
         fileIndex: 0,
-        file: nextNode.images[0]
+        file: nextNode.files[0]
       }));
 
       return;
@@ -162,8 +174,8 @@ export default function Gallery() {
         nodeIndex: 0,
         node: nextNode,
         fileIndex: 0,
-        file: nextNode.images[0],
-        totalImages: totalItemImages(nextQueueItem)
+        file: nextNode.files[0],
+        totalFiles: totalItemFiles(nextQueueItem)
       }));
     }
   }
@@ -185,7 +197,7 @@ export default function Gallery() {
     return mediaItem.fileIndex === 0 && isFirstNode();
   }
   function isLastImage() {
-    return mediaItem.fileIndex === mediaItem.node.images.length - 1 && isLastNode();
+    return mediaItem.fileIndex === mediaItem.node.files.length - 1 && isLastNode();
   }
 
   function toggleActionsMenu() {
@@ -247,8 +259,8 @@ export default function Gallery() {
         nodeIndex: 0,
         node: nextNode,
         fileIndex: 0,
-        file: nextNode.images[0],
-        totalImages: totalItemImages(nextQueueItem)
+        file: nextNode.files[0],
+        totalFiles: totalItemFiles(nextQueueItem)
       });
 
       // delete workflow from gallery items
@@ -273,7 +285,7 @@ export default function Gallery() {
   const keyboardNavigation = useEvent((event) => {
     // SIML: make it configurable in options
 
-    // Images
+    // files
     if (event.key === 'ArrowLeft') {
       if (!isFirstImage()) {
         previousImage();
@@ -318,8 +330,8 @@ export default function Gallery() {
           nodeIndex: 0,
           node: firstNode,
           fileIndex: 0,
-          file: firstNode.images[0],
-          totalImages: totalItemImages(firstItem)
+          file: firstNode.files[0],
+          totalFiles: totalItemFiles(firstItem)
         });
       }
 
@@ -329,15 +341,15 @@ export default function Gallery() {
       if (galleryItems && galleryItems.length > 0) {
         const lastItem = galleryItems[galleryItems.length - 1];
         const lastNode = lastItem.outputs[lastItem.outputs.length - 1];
-        const lastFileIndex = lastNode.images.length - 1;
+        const lastFileIndex = lastNode.files.length - 1;
         setMediaItem({
           itemIndex: galleryItems.length - 1,
           queueItem: lastItem,
           nodeIndex: lastItem.outputs.length - 1,
           node: lastNode,
           fileIndex: lastFileIndex,
-          file: lastNode.images[lastFileIndex],
-          totalImages: totalItemImages(lastItem)
+          file: lastNode.files[lastFileIndex],
+          totalFiles: totalItemFiles(lastItem)
         });
       }
     }
@@ -354,73 +366,62 @@ export default function Gallery() {
         nodeIndex: 0,
         node: firstNode,
         fileIndex: 0,
-        file: firstNode.images[0],
-        totalImages: totalItemImages(queueItem)
+        file: firstNode.files[0],
+        totalFiles: totalItemFiles(queueItem)
       });
     }
   }
 
-  const handleMessage = useEvent((event) => {
-    // Events coming from QM iframe
-    if (event.origin !== window.location.protocol + "//" + window.location.host) {
+  function updateMediaItem(items) {
+    const itemIndex = items.findIndex(item => item.dbID === activeItem.dbID);
+    if (itemIndex === -1) {
+      console.error('Item with dbID not found in gallery data:', activeItem);
       return;
     }
 
-    const { type } = event.data;
+    const queueItem = items[itemIndex];
 
-    // Request to load gallery item
-    if (type === "QM_Gallery_Load") {
-      const data = event.data.galleryData;
-      const items = data.items ? data.items : galleryItems;
+    const nodeIndex = queueItem.outputs.findIndex(item => item.nodeKey === activeItem.nodeKey);
 
-      // in items find one that has dbID equal to data.dbID
-      if (!items || items.length === 0) {
-        console.error('No items found in gallery data:', data);
-        return;
-      }
-      const itemIndex = items.findIndex(item => item.dbID === data.dbID);
-      if (itemIndex === -1) {
-        console.error('Item with dbID not found in gallery data:', data);
-        return;
-      }
-
-      const queueItem = items[itemIndex];
-
-      const nodeIndex = queueItem.outputs.findIndex(item => item.nodeKey === data.nodeKey);
-
-      if (nodeIndex === -1) {
-        console.error('Node not found in queue item outputs:', data.nodeKey);
-        return;
-      }
-      const node = queueItem.outputs[nodeIndex];
-      const file = node.images[data.fileIndex];
-
-      // calculate total of all images in all nodes of the queue item, queueItem.outputs is an array with nodes
-      const totalImages = totalItemImages(queueItem);
-
-      if (data.items) {
-        setGalleryItems(data.items);
-      }
-
-      setMediaItem({
-        itemIndex: itemIndex,
-        queueItem: queueItem,
-        nodeIndex: nodeIndex,
-        node: node,
-        fileIndex: data.fileIndex,
-        file: file,
-        totalImages: totalImages
-      });
+    if (nodeIndex === -1) {
+      console.error('Node not found in queue item outputs:', activeItem.nodeKey);
+      return;
     }
+    const node = queueItem.outputs[nodeIndex];
+    const file = node.files[activeItem.fileIndex];
 
-  });
+    // calculate total of all files in all nodes of the queue item, queueItem.outputs is an array with nodes
+    const totalFiles = totalItemFiles(queueItem);
+
+    setMediaItem({
+      itemIndex: itemIndex,
+      queueItem: queueItem,
+      nodeIndex: nodeIndex,
+      node: node,
+      fileIndex: activeItem.fileIndex,
+      file: file,
+      totalFiles: totalFiles
+    });
+  }
 
   useEffect(() => {
-    /**
-     * Messages from iframe
-     */
-    window.addEventListener("message", handleMessage, false);
 
+    // in items find one that has dbID equal to data.dbID
+    if (!items || items.length === 0) {
+      return;
+    }
+
+    setGalleryItems(items);
+
+    updateMediaItem(items);
+
+  }, [items]);
+
+  useEffect(() => {
+    updateMediaItem(items);
+  }, [activeItem]);
+
+  useEffect(() => {
     /**
      * When clicked outside actions menu, close it
      */
@@ -442,7 +443,7 @@ export default function Gallery() {
 
       {galleryItems &&
       <div className="image-box">
-        <header>{mediaItem.queueItem.workflow.workflow_name} <span>({mediaItem.fileIndex+1} / {mediaItem.totalImages})</span></header>
+        <header>{mediaItem.queueItem.workflow.workflow_name} <span>({mediaItem.fileIndex+1} / {mediaItem.totalFiles})</span></header>
 
         <figure>
           <img
@@ -454,8 +455,8 @@ export default function Gallery() {
               <KeyboardDoubleArrowLeftSharpIcon fontSize="inherit" />
             </button>
 
-            {/*  Display all images from the node */}
-            {mediaItem.node.images.map((image, index) => (
+            {/*  Display all files from the node */}
+            {mediaItem.node.files.map((image, index) => (
                 <img
                   key={index}
                   src={baseURL + `api/view?filename=${image.filename}&type=output&subfolder=${image.subfolder}`}
@@ -485,7 +486,7 @@ export default function Gallery() {
 
           {!isLastImage() &&
             <IconButton color="primary" size="large" onClick={() => nextImage()}
-              // disabled={mediaItem.fileIndex === mediaItem.totalImages - 1}
+              // disabled={mediaItem.fileIndex === mediaItem.totalFiles - 1}
                         className={"next-button"} title={'Next Image (→)'}>
               <ArrowForwardIosIcon fontSize="inherit" />
             </IconButton>
@@ -497,14 +498,14 @@ export default function Gallery() {
           {mediaItem.itemIndex > 0 && (
             <button type={"button"} className={"prev-item"} onClick={() => previousItem()} title={'Previous Prompt (PgUp)'}>
               <KeyboardDoubleArrowLeftSharpIcon fontSize="inherit" />
-              {/*<CoverMedia item={galleryItems[mediaItem.itemIndex - 1]} force={true} />*/}
+              <CoverMedia item={galleryItems[mediaItem.itemIndex - 1]} force={true} />
             </button>
           )}
 
           {mediaItem.itemIndex < galleryItems.length - 1 && (
             <button type={"button"} className={"next-item"} onClick={() => nextItem()} title={'Next Prompt (PgDown)'}>
               <KeyboardDoubleArrowRightSharpIcon fontSize="inherit" />
-              {/*<CoverMedia item={galleryItems[mediaItem.itemIndex + 1]} force={true} />*/}
+              <CoverMedia item={galleryItems[mediaItem.itemIndex + 1]} force={true} />
             </button>
           )}
         </nav>

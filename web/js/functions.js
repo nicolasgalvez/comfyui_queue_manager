@@ -216,27 +216,12 @@ export function handleIframeMessages() {
 
       // Show gallery modal
       if (type === "QM_Gallery_Show") {
-        const galleryOverlay = document.querySelector('.comfyui-gallery-overlay');
-        if (galleryOverlay) {
-          galleryOverlay.classList.add('open');
-
-          // Give focus to the gallery iframe
-          const galleryIframe = document.querySelector('.gallery-iframe');
-          console.log("QM Gallery iframe", galleryIframe);
-          if (galleryIframe) {
-            galleryIframe.focus();
-          }
-        } else {
-          console.error("Gallery overlay not found");
-        }
+        document.body.classList.add('show-qm-fullscreen');
       }
 
       // Close gallery modal
       if (type === "QM_Gallery_Close") {
-        const galleryOverlay = document.querySelector('.comfyui-gallery-overlay');
-        if (galleryOverlay) {
-          galleryOverlay.classList.remove('open');
-        }
+        document.body.classList.remove('show-qm-fullscreen');
       }
 
       // Load workflow from image file
@@ -295,30 +280,6 @@ export function registerSidebar() {
       // resize container
       el.style.height = '100%';
       el.parentElement.style.overflow = 'hidden';
-
-      // if gallery overlay does not exist then create it
-      if (!document.querySelector('.comfyui-gallery-overlay')) {
-        const galleryOverlay = document.createElement('div');
-        galleryOverlay.className = 'comfyui-gallery-overlay';
-
-
-        galleryOverlay.innerHTML = `
-          <div class="qm-gallery-modal">
-            <section class="qm-gallery-content">
-              <iframe name="qm_gallery_iframe" src="${QueueManagerGalleryURL}" class="gallery-iframe"></iframe>
-            </section>
-          </div>
-        `;
-        document.body.appendChild(galleryOverlay);
-
-        // Close modal on click outside
-        galleryOverlay.addEventListener('click', (e) => {
-          if (e.target === galleryOverlay) {
-            // remove open class from overlay
-            galleryOverlay.classList.remove('open');
-          }
-        });
-      }
     },
   });
 }

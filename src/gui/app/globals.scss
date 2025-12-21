@@ -1003,3 +1003,9 @@ button {
     }
   }
 }
+
+.gallery-open {
+  .top-menu-toggle, .top-menu, .tabs, .queue-table, .footer {
+    display: none;
+  }
+}
