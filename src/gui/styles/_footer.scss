@@ -1,0 +1,87 @@
+@use '../styles/variables' as *;
+
+footer.footer {
+  border-top: 1px solid var(--color-neutral-600);
+  .route-archive & {
+    background-color: $archive-color;
+
+    @media (prefers-color-scheme: light) {
+      background-color: $archive-color-light;
+    }
+  }
+
+  .actions {
+    font-size: 0.8em;
+
+    a {
+      font-size: 0.8rem;
+      display: inline-flex;
+      cursor: pointer;
+      align-items: center;
+      justify-content: center;
+      color: white;
+    }
+
+    button {
+      @media (prefers-color-scheme: light) {
+        color: white;
+      }
+
+      &.run-all {
+
+        @media (prefers-color-scheme: dark) {
+          color: black;
+        }
+      }
+    }
+
+    @media (prefers-color-scheme: light) {
+      a
+      {
+        color: black;
+      }
+    }
+  }
+
+  .MuiButton-root {
+    text-transform: none;
+  }
+
+  .thumb-size-icon {
+    cursor: pointer;
+    transition: all 0.2s ease;
+    &:hover {
+      transform: scale(1.2);
+    }
+  }
+
+  .thumb-mode {
+    svg {
+      box-sizing: content-box;
+      padding: 5px;
+      border-radius: 5px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+
+      &:hover {
+        background-color: black;
+
+        @media (prefers-color-scheme: light) {
+          background-color: var(--color-neutral-500);
+          color: white;
+        }
+      }
+
+
+      &.active {
+        background-color: var(--color-neutral-600);
+        color: white;
+
+        @media (prefers-color-scheme: light) {
+          background-color: white;
+          color: black;
+        }
+      }
+    }
+  }
+}
