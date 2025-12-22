@@ -16,7 +16,7 @@ import Stack from "@mui/material/Stack";
 import {Slider} from "@mui/material";
 import Button from "@mui/material/Button";
 import {baseURL} from "@/internals/config";
-import {useContext, useEffect, useState} from "react";
+import {useContext, useEffect, useState, useCallback, useMemo} from "react";
 import {apiCall} from "@/internals/functions";
 import useEvent from "react-use-event-hook";
 import {AppContext} from "@/internals/app-context";
@@ -41,11 +41,14 @@ export default function Home() {
     error: null,
     queue: null,
     route: 'queue', // queue, archive, completed, bin
-    shiftDown: false,
     clientId: null,
     filters: null,
     options: {},
     mode: 'queue', // queue, gallery
+  });
+
+  const [keysStatus, setKeysStatus] = useState({
+    shiftDown: false,
   });
 
   const [currentJob, setProgress] = useState({
@@ -287,7 +290,7 @@ export default function Home() {
     }
 
     if (keypress.key === "Shift") {
-      setAppStatus(prev => ({...prev, shiftDown: keypress.isDown}));
+      setKeysStatus(prev => ({...prev, shiftDown: keypress.isDown}));
     }
   }
 
@@ -310,10 +313,23 @@ export default function Home() {
         setAppStatus(prev => ({ ...prev, clientId: event.data.clientId, options: {...appStatus.options, ...event.data.settings} }));
         break;
       case "QM_Setting_Changed":
-        // update the setting in options only if it exists
-        if (appStatus.options.hasOwnProperty(event.data.message.setting)) {
-          setAppStatus(prev => ({...prev, options: {...prev.options, [event.data.message.setting]: event.data.message.newValue}}));
+        console.log("QM_Setting_Changed", event.data.message);
+        // check if path like "Completed.ShowImages" in event.data.message.setting represent an existing object path in appStatus.options
+        const settingPath = event.data.message.setting.split('.');
+        let current = appStatus.options;
+        let exists = true;
+        for (const segment of settingPath) {
+          if (current.hasOwnProperty(segment)) {
+            current = current[segment];
+          } else {
+            exists = false;
+          }
         }
+
+        if (exists) {
+          setAppStatus(prev => ({ ...prev, options: {...prev.options, [settingPath[0]]: {...prev.options[settingPath[0]], [settingPath[1]]: event.data.message.newValue} }}));
+        }
+
         break;
     }
   });
@@ -364,7 +380,7 @@ export default function Home() {
   /**
    * Pack outputs and sent to gallery iframe
    */
-  function onMediaItemClick(mediaItem) {
+  const onMediaItemClick = useCallback((mediaItem) => {
     // console.log("imageGalleryData", imageGalleryData);
     let items = [];
 
@@ -406,7 +422,7 @@ export default function Home() {
     })
 
     openGallery(mediaItem);
-  }
+  }, [appStatus.queue, galleryData]);
 
   function openGallery(galleryData = null) {
     if (galleryData) {
@@ -451,6 +467,9 @@ export default function Home() {
     apiCall('queue_manager/options', {key:"thumb_mode", value: mode}, 'POST');
   });
 
+  const appContextValue = useMemo(() => {
+    return { appStatus, setAppStatus, onMediaItemClick };
+  }, [appStatus, onMediaItemClick]);
 
   useEffect(() => {
     fetchQueueItems()
@@ -531,10 +550,10 @@ export default function Home() {
     window.addEventListener("message", handleMessage);
 
     window.addEventListener('keydown', e => {
-      setAppStatus(prev => ({...prev, shiftDown: true}));
+      setKeysStatus(prev => ({...prev, shiftDown: true}));
     });
     window.addEventListener('keyup', e => {
-      setAppStatus(prev => ({...prev, shiftDown: false}));
+      setKeysStatus(prev => ({...prev, shiftDown: false}));
     });
 
     window.parent.postMessage(
@@ -547,7 +566,7 @@ export default function Home() {
 
   return (
     <div className={`route-${appStatus.route} qm-container mode-${appStatus.mode}`}>
-      <AppContext.Provider value={{appStatus, setAppStatus, onMediaItemClick}}>
+      <AppContext.Provider value={appContextValue}>
       <TopMenu />
 
       {/*
@@ -639,7 +658,7 @@ export default function Home() {
                isLoading={appStatus.loading}
                progress={currentJob.progress}
                route={appStatus.route}
-               shiftDown={appStatus.shiftDown}
+               shiftDown={keysStatus.shiftDown}
         />
       </div>
 
@@ -650,7 +669,7 @@ export default function Home() {
         */}
       <footer className={"footer"}>
         {/* On Complete route show thumbnail mode and size controls */}
-        {appStatus.route === 'completed' && (appStatus.options.ShowImages || appStatus.options.ShowVideos) &&
+        {appStatus.route === 'completed' && (appStatus.options.Completed.ShowImages || appStatus.options.Completed.ShowVideos) &&
           <Stack spacing={1} direction="row" sx={{ alignItems: 'center' }}>
             <Stack spacing={1} className={"thumb-mode"} direction="row" sx={{ alignItems: 'center', justifyContent: 'start', flex:1 }} p={1}>
               <div title="No thumbnails">

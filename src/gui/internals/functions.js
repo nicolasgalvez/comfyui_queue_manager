@@ -50,3 +50,10 @@ export const msgLoadWorkflow = (workflow, number) => {
     "*"
   );
 }
+
+export function mediaType (outputs) {
+  return {
+    isImage : (!outputs.animated || outputs.animated[0] !== true),
+    isVideo : (outputs.animated && outputs.animated[0] === true) || (outputs.gifs && outputs.gifs.length > 0)
+  }
+}

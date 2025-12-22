@@ -423,9 +423,9 @@ export function extensionSettings(mode = 'default') {
 
     // Gallery settings
     {
-      id: 'QueueManager.Gallery.GridThumbMode',
+      id: 'QueueManager.Completed.GridThumbMode',
       name: 'Grid thumbnail mode',
-      category: ['Queue Manager', 'Gallery', 'Grid thumbnail mode'],
+      category: ['Queue Manager', 'Completed', 'Grid thumbnail mode'],
       tooltip: 'How thumbnails are displayed in Grid mode.',
       type: 'combo',
       options: [
@@ -436,9 +436,9 @@ export function extensionSettings(mode = 'default') {
       defaultValue: 'Square Fit',
     },
     {
-      id: 'QueueManager.Gallery.CoverThumbMode',
+      id: 'QueueManager.Completed.CoverThumbMode',
       name: 'Cover thumbnail mode',
-      category: ['Queue Manager', 'Gallery', 'Cover thumbnail mode'],
+      category: ['Queue Manager', 'Completed', 'Cover thumbnail mode'],
       tooltip: 'How thumbnails are displayed in Cover mode.',
       type: 'combo',
       options: [
@@ -447,6 +447,40 @@ export function extensionSettings(mode = 'default') {
       ],
       defaultValue: 'Cropped',
     },
+    {
+      id: 'QueueManager.Completed.AutoPlayVideos',
+      name: 'Auto-play videos',
+      category: ['Queue Manager', 'Completed', 'Auto-play videos'],
+      tooltip: 'Automatically play videos in the Completed tab.',
+      type: 'boolean',
+      defaultValue: true,
+    },
+    {
+      id: 'QueueManager.Completed.HideImagesWhenVideoExists',
+      name: 'Hide images when video exists',
+      category: ['Queue Manager', 'Completed', 'Hide images when video exists'],
+      tooltip: 'If a video was generated in the workflow then hide images in the Completed tab.',
+      type: 'boolean',
+      defaultValue: true,
+    },
+    {
+      id: 'QueueManager.Completed.ShowVideos',
+      name: 'Show videos',
+      category: ['Queue Manager', 'Completed', 'Show videos'],
+      tooltip: 'Show generated videos in the Completed tab.',
+      type: 'boolean',
+      defaultValue: true,
+    },
+    {
+      id: 'QueueManager.Completed.ShowImages',
+      name: 'Show images',
+      category: ['Queue Manager', 'Completed', 'Show images'],
+      tooltip: 'Show generated images in the Completed tab.',
+      type: 'boolean',
+      defaultValue: true,
+    },
+
+    // Gallery settings
     {
       id: 'QueueManager.Gallery.AutoPlayVideos',
       name: 'Auto-play videos',
@@ -459,7 +493,7 @@ export function extensionSettings(mode = 'default') {
       id: 'QueueManager.Gallery.HideImagesWhenVideoExists',
       name: 'Hide images when video exists',
       category: ['Queue Manager', 'Gallery', 'Hide images when video exists'],
-      tooltip: 'If a video was generated in the workflow then hide images in the Completed tab.',
+      tooltip: 'If a video was generated in the workflow then hide images in the gallery view.',
       type: 'boolean',
       defaultValue: true,
     },
@@ -467,7 +501,7 @@ export function extensionSettings(mode = 'default') {
       id: 'QueueManager.Gallery.ShowVideos',
       name: 'Show videos',
       category: ['Queue Manager', 'Gallery', 'Show videos'],
-      tooltip: 'Show generated videos in the Completed tab.',
+      tooltip: "Show generated videos in the gallery. If you disable both images and videos then gallery won't show",
       type: 'boolean',
       defaultValue: true,
     },
@@ -475,7 +509,7 @@ export function extensionSettings(mode = 'default') {
       id: 'QueueManager.Gallery.ShowImages',
       name: 'Show images',
       category: ['Queue Manager', 'Gallery', 'Show images'],
-      tooltip: 'Show generated images in the Completed tab.',
+      tooltip: "Show generated videos in the gallery. If you disable both images and videos then gallery won't show",
       type: 'boolean',
       defaultValue: true,
     },
@@ -485,7 +519,7 @@ export function extensionSettings(mode = 'default') {
     // append onChange handler to every setting
     for (const setting of settings) {
       setting.onChange = function(newVal, oldVal) {
-        const id = setting.id.split('.').pop();
+        const id = setting.id.replace('QueueManager.', '');
         postSettingToIframe(id, newVal, oldVal);
       }
     }
@@ -493,13 +527,28 @@ export function extensionSettings(mode = 'default') {
   }
 
   if (mode === 'values') {
-    // pull values for all settings
-    const values = {};
+    // pull values for all settings and convert to tree object, split by dots in id
+    const settingsTree = {};
     for (const setting of settings) {
-      const id = setting.id.split('.').pop();
-      values[id] = app.extensionManager.setting.get(setting.id);
+      const value = app.extensionManager.setting.get(setting.id);
+      const idParts = setting.id.split('.');
+      let currentLevel = settingsTree;
+      for (let i = 0; i < idParts.length; i++) {
+        const part = idParts[i];
+        if (i === idParts.length - 1) {
+          currentLevel[part] = value;
+        } else {
+          if (!currentLevel[part]) {
+            currentLevel[part] = {};
+          }
+          currentLevel = currentLevel[part];
+        }
+      }
     }
-    return values;
+
+    console.log("Settings tree:", settingsTree);
+
+    return settingsTree.QueueManager;
   }
 
 }

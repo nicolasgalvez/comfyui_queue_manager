@@ -2,10 +2,11 @@ import React, {memo, useContext, useState, useEffect } from "react";
 import {baseURL} from "@/internals/config";
 import {AppContext} from "@/internals/app-context";
 import {MediaItem} from "@/components/MediaItem";
+import {mediaType} from "@/internals/functions";
 
 
 
-export const CoverMedia = memo(function CoverMedia({item, force}) {
+export const CoverMedia = memo(function CoverMedia({item, force, mode = "completed"}) {
   const { appStatus } = useContext(AppContext)
 
   /**
@@ -17,6 +18,7 @@ export const CoverMedia = memo(function CoverMedia({item, force}) {
     let video = null;
     let image = null;
     let _nodeID = null;
+    let modeSetting = mode === 'gallery' ? appStatus.options.Gallery : appStatus.options.Completed;
 
 
 
@@ -28,25 +30,24 @@ export const CoverMedia = memo(function CoverMedia({item, force}) {
         return false;
       }
 
-      const isImage = (!outputs.animated || outputs.animated[0] !== true);
-      const isVideo = (outputs.animated && outputs.animated[0] === true) || (outputs.gifs && outputs.gifs.length > 0);
+      const { isImage, isVideo } = mediaType(outputs);
 
       // console.log("Outputs", outputs, "isImage:", isImage, "isVideo:", isVideo);
 
       if (isImage) {
-        if (appStatus.options.ShowImages || force) {
+        if (modeSetting.ShowImages || force) {
 
           image = files[0];
           _nodeID = nodeID;
           return true;
         }
       } else if (isVideo && video === null) {
-        if (appStatus.options.ShowVideos || force) {
+        if (modeSetting.ShowVideos || force) {
           video = (outputs.gifs && outputs.gifs.length > 0) ? outputs.gifs[0] : files[0];
           _nodeID = nodeID;
 
           // if no show images, return video immediately
-          if (!appStatus.options.ShowImages && !force) {
+          if (!modeSetting.ShowImages && !force) {
             return true;
           }
         }
@@ -56,8 +57,9 @@ export const CoverMedia = memo(function CoverMedia({item, force}) {
     let file = image !== null ? image : video;
     if (file) {
       file.nodeID = _nodeID;
-      return file;
     }
+
+    return file;
   }
 
   const [coverFile, setCoverFile] = useState(() => getCoverFile(item));
@@ -73,7 +75,7 @@ export const CoverMedia = memo(function CoverMedia({item, force}) {
         filename={coverFile.filename}
         subfolder={coverFile.subfolder}
         galleryData={{dbID: item.db_id, nodeKey: coverFile.nodeID, fileIndex: 0}}
-        galleryMode={force}
+        mode={mode}
       />
       }
     </>
