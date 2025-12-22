@@ -3,8 +3,7 @@ import {baseURL} from "@/internals/config";
 import {AppContext} from "@/internals/app-context";
 
 
-export const MediaItem = memo(function MediaItem({filename, subfolder, onClick, mode = "Completed"}) {
-  const {onMediaItemClick, appStatus} = useContext(AppContext)
+export const MediaItem = memo(function MediaItem({filename, subfolder, onClick, autoplay}) {
 
   const ext = filename.split('.').pop().toLowerCase();
 
@@ -19,6 +18,9 @@ export const MediaItem = memo(function MediaItem({filename, subfolder, onClick, 
             <video
               className="comfy-video-main galleria-image"
               controls
+              autoPlay={autoplay}
+              muted={autoplay}
+              loop={autoplay}
             >
               <source src={src} type={`video/${ext}`} />
             </video>

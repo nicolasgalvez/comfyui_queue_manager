@@ -158,6 +158,7 @@ const QueueItemRow = memo(function QueueItemRow({item, className, loader, index,
                   ShowImages,
                   ShowVideos,
                   HideImagesWhenVideoExists,
+                  AutoPlayVideos
                 } = appStatus.options.Completed;
 
                 const shouldShowMedia =
@@ -170,6 +171,7 @@ const QueueItemRow = memo(function QueueItemRow({item, className, loader, index,
                       <MediaItem
                         filename={image.filename}
                         subfolder={image.subfolder}
+                        autoplay={AutoPlayVideos}
                         onClick={() => {
                           onMediaItemClick({
                             dbID: item[3].db_id,
