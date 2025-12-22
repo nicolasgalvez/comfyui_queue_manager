@@ -63,6 +63,17 @@ const QueueItemRow = memo(function QueueItemRow({item, className, loader, index,
         }}}));
   }
 
+  function hasVideos(outputs) {
+    for (const nodeID in outputs) {
+      const nodeOutputs = outputs[nodeID];
+      const { isVideo } = mediaType(nodeOutputs);
+      if (isVideo) {
+        return true;
+      }
+    }
+    return false;
+  }
+
 
   return (
     <>
@@ -141,10 +152,21 @@ const QueueItemRow = memo(function QueueItemRow({item, className, loader, index,
                 const outputs = item[3].outputs[nodeID];
                 const files = outputs.images ?? outputs.gifs ?? [];
                 const { isImage, isVideo } = mediaType(outputs);
+                const hasVideo = hasVideos(item[3].outputs);
+
+                const {
+                  ShowImages,
+                  ShowVideos,
+                  HideImagesWhenVideoExists,
+                } = appStatus.options.Completed;
+
+                const shouldShowMedia =
+                  (isImage && ShowImages && (!hasVideo || !HideImagesWhenVideoExists)) ||
+                  (isVideo && ShowVideos);
 
                 return files.map((image, fileIndex) => (
                   <Fragment key={image.filename + '-' + image.subfolder}>
-                    {((isImage && appStatus.options.Completed.ShowImages) || (isVideo && appStatus.options.Completed.ShowVideos)) &&
+                    {shouldShowMedia &&
                       <MediaItem
                         filename={image.filename}
                         subfolder={image.subfolder}
