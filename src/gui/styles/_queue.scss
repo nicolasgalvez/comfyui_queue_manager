@@ -9,6 +9,11 @@
     height: 100%;
   }
 
+  table {
+    width: 100%;
+    max-width: 100%;
+  }
+
   .MuiPaper-root {
     overflow: hidden;
     height: 100%;
@@ -205,20 +210,28 @@
 
   .gallery {
     .items {
-      display: flex;
       flex-wrap: wrap;
-      gap: 0;
+      gap: calc(var(--gap, 0px));
+      min-width: 0;
 
       .media-item {
         box-sizing: border-box;
+        flex: 0 0 calc(
+          (100% - (calc(var(--cols, 1) - 1) * var(--gap, 0px)))
+          / var(--cols, 1)
+        );
+        max-width: calc(
+          (100% - (calc(var(--cols, 1) - 1) * var(--gap, 0px)))
+          / var(--cols, 1)
+        );
+
         position: relative;
         overflow: hidden;
         border-radius: 0.25rem;
         color: white;
         padding: 0.2rem;
         text-align: center;
-        max-width: var(--thumb-size);
-        min-width: var(--thumb-size);
+
 
         img, video {
           width: 100%;
@@ -250,6 +263,58 @@
   }
   tr:hover .cover .media-item {
     outline: 1px solid white;
+  }
+
+  .cover-fit {
+    .cover {
+      .media-item {
+        img, video {
+          background-color: #ffffff10;
+          object-fit: contain;
+
+          @media (prefers-color-scheme: light) {
+            background-color: #00000020;
+          }
+        }
+      }
+    }
+  }
+
+  .grid-square_cropped {
+    .gallery {
+      .media-item {
+        position: relative;
+        padding-bottom: calc(var(--thumb-size));
+        border-radius: 0.25rem;
+        img, video {
+          position: absolute;
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+        }
+      }
+    }
+  }
+
+  .grid-square_fit {
+    .gallery {
+      .media-item {
+        position: relative;
+        padding-bottom: calc(var(--thumb-size));
+        border-radius: 0.25rem;
+        img, video {
+          background-color: #ffffff10;
+          position: absolute;
+          width: 100%;
+          height: 100%;
+          object-fit: contain;
+
+          @media (prefers-color-scheme: light) {
+            background-color: #00000020;
+          }
+        }
+      }
+    }
   }
 }
 

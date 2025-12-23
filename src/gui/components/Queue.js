@@ -25,7 +25,7 @@ import {CoverMedia} from "@/components/CoverMedia";
  */
 const QueueItemRow = memo(function QueueItemRow({item, className, loader, index, mode, info}) {
 
-  const {appStatus, setAppStatus, onMediaItemClick} = useContext(AppContext)
+  const {appStatus, setAppStatus, onMediaItemClick} = useContext(AppContext);
 
   async function cancelQueueItem() {
     const route = (mode === 'running' || mode === 'external') ? 'interrupt' : 'queue';
@@ -225,6 +225,9 @@ export const Queue = memo(function Queue( { data, isLoading, error, progress } )
     running:[],
   })
 
+    // lowercase and replace spaces with _
+  const coverMode = String(appStatus.options?.Completed?.CoverThumbMode ?? "default").toLowerCase().replace(/\s+/g, '_');
+  const gridMode = String(appStatus.options?.Completed?.GridThumbMode ?? "default").toLowerCase().replace(/\s+/g, '_');
 
   useEffect(function () {
     if (!data) return;
@@ -237,7 +240,7 @@ export const Queue = memo(function Queue( { data, isLoading, error, progress } )
 
 
   return (
-    <div className={"overflow-x-auto table-wrapper" + (isLoading ? ' loading' : '')} style={{"--job-progress": progress + "%"}}>
+    <div className={"overflow-x-auto table-wrapper" + (isLoading ? ' loading' : '') + ' cover-' + coverMode + ' grid-' + gridMode + ' mode-'} style={{"--job-progress": progress + "%"}}>
       <Paper sx={{ width: '100%', overflow: 'hidden' }}>
         <TableContainer>
           <Table className="min-w-full border border-0" size="small" stickyHeader>

@@ -16,7 +16,7 @@ import Stack from "@mui/material/Stack";
 import {Slider} from "@mui/material";
 import Button from "@mui/material/Button";
 import {baseURL} from "@/internals/config";
-import {useContext, useEffect, useState, useCallback, useMemo} from "react";
+import {useContext, useEffect, useState, useCallback, useMemo, useRef} from "react";
 import {apiCall} from "@/internals/functions";
 import useEvent from "react-use-event-hook";
 import {AppContext} from "@/internals/app-context";
@@ -62,7 +62,27 @@ export default function Home() {
 
   const [galleryData, setGallery] = useState(null);
 
+  const latestThumbSizePxRef = useRef(150);
 
+  const applyGridVars = useCallback((thumbSizePx) => {
+    const root = document.documentElement;
+
+    const gapPx = 0;
+    const minCols = 1;
+
+    // Choose basis: viewport width
+    const width = window.innerWidth;
+
+    const denom = thumbSizePx + gapPx;
+    const cols =
+      Number.isFinite(denom) && denom > 0
+        ? Math.max(minCols, Math.floor((width + gapPx) / denom))
+        : minCols;
+
+    root.style.setProperty("--thumb-size", `${thumbSizePx}px`);
+    root.style.setProperty("--gap", `${gapPx}px`);
+    root.style.setProperty("--cols", String(cols));
+  }, []);
   const fetchQueueItems = async (page) => {
     setAppStatus(prev => ({...prev, loading: true, error: null}));
     try {
@@ -437,8 +457,11 @@ export default function Home() {
   }
 
   function updateThumbnailSize(event, newValue) {
-    document.documentElement.style.setProperty('--thumb-size', newValue + 'px');
-    // setAppStatus(prev => ({ ...prev, options: {...prev.options, thumb_size: newValue} }));
+    const n = Number(newValue);
+    const thumbSizePx = Number.isFinite(n) && n > 0 ? n : 150;
+
+    latestThumbSizePxRef.current = thumbSizePx;
+    applyGridVars(thumbSizePx);
   }
 
   function onThumbSizeCommited(event, newValue) {
@@ -541,6 +564,20 @@ export default function Home() {
   useEffect(() => {
     console.log("Options updated: ", appStatus.options);
   }, [appStatus.options]);
+
+  useEffect(() => {
+    const onResize = () => applyGridVars(latestThumbSizePxRef.current);
+
+    window.addEventListener("resize", onResize, { passive: true });
+
+    const ro = new ResizeObserver(() => onResize());
+    ro.observe(document.documentElement);
+
+    return () => {
+      window.removeEventListener("resize", onResize);
+      ro.disconnect();
+    };
+  }, [applyGridVars]);
 
   // on mount get the queue items from the server
   useEffect(() => {
