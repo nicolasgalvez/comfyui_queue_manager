@@ -17,7 +17,7 @@ import {Slider} from "@mui/material";
 import Button from "@mui/material/Button";
 import {baseURL} from "@/internals/config";
 import {useContext, useEffect, useState, useCallback, useMemo, useRef} from "react";
-import {apiCall} from "@/internals/functions";
+import {apiCall, hasVideos, mediaType} from "@/internals/functions";
 import useEvent from "react-use-event-hook";
 import {AppContext} from "@/internals/app-context";
 import ThumbSlider from "@/components/ThumbSlider";
@@ -43,7 +43,11 @@ export default function Home() {
     route: 'queue', // queue, archive, completed, bin
     clientId: null,
     filters: null,
-    options: {},
+    options: {
+      Basic:{},
+      Completed:{},
+      Gallery:{}
+    },
     mode: 'queue', // queue, gallery
   });
 
@@ -333,8 +337,8 @@ export default function Home() {
         setAppStatus(prev => ({ ...prev, clientId: event.data.clientId, options: {...appStatus.options, ...event.data.settings} }));
         break;
       case "QM_Setting_Changed":
-        console.log("QM_Setting_Changed", event.data.message);
-        // check if path like "Completed.ShowImages" in event.data.message.setting represent an existing object path in appStatus.options
+        // console.log("QM_Setting_Changed", event.data.message);
+        // check if path like "Gallery.ShowImages" in event.data.message.setting represent an existing object path in appStatus.options
         const settingPath = event.data.message.setting.split('.');
         let current = appStatus.options;
         let exists = true;
@@ -401,31 +405,53 @@ export default function Home() {
    * Pack outputs and sent to gallery iframe
    */
   const onMediaItemClick = useCallback((mediaItem) => {
-    // console.log("imageGalleryData", imageGalleryData);
+    console.log("galleryData", galleryData);
     let items = [];
+
+    const {
+      ShowImages,
+      ShowVideos
+    } = appStatus.options.Gallery;
 
     if (!galleryData) {
       appStatus.queue.pending.map((item, index) => {
         // are there outputs for this item?
         if (item[3] && item[3].outputs) {
+          const hasVideo = hasVideos(item[3].outputs);
+
           let outputs = [];
           if (item[3].outputs) {
             Object.keys(item[3].outputs).map((nodeKey) => {
-              outputs.push({
-                nodeKey: nodeKey,
-                files: item[3].outputs[nodeKey].images || item[3].outputs[nodeKey].gifs,
-              })
+              // isVideo or isImage
+              const { isImage, isVideo } = mediaType(item[3].outputs[nodeKey]);
+              if ((isImage && ShowImages && (!hasVideo || !appStatus.options.Gallery.HideImagesWhenVideoExists)) || (isVideo && ShowVideos)) {
+                outputs.push({
+                  nodeKey: nodeKey,
+                  files: item[3].outputs[nodeKey].images || item[3].outputs[nodeKey].gifs,
+                })
+              }
             })
           }
-          items.push({
-            dbID: item[3].db_id,
-            promptID: item[1],
-            number: item[0],
-            workflow: item[3].extra_pnginfo.workflow,
-            outputs: outputs
-          });
+
+          // if there are outputs, add to items
+          if (outputs.length > 0) {
+            items.push({
+              dbID: item[3].db_id,
+              promptID: item[1],
+              number: item[0],
+              workflow: item[3].extra_pnginfo.workflow,
+              outputs: outputs
+            });
+          }
         }
       });
+
+      if (items.length === 0) {
+        setGallery((prev) => ({
+          ...prev, items: null
+        }));
+        return;
+      }
     } else {
       items = galleryData.items;
     }
@@ -435,6 +461,8 @@ export default function Home() {
       console.error('No items found in gallery data:', galleryData);
       return;
     }
+
+    console.log("Gallery items:", items);
 
     setGallery({
       items: items,
@@ -562,8 +590,8 @@ export default function Home() {
   }, [appStatus.route]);
 
   useEffect(() => {
-    console.log("Options updated: ", appStatus.options);
-  }, [appStatus.options]);
+    setGallery(null);
+  }, [appStatus.options.Gallery]);
 
   useEffect(() => {
     const onResize = () => applyGridVars(latestThumbSizePxRef.current);
@@ -706,7 +734,7 @@ export default function Home() {
         */}
       <footer className={"footer"}>
         {/* On Complete route show thumbnail mode and size controls */}
-        {appStatus.route === 'completed' && (appStatus.options.Completed.ShowImages || appStatus.options.Completed.ShowVideos) &&
+        {appStatus.route === 'completed' && (appStatus.options.Gallery.ShowImages || appStatus.options.Gallery.ShowVideos) &&
           <Stack spacing={1} direction="row" sx={{ alignItems: 'center' }}>
             <Stack spacing={1} className={"thumb-mode"} direction="row" sx={{ alignItems: 'center', justifyContent: 'start', flex:1 }} p={1}>
               <div title="No thumbnails">

@@ -57,3 +57,15 @@ export function mediaType (outputs) {
     isVideo : (outputs.animated && outputs.animated[0] === true) || (outputs.gifs && outputs.gifs.length > 0)
   }
 }
+
+
+export function hasVideos(outputs) {
+  for (const nodeID in outputs) {
+    const nodeOutputs = outputs[nodeID];
+    const { isVideo } = mediaType(nodeOutputs);
+    if (isVideo) {
+      return true;
+    }
+  }
+  return false;
+}

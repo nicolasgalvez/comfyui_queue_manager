@@ -2,7 +2,7 @@
 
 import React, {useContext, useEffect, useState, Fragment} from "react";
 import {baseURL} from "@/internals/config";
-import {apiCall, mediaType, msgLoadWorkflow} from "@/internals/functions";
+import {apiCall, mediaType, msgLoadWorkflow, hasVideos} from "@/internals/functions";
 import {AppContext} from "@/internals/app-context";
 import {MediaItem} from "@/components/MediaItem";
 import Button from '@mui/material/Button';
@@ -63,17 +63,6 @@ const QueueItemRow = memo(function QueueItemRow({item, className, loader, index,
         }}}));
   }
 
-  function hasVideos(outputs) {
-    for (const nodeID in outputs) {
-      const nodeOutputs = outputs[nodeID];
-      const { isVideo } = mediaType(nodeOutputs);
-      if (isVideo) {
-        return true;
-      }
-    }
-    return false;
-  }
-
 
   return (
     <>
@@ -93,7 +82,7 @@ const QueueItemRow = memo(function QueueItemRow({item, className, loader, index,
         </TableCell>
 
         {/* Thumbnail in Cover mode */}
-        {appStatus.route === 'completed' && appStatus.options.thumb_mode === "cover" && (appStatus.options.Completed.ShowImages || appStatus.options.Completed.ShowVideos) &&
+        {appStatus.route === 'completed' && appStatus.options.thumb_mode === "cover" && (appStatus.options.Gallery.ShowImages || appStatus.options.Gallery.ShowVideos) &&
           <TableCell className="px-3 py-1 cover">
             {item[3].outputs && Object.values(item[3].outputs).length > 0 &&
               <CoverMedia item={item[3]} />
@@ -144,7 +133,7 @@ const QueueItemRow = memo(function QueueItemRow({item, className, loader, index,
         * Queue Item Outputs
         *
         */}
-      {item[3].total_files > 0 && appStatus.route === 'completed' && appStatus.options.thumb_mode === "grid" && (appStatus.options.Completed.ShowImages || appStatus.options.Completed.ShowVideos) &&
+      {item[3].total_files > 0 && appStatus.route === 'completed' && appStatus.options.thumb_mode === "grid" && (appStatus.options.Gallery.ShowImages || appStatus.options.Gallery.ShowVideos) &&
         <tr className="dark:odd:bg-neutral-900 odd:bg-neutral-100 gallery" key={"gallery" + item[3].db_id}>
           <td colSpan={3} className="px-3 py-1">
             <div className="flex flex-wrap gap-2 items">
@@ -159,7 +148,7 @@ const QueueItemRow = memo(function QueueItemRow({item, className, loader, index,
                   ShowVideos,
                   HideImagesWhenVideoExists,
                   AutoPlayVideos
-                } = appStatus.options.Completed;
+                } = appStatus.options.Gallery;
 
                 const shouldShowMedia =
                   (isImage && ShowImages && (!hasVideo || !HideImagesWhenVideoExists)) ||
@@ -247,7 +236,7 @@ export const Queue = memo(function Queue( { data, isLoading, error, progress } )
             <TableHead className="dark:bg-neutral-800 bg-neutral-200 text-xs uppercase">
               <TableRow>
                 <TableCell className="px-3 py-2 text-left">#</TableCell>
-                {appStatus.route === 'completed' && appStatus.options.thumb_mode === "cover" && (appStatus.options.Completed.ShowImages || appStatus.options.Completed.ShowVideos) &&
+                {appStatus.route === 'completed' && appStatus.options.thumb_mode === "cover" && (appStatus.options.Gallery.ShowImages || appStatus.options.Gallery.ShowVideos) &&
                   <TableCell className="px-3 py-2 cover">Thumbnail</TableCell>
                 }
                 <TableCell className="px-3 py-2 text-left">Workflow</TableCell>

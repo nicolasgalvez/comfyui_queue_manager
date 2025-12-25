@@ -18,7 +18,7 @@ export const CoverMedia = memo(function CoverMedia({item, force, mode = "complet
     let video = null;
     let image = null;
     let _nodeID = null;
-    let modeSetting = mode === 'gallery' ? appStatus.options.Gallery : appStatus.options.Completed;
+    let settings = appStatus.options.Gallery;
 
 
 
@@ -35,19 +35,19 @@ export const CoverMedia = memo(function CoverMedia({item, force, mode = "complet
       // console.log("Outputs", outputs, "isImage:", isImage, "isVideo:", isVideo);
 
       if (isImage) {
-        if (modeSetting.ShowImages || force) {
+        if (settings.ShowImages || force) {
 
           image = files[0];
           _nodeID = nodeID;
           return true;
         }
       } else if (isVideo && video === null) {
-        if (modeSetting.ShowVideos || force) {
+        if (settings.ShowVideos || force) {
           video = (outputs.gifs && outputs.gifs.length > 0) ? outputs.gifs[0] : files[0];
           _nodeID = nodeID;
 
           // if no show images, return video immediately
-          if (!modeSetting.ShowImages && !force) {
+          if (!settings.ShowImages && !force) {
             return true;
           }
         }

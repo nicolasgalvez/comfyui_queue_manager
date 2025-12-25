@@ -1,14 +1,30 @@
-import {memo, useContext} from "react";
+import {memo, useEffect, useRef} from "react";
 import {baseURL} from "@/internals/config";
-import {AppContext} from "@/internals/app-context";
 
 
 export const MediaItem = memo(function MediaItem({filename, subfolder, onClick, autoplay}) {
-
+  const videoRef = useRef(null);
   const ext = filename.split('.').pop().toLowerCase();
+  const isVideo = ext === "mp4" || ext === "webm";
 
   const src = `${baseURL}api/view?filename=${filename}` +
               `&type=output&subfolder=${subfolder}`;
+
+  useEffect(() => {
+    if (!isVideo) return;
+    const el = videoRef.current;
+    if (!el) return;
+
+    if (autoplay) {
+      // Attempt to start playback when autoplay becomes true.
+      // If the browser blocks it, the promise may reject.
+      const p = el.play();
+      if (p && typeof p.catch === "function") p.catch(() => {});
+    } else {
+      // Optional: stop playback when autoplay becomes false.
+      el.pause();
+    }
+  }, [autoplay, isVideo]);
 
   return (
     <div className={"media-item"} title={"Open gallery"} onClick={onClick}>
@@ -16,6 +32,7 @@ export const MediaItem = memo(function MediaItem({filename, subfolder, onClick, 
         ? (
           <>
             <video
+              ref={videoRef}
               className="comfy-video-main galleria-image"
               controls
               autoPlay={autoplay}
