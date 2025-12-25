@@ -1,6 +1,6 @@
 "use client";
 
-import {useContext, useEffect, useState} from "react";
+import React, {useContext, useEffect, useState} from "react";
 
 import IconButton from "@mui/material/IconButton";
 import DisabledByDefaultIcon from '@mui/icons-material/DisabledByDefault';
@@ -20,6 +20,7 @@ import {apiCall, msgLoadWorkflow} from "@/internals/functions";
 import GalleryProgressBar from "@/components/GalleryProgressBar";
 import {CoverMedia} from "@/components/CoverMedia";
 import {AppContext} from "@/internals/app-context";
+import {MediaItem} from "@/components/MediaItem";
 
 export default function Gallery({items, activeItem}) {
   /**
@@ -446,9 +447,11 @@ export default function Gallery({items, activeItem}) {
         <header>{mediaItem.queueItem.workflow.workflow_name} <span>({mediaItem.fileIndex+1} / {mediaItem.totalFiles})</span></header>
 
         <figure>
-          <img
-            src={baseURL + `api/view?filename=${mediaItem.file.filename}&type=output&subfolder=${mediaItem.file.subfolder}`}
-            alt={mediaItem.file.filename}
+          <MediaItem
+            filename={mediaItem.file.filename}
+            subfolder={mediaItem.file.subfolder}
+            autoplay={appStatus.options.Gallery.AutoPlayVideos}
+            toggleable={true}
           />
           <div className={'node-thumbs'}>
             <button type={"button"} className={"prev-node" + (isFirstNode() ? ' inactive':'')} onClick={() => previousNode()} title={'Previous Node (↑)'}>
@@ -457,17 +460,19 @@ export default function Gallery({items, activeItem}) {
 
             {/*  Display all files from the node */}
             {mediaItem.node.files.map((image, index) => (
-                <img
-                  key={index}
-                  src={baseURL + `api/view?filename=${image.filename}&type=output&subfolder=${image.subfolder}`}
-                  alt={image.filename}
-                  className={`node-thumb ${index === mediaItem.fileIndex ? 'active' : ''}`}
-                  onClick={() => setMediaItem(prev => ({
-                    ...prev,
-                    fileIndex: index,
-                    file: image
-                  }))}
-                />
+              <MediaItem
+                key={index}
+                filename={image.filename}
+                subfolder={image.subfolder}
+                className={`node-thumb ${index === mediaItem.fileIndex ? 'active' : ''}`}
+                controls={false}
+                autoplay={false}
+                onClick={() => setMediaItem(prev => ({
+                  ...prev,
+                  fileIndex: index,
+                  file: image
+                }))}
+              />
             ))}
 
             <button type={"button"} className={"next-node" + (isLastNode() ? ' inactive':'')} onClick={() => nextNode()} title={'Next Node (↓)'}>
