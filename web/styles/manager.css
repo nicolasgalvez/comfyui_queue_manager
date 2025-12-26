@@ -61,4 +61,8 @@ body.show-qm-fullscreen {
   .comfyui-body-top {
     display: none;
   }
+
+  .app-iframe {
+    margin-top: 0;
+  }
 }

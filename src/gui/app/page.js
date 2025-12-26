@@ -405,7 +405,6 @@ export default function Home() {
    * Pack outputs and sent to gallery iframe
    */
   const onMediaItemClick = useCallback((mediaItem) => {
-    console.log("galleryData", galleryData);
     let items = [];
 
     const {
@@ -461,8 +460,6 @@ export default function Home() {
       console.error('No items found in gallery data:', galleryData);
       return;
     }
-
-    console.log("Gallery items:", items);
 
     setGallery({
       items: items,

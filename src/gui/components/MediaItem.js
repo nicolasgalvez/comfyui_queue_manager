@@ -25,19 +25,16 @@ export const MediaItem = memo(function MediaItem({filename, subfolder, onClick, 
     const el = videoRef.current;
     if (!el) return;
 
+    el.load();
+
     if (autoplay) {
-      // Attempt to start playback when autoplay becomes true.
-      // If the browser blocks it, the promise may reject.
       const p = el.play();
       if (p && typeof p.catch === "function") p.catch(() => {});
-    } else {
-      // Optional: stop playback when autoplay becomes false.
-      el.pause();
     }
-  }, [autoplay, isVideo]);
+  }, [src, isVideo, autoplay]);
 
   return (
-    <div className={className + " media-item "} title={"Open gallery"} onClick={onClick}>
+    <div className={className + " media-item " + (isVideo ? "video" : "image")} title={"Open gallery"} onClick={onClick}>
       {(ext === 'mp4' || ext === 'webm')
         ? (
           <>

@@ -66,7 +66,8 @@ export const CoverMedia = memo(function CoverMedia({item, force, mode = "complet
 
   useEffect(() => {
     setCoverFile(getCoverFile(item));
-  }, [appStatus.options]);
+  }, [appStatus.options, getCoverFile, item]);
+
 
   return (
     <>
@@ -76,6 +77,8 @@ export const CoverMedia = memo(function CoverMedia({item, force, mode = "complet
         subfolder={coverFile.subfolder}
         galleryData={{dbID: item.db_id, nodeKey: coverFile.nodeID, fileIndex: 0}}
         mode={mode}
+        controls={false}
+        autoplay={false}
       />
       }
     </>
