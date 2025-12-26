@@ -67,15 +67,15 @@
 
   .node-thumbs {
     position: absolute;
-    bottom: 0;
+    top: calc(100% - 140px);
     left: 135px;
     right: 135px;
     display: flex;
     align-items: flex-end;
     justify-content: center;
     height: 125px;
-    overflow-x: auto;
-    padding: 0 10px 25px 10px;
+    overflow: hidden;
+    padding: 0 10px 0 10px;
     white-space: nowrap;
     gap: 10px;
     background: transparent;
@@ -160,6 +160,44 @@
     .inactive {
       opacity: 0.3;
       pointer-events: none;
+    }
+
+    .node-thumbs-container {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-direction: row;
+      overflow-x: auto;
+      overflow-y: hidden;
+      flex-wrap: nowrap;
+      align-self: start;
+      touch-action: pan-x;
+      cursor: grab;
+      user-select: none;
+      -webkit-user-select: none;
+
+      &.is-dragging {
+        cursor: grabbing;
+      }
+
+      // prevent browser image drag “ghost”
+      &.is-dragging img,
+      &.is-dragging video {
+        pointer-events: none;
+      }
+
+      .node-thumb {
+        flex: 0 0 auto;
+        width: max-content;
+        min-width: fit-content;
+      }
+
+      img, video {
+        flex: 0 0 auto;
+        width: auto;
+        max-width: none;
+        height: 100px;
+      }
     }
   }
 

@@ -1,6 +1,6 @@
 "use client";
 
-import React, {useContext, useEffect, useState} from "react";
+import React, {useContext, useEffect, useState, useRef, useLayoutEffect } from "react";
 
 import IconButton from "@mui/material/IconButton";
 import DisabledByDefaultIcon from '@mui/icons-material/DisabledByDefault';
@@ -34,6 +34,8 @@ export default function Gallery({items, activeItem}) {
   });
 
   const { appStatus, setAppStatus } = useContext(AppContext);
+
+  const thumbsContainerRef = useRef(null);
 
   function closeGallery() {
     // Post message to parent window to close gallery
@@ -422,6 +424,121 @@ export default function Gallery({items, activeItem}) {
     updateMediaItem(items);
   }, [activeItem]);
 
+  useLayoutEffect(() => {
+    const el = thumbsContainerRef.current;
+    if (!el) return;
+
+    let pointerId = null;
+    let isPointerDown = false;
+    let isDragging = false;
+
+    let startX = 0;
+    let startY = 0;
+    let startScrollLeft = 0;
+
+    // Suppress click only right after an actual drag
+    let suppressClickUntil = 0;
+
+    const DRAG_THRESHOLD_PX = 8;
+    const SUPPRESS_CLICK_MS = 250;
+
+    const canScrollX = () => el.scrollWidth > el.clientWidth + 1;
+
+    const onPointerDown = (e) => {
+
+      if (e.pointerType === "mouse" && e.button !== 0) return;
+      if (!canScrollX()) return;
+
+      pointerId = e.pointerId;
+      isPointerDown = true;
+      isDragging = false;
+
+      startX = e.clientX;
+      startY = e.clientY;
+      startScrollLeft = el.scrollLeft;
+
+      el.classList.add("is-dragging");
+
+      // IMPORTANT: do NOT setPointerCapture here.
+      // Only capture after we decide it is an actual drag.
+    };
+
+    const onPointerMove = (e) => {
+      if (!isPointerDown || e.pointerId !== pointerId) return;
+
+      const dx = e.clientX - startX;
+      const dy = e.clientY - startY;
+
+      if (!isDragging) {
+        const movedEnough =
+          Math.abs(dx) >= DRAG_THRESHOLD_PX || Math.abs(dy) >= DRAG_THRESHOLD_PX;
+        const horizontalIntent = Math.abs(dx) > Math.abs(dy);
+
+        if (!movedEnough) return;
+
+        if (!horizontalIntent) {
+          // Not a horizontal drag: stop treating as drag and let normal click happen.
+          isPointerDown = false;
+          pointerId = null;
+          el.classList.remove("is-dragging");
+          return;
+        }
+
+        isDragging = true;
+        suppressClickUntil = Date.now() + SUPPRESS_CLICK_MS;
+
+        // Capture only once dragging is confirmed
+        try {
+          el.setPointerCapture(pointerId);
+        } catch {}
+      }
+
+      e.preventDefault();
+      el.scrollLeft = startScrollLeft - dx;
+    };
+
+    const endDrag = (e) => {
+      // If we never captured, pointerup may come from child; allow ending anyway.
+      if (pointerId == null) return;
+
+      if (e.pointerId !== pointerId) return;
+
+      isPointerDown = false;
+      isDragging = false;
+
+      try {
+        el.releasePointerCapture(pointerId);
+      } catch {}
+
+      pointerId = null;
+      el.classList.remove("is-dragging");
+    };
+
+    const onClickCapture = (e) => {
+      if (Date.now() < suppressClickUntil) {
+        e.preventDefault();
+        e.stopPropagation();
+        return;
+      }
+    };
+
+    el.addEventListener("pointerdown", onPointerDown);
+    el.addEventListener("pointermove", onPointerMove, { passive: false });
+    // Use window so we always end even if pointerup happens outside the container
+    window.addEventListener("pointerup", endDrag);
+    window.addEventListener("pointercancel", endDrag);
+
+    el.addEventListener("click", onClickCapture, true);
+
+    return () => {
+      el.removeEventListener("pointerdown", onPointerDown);
+      el.removeEventListener("pointermove", onPointerMove);
+      window.removeEventListener("pointerup", endDrag);
+      window.removeEventListener("pointercancel", endDrag);
+      el.removeEventListener("click", onClickCapture, true);
+    };
+  }, [galleryItems]);
+
   useEffect(() => {
     /**
      * When clicked outside actions menu, close it
@@ -458,22 +575,24 @@ export default function Gallery({items, activeItem}) {
               <KeyboardDoubleArrowLeftSharpIcon fontSize="inherit" />
             </button>
 
-            {/*  Display all files from the node */}
-            {mediaItem.node.files.map((image, index) => (
-              <MediaItem
-                key={index}
-                filename={image.filename}
-                subfolder={image.subfolder}
-                className={`node-thumb ${index === mediaItem.fileIndex ? 'active' : ''}`}
-                controls={false}
-                autoplay={false}
-                onClick={() => setMediaItem(prev => ({
-                  ...prev,
-                  fileIndex: index,
-                  file: image
-                }))}
-              />
-            ))}
+            <div className={"node-thumbs-container"} ref={thumbsContainerRef}>
+              {/*  Display all files from the node */}
+              {mediaItem.node.files.map((image, index) => (
+                <MediaItem
+                  key={index}
+                  filename={image.filename}
+                  subfolder={image.subfolder}
+                  className={`node-thumb ${index === mediaItem.fileIndex ? 'active' : ''}`}
+                  controls={false}
+                  autoplay={false}
+                  onClick={() => setMediaItem(prev => ({
+                    ...prev,
+                    fileIndex: index,
+                    file: image
+                  }))}
+                />
+              ))}
+            </div>
 
             <button type={"button"} className={"next-node" + (isLastNode() ? ' inactive':'')} onClick={() => nextNode()} title={'Next Node (↓)'}>
               <KeyboardDoubleArrowRightSharpIcon fontSize="inherit" />
