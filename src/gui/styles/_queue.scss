@@ -257,6 +257,9 @@
         color: white;
         padding: 0.2rem;
         text-align: center;
+        transition: outline 0.3s ease;
+        outline: 1px solid transparent;
+        cursor: pointer;
 
 
         img, video {
@@ -264,6 +267,10 @@
           height: auto;
           border-radius: 0.25rem;
           object-fit: contain;
+        }
+
+        &:hover {
+          outline: 1px solid white;
         }
       }
     }
@@ -432,6 +439,8 @@ button {
 }
 .paging {
   padding-top: 0.4rem;
+  max-width: 100%;
+  justify-content: space-between;
 
   button {
     padding: 0.2rem 0.5rem 0.18rem;
@@ -443,7 +452,14 @@ button {
       opacity: 0.4;
     }
   }
+
+  > button {
+    margin: 0 2px;
+  }
   .pages {
+    overflow: auto;
+    border-radius: 5px;
+
     button {
       border: 1px solid #78787855;
       border-radius: 25%;

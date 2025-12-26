@@ -8,6 +8,8 @@ import DriveFolderUploadOutlinedIcon from "@mui/icons-material/DriveFolderUpload
 import ImageNotSupportedSharpIcon from '@mui/icons-material/ImageNotSupportedSharp';
 import WallpaperSharpIcon from '@mui/icons-material/WallpaperSharp';
 import ViewModuleSharpIcon from '@mui/icons-material/ViewModuleSharp';
+import KeyboardArrowLeftSharpIcon from '@mui/icons-material/KeyboardArrowLeftSharp';
+import KeyboardArrowRightSharpIcon from '@mui/icons-material/KeyboardArrowRightSharp';
 import { styled } from '@mui/material/styles';
 
 import TopMenu from "@/components/TopMenu";
@@ -748,15 +750,16 @@ export default function Home() {
           {appStatus.queue && appStatus.queue.info && (appStatus.queue.info.last_page > 0) &&
             <>
               {/* Previous page if needed */}
-              <button
+              <Button
+                size="small"
                 className={"page" + (appStatus.queue.info.page === 0 ? ' disabled' : '')}
                 onClick={() => {
                   // setAppStatus(prev => ({...prev, queue: null}));
                   fetchQueueItems(appStatus.queue.info.page - 1);
                 }}
                 disabled={appStatus.queue.info.page === 0}
-              > &lt;&lt; </button>
-              <div className={'pages flex justify-center flex-1'}>
+              ><KeyboardArrowLeftSharpIcon /></Button>
+              <div className={'pages flex'}>
                 {Array.from({length: (appStatus.queue.info.last_page + 1)}, (_, i) => (
                   <button
                     key={i}
@@ -771,14 +774,15 @@ export default function Home() {
                 ))}
               </div>
               {/* Next page if needed */}
-              <button
+              <Button
+                size="small"
                 className={"page" + (appStatus.queue.info.page === appStatus.queue.info.last_page ? ' disabled' : '')}
                 onClick={() => {
                   // setAppStatus(prev => ({...prev, queue: null}));
                   fetchQueueItems(appStatus.queue.info.page + 1);
                 }}
                 disabled={appStatus.queue.info.page === appStatus.queue.info.last_page}
-              > &gt;&gt; </button>
+              ><KeyboardArrowRightSharpIcon /></Button>
             </>
           }
         </div>

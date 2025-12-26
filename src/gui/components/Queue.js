@@ -85,7 +85,11 @@ const QueueItemRow = memo(function QueueItemRow({item, className, loader, index,
         {appStatus.route === 'completed' && appStatus.options.thumb_mode === "cover" && (appStatus.options.Gallery.ShowImages || appStatus.options.Gallery.ShowVideos) &&
           <TableCell className="px-3 py-1 cover">
             {item[3].outputs && Object.values(item[3].outputs).length > 0 &&
-              <CoverMedia item={item[3]} />
+              <button
+                onClick={() => {onMediaItemClick({dbID: item[3].db_id, nodeKey: Object.keys(item[3].outputs)[0], fileIndex: 0})}}
+              >
+                <CoverMedia item={item[3]} />
+              </button>
             }
           </TableCell>
         }
