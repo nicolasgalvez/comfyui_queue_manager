@@ -201,14 +201,40 @@
       td {
         opacity: 1 !important;
       }
+
+      & + tr.gallery {
+        td {
+          background: var(--background-faded);
+        }
+      }
+    }
+
+    &:has(+ tr.gallery) {
+      td {
+        border-bottom: #00000044 solid 1px;
+      }
+    }
+
+    &:has(+ tr.gallery:hover) {
+      background: var(--background-faded);
+      color: var(--foreground-faded);
+
+      td {
+        opacity: 1 !important;
+      }
     }
   }
+
 
   td.info-cell {
     padding: 20px;
   }
 
   .gallery {
+    td {
+      border-bottom: 1px solid rgba(81, 81, 81, 1);;
+    }
+
     .items {
       flex-wrap: wrap;
       gap: calc(var(--gap, 0px));
