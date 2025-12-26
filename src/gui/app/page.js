@@ -107,11 +107,6 @@ export default function Home() {
       const queue = await response.json();
       setAppStatus(prev => ({...prev, loading: false, error: null, queue}));
 
-      // if updated completed route, clear gallery data
-      if (appStatus.route === 'completed' && galleryData) {
-        setGallery(null);
-      }
-
     } catch (error) {
       setAppStatus(prev => ({...prev, loading: false, error: error.message, queue: null}));
       console.error("Error fetching " + appStatus.route + " items:", error);
@@ -412,47 +407,43 @@ export default function Home() {
       ShowVideos
     } = appStatus.options.Gallery;
 
-    if (!galleryData) {
-      appStatus.queue.pending.map((item, index) => {
-        // are there outputs for this item?
-        if (item[3] && item[3].outputs) {
-          const hasVideo = hasVideos(item[3].outputs);
+    appStatus.queue.pending.map((item, index) => {
+      // are there outputs for this item?
+      if (item[3] && item[3].outputs) {
+        const hasVideo = hasVideos(item[3].outputs);
 
-          let outputs = [];
-          if (item[3].outputs) {
-            Object.keys(item[3].outputs).map((nodeKey) => {
-              // isVideo or isImage
-              const { isImage, isVideo } = mediaType(item[3].outputs[nodeKey]);
-              if ((isImage && ShowImages && (!hasVideo || !appStatus.options.Gallery.HideImagesWhenVideoExists)) || (isVideo && ShowVideos)) {
-                outputs.push({
-                  nodeKey: nodeKey,
-                  files: item[3].outputs[nodeKey].images || item[3].outputs[nodeKey].gifs,
-                })
-              }
-            })
-          }
-
-          // if there are outputs, add to items
-          if (outputs.length > 0) {
-            items.push({
-              dbID: item[3].db_id,
-              promptID: item[1],
-              number: item[0],
-              workflow: item[3].extra_pnginfo.workflow,
-              outputs: outputs
-            });
-          }
+        let outputs = [];
+        if (item[3].outputs) {
+          Object.keys(item[3].outputs).map((nodeKey) => {
+            // isVideo or isImage
+            const { isImage, isVideo } = mediaType(item[3].outputs[nodeKey]);
+            if ((isImage && ShowImages && (!hasVideo || !appStatus.options.Gallery.HideImagesWhenVideoExists)) || (isVideo && ShowVideos)) {
+              outputs.push({
+                nodeKey: nodeKey,
+                files: item[3].outputs[nodeKey].images || item[3].outputs[nodeKey].gifs,
+              })
+            }
+          })
         }
-      });
 
-      if (items.length === 0) {
-        setGallery((prev) => ({
-          ...prev, items: null
-        }));
-        return;
+        // if there are outputs, add to items
+        if (outputs.length > 0) {
+          items.push({
+            dbID: item[3].db_id,
+            promptID: item[1],
+            number: item[0],
+            workflow: item[3].extra_pnginfo.workflow,
+            outputs: outputs
+          });
+        }
       }
-    } else {
-      items = galleryData.items;
+    });
+
+    if (items.length === 0) {
+      setGallery((prev) => ({
+        ...prev, items: null
+      }));
+      return;
     }
 
     // in items find one that has dbID equal to data.dbID
@@ -576,19 +567,11 @@ export default function Home() {
 
     // When loading completed route, clear outputs if any (lightbox request will need to recalculate them) and pull options (since they can be changed in another tab
     if (appStatus.route === 'completed') {
-      if (galleryData) {
-        setGallery(null);
-      }
-
       fetchOptions();
     }
 
     fetchQueueItems();
   }, [appStatus.route]);
-
-  useEffect(() => {
-    setGallery(null);
-  }, [appStatus.options.Gallery]);
 
   useEffect(() => {
     const onResize = () => applyGridVars(latestThumbSizePxRef.current);
@@ -882,7 +865,7 @@ export default function Home() {
           </Stack>
         </div>
       </footer>
-      {appStatus.mode === 'gallery' &&
+      {appStatus.mode === 'gallery' && galleryData &&
         <Gallery items={galleryData.items} activeItem={galleryData.activeItem} />
       }
       </AppContext.Provider>
