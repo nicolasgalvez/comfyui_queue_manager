@@ -252,6 +252,7 @@ class QM_Server:
             "cover_size": 50,
             "thumb_mode": "cover",
             "queue_paused": False,
+            "splash_screen": "0.0.0",  # last seen splash screen version
         }
 
         # Get options
@@ -281,6 +282,9 @@ class QM_Server:
                     if key not in options:
                         options[key] = default_value
 
+                # append extension version
+                options["__version__"] = self.__version__
+
                 return web.json_response(options)
 
         # Set options
@@ -297,7 +301,7 @@ class QM_Server:
             if option not in self.allowed_options:
                 return web.json_response({"error": "Option not allowed"}, status=400)
 
-            # Validate value based on option
+            # Validate / sanitize value based on option
             if option == "thumb_size":  # thumb size must be a positive integer between 50 and 500
                 if not isinstance(value, int) or value < 50 or value > 500:
                     return web.json_response({"error": "Invalid thumb_size value"}, status=400)
@@ -308,6 +312,10 @@ class QM_Server:
             elif option == "cover_size":  # cover size must be a positive integer between 50 and 500
                 if not isinstance(value, int) or value < 25 or value > 200:
                     return web.json_response({"error": "Invalid cover_size value"}, status=400)
+            elif (
+                option == "splash_screen"
+            ):  # splash_screen we always set to current version (indication that user has seen the latest splash)
+                value = self.__version__
 
             # Set the specific option
             self.queue_manager.options.set(option, value)

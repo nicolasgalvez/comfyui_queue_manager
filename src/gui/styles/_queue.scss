@@ -571,6 +571,11 @@ button {
     padding: 1rem 1rem;
     background-color: #ffffff22;
     border-bottom-left-radius: 0.5rem;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: start;
+    gap: 0.3rem;
 
     @media (prefers-color-scheme: light) {
       background-color: #00000022;
@@ -578,6 +583,16 @@ button {
   }
 
   button {
+    display: flex;
+    align-items: center;
+    padding-left: 0.8rem;
+    gap: 0.3rem;
+    width: 100%;
+    justify-content: start;
+    text-transform: none;
+    font-weight: 300;
+    letter-spacing: 0.4px;
+
     @media (prefers-color-scheme: light) {
       color: black;
     }

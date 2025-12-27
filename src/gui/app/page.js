@@ -24,6 +24,9 @@ import useEvent from "react-use-event-hook";
 import {AppContext} from "@/internals/app-context";
 import ThumbSlider from "@/components/ThumbSlider";
 import Gallery from "@/components/Gallery";
+import {SplashScreen} from "@/components/SplashScreen";
+
+import {compareVersions} from "@/internals/functions";
 
 const VisuallyHiddenInput = styled('input')({
   clip: 'rect(0 0 0 0)',
@@ -67,6 +70,8 @@ export default function Home() {
   });
 
   const [galleryData, setGallery] = useState(null);
+
+  const [showSplash, setShowSplash] = useState(false);
 
   const latestThumbSizePxRef = useRef(150);
 
@@ -121,6 +126,12 @@ export default function Home() {
         setAppStatus(prev => ({...prev, options: {...prev.options, ...options}}));
         updateThumbnailSize(null, options.thumb_size ? options.thumb_size : 150);
         updateCoverSize(null, options.cover_size ? options.cover_size : 50);
+
+        // show splash screen if needed
+        if (compareVersions(options.splash_screen, options.__version__) < 0) {
+          setShowSplash(true);
+        }
+
       } else {
         console.error("Failed to fetch options");
     }
@@ -508,9 +519,20 @@ export default function Home() {
     apiCall('queue_manager/options', {key:"thumb_mode", value: mode}, 'POST');
   });
 
+  const openSplash = useEvent(() => {
+    setShowSplash(true);
+  });
+
   const appContextValue = useMemo(() => {
-    return { appStatus, setAppStatus, onMediaItemClick };
+    return { appStatus, setAppStatus, onMediaItemClick, openSplash };
   }, [appStatus, onMediaItemClick]);
+
+  const closeSplash = useEvent(event => {
+    setShowSplash(false);
+    if (!appStatus.options.splash_screen || appStatus.options.splash_screen !== appStatus.options.__version__) {
+      apiCall('queue_manager/options', {key:"splash_screen", value: true}, 'POST');
+    }
+  })
 
   useEffect(() => {
     fetchQueueItems()
@@ -871,6 +893,9 @@ export default function Home() {
       </footer>
       {appStatus.mode === 'gallery' && galleryData &&
         <Gallery items={galleryData.items} activeItem={galleryData.activeItem} />
+      }
+      {showSplash &&
+        <SplashScreen onClick={closeSplash} />
       }
       </AppContext.Provider>
     </div>
