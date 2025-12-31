@@ -18,6 +18,9 @@ An extension supporting more streamlined prompt queue management.
   - [Workflow Name node](#workflow-name-node)
   - [External jobs](#external-jobs)
   - [Comfy API / Partner Nodes](#comfy-api--partner-nodes)
+  - [Gallery / output previews](#gallery--output-previews)
+    - [Gallery view](#gallery-view)
+  - [Extension Settings](#extension-settings)
 - [Troubleshooting](#troubleshooting)
 - [Tips and words of wisdom](#tips-and-words-of-wisdom)
 - [Development](#development)
@@ -143,6 +146,36 @@ Typical use case is to connect the `workflow_name` output to a node that accepts
 3. When your Comfy API Key is deleted or revoked then all jobs in the queue that were queued with that key and used Partner Nodes, will fail. To run such jobs you need to requeue them; the best way to do it is to export them, log-in with your new Comfy API Key and then import the exported items back.
 4. **IMPORTANT!** When you queue jobs while logged in with Comfy API key then those jobs will get through (and use your credits if you used Partner nodes) even if you log out from ComfyUI or Comfy.org.
 5. Conversely, if you queue jobs with Partner nodes while NOT logged in with Comfy API key then those jobs will NOT be able to use Partner nodes even if you log in later before running them. (See point 3. above for export-import workaround).
+
+### Gallery / output previews
+- In the **Completed** tab you can view outputs (images and videos) of finished jobs.
+- **Completed** tab can display results in 3 different modes: List, Cover, Grid.
+- In **List** no media previews are shown, only job details. In **Cover** mode a first image is shown in the table. In **Grid** mode all media outputs (depending on settings) are shown in a grid layout.
+![modes.png](readme-img/modes.png)
+- In every mode small indicator next to the workflow name shows how many media outputs were produced by the job.
+- Clicking on a thumbnail or outputs indicator opens the Gallery view.
+- In Cover and Grid modes you can adjust size of the thumbnails using the slider on the bottom right of the window.
+![mediaitem.png](readme-img/mediaitem.png)
+#### Gallery view
+- In the **Gallery** view you can see all media outputs from the currently displayed **Completed** page. This is important to note: only outputs from jobs on current page will show in the gallery i.e. if there are 100 jobs per page then only outputs from those 100 jobs will be displayed in the gallery.
+- You can cycle through media items individually, skip through nodes or entire jobs to quickly navigate through results.
+- In the **Gallery** view several keyboard shortcuts are available:
+  - **Arrow Left / Right**: go to previous / next media item
+  - **Arrow Up / Down**: go to previous / next node's outputs
+  - **Page Up / Down**: go to previous / next job
+  - **Home**: go to first media item
+  - **End**: go to last media item
+  - **Escape**: close Gallery view
+- On the bottom of the Gallery is a progress bar showing your current position in the list of media items. You can also use it to quickly skip to a specific media item by clicking on it.
+![gallery-view.png](readme-img/gallery-view.png)
+- By default videos are played automatically. You can change that in extension settings (see below).
+- When workflow produces both images and video outputs then images are hidden by default to reduce clutter (since most of the time these will be individual frames of the video). You can toggle visibility of these images in extension settings (see below).
+
+### Extension Settings
+- Several aspects of the Queue Manager extension can be configured in the ComfyUI Settings window.
+  - **ComfyUI Menu -&gt; Settings -&gt;  Queue Manager**
+  ![settings.png](readme-img/settings.png)
+
 
 ## Troubleshooting
 #### I updated custom nodes and can no longer load items from queue or play from Archive or items imported from file.
