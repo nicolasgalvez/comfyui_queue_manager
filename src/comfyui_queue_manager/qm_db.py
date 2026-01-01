@@ -10,6 +10,7 @@ def get_conn() -> sqlite3.Connection:
         _local.conn = sqlite3.connect(DB_PATH, check_same_thread=False)
         _local.conn.execute("PRAGMA journal_mode=WAL")
         _local.conn.execute("PRAGMA synchronous=NORMAL")
+        _local.conn.execute("PRAGMA foreign_keys=ON")
         _local.conn.row_factory = sqlite3.Row
     return _local.conn
 
@@ -42,11 +43,17 @@ def init_schema():
             item_id INTEGER NOT  NULL,  -- Foreign key to queue
             key VARCHAR(255) NOT NULL,
             value TEXT,
-            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (item_id)
+                REFERENCES queue(id)
+                ON DELETE CASCADE
         );
 
         CREATE INDEX IF NOT EXISTS idx_queue_status_number
             ON queue(status, number);
+
+        CREATE INDEX IF NOT EXISTS idx_meta_queue_id ON meta(item_id);
+
 
         -- Create a trigger to update the updated_at column
         CREATE TRIGGER IF NOT EXISTS queue_set_updated_at

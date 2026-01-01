@@ -14,7 +14,7 @@ export function SplashScreen({onClick}) {
         <h2>What's new?</h2>
         <h3>Previews and gallery</h3>
         <p>Release v0.1.0 introduces a big new feature: outputs previews and gallery.</p>
-        <p>Head over to the <b>Completed</b> tab to see previews from generated outputs. Click on media item to see it in <b>Gallery</b> mode. Keyboard shorcuts available. </p>
+        <p>Head over to the <b>Completed</b> tab to see previews from generated outputs (only new jobs completed after this release was introduced). Click on media item to see it in <b>Gallery</b> mode. Keyboard shortcuts available. </p>
         <h3>Settings</h3>
         <p>A new settings panel is available in <b>ComfyUI Menu -&gt; Settings -&gt; Queue Manager</b> where you can influence certain features of the extension.</p>
         <p><br/>

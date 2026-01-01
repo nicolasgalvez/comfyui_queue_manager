@@ -195,6 +195,7 @@ export default function Gallery({items, activeItem}) {
       // if there are no more items, close gallery
       if (galleryItems.length <= 1) {
         closeGallery();
+        return;
       }
 
       // reset media item to a new image
