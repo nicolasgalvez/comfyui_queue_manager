@@ -150,10 +150,11 @@ class QM_Server:
             qm_log.info("Importing %s", "to archive." if is_archive else "to queue.")
             imported, total = self.queue.import_queue(json_data, client_id, 3 if is_archive else 0, api_key_comfy_org)
             qm_log.info(
-                "Imported %d of %d total submitted entries %s",
+                "Imported %d of %d total submitted entries %s %s",
                 imported,
                 total,
                 "to archive." if is_archive else "to queue.",
+                "Duplicate entries (items that already exist in Queue, Archive or Completed) were skipped." if imported < total else "",
             )
 
             return web.json_response({"imported": imported, "submitted": total})
