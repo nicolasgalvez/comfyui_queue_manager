@@ -154,7 +154,7 @@ const QueueItemRow = memo(function QueueItemRow({item, className, loader, index,
                   <MediaItem
                     key={file.filename + '-' + file.subfolder}
                     file={file}
-                    autoplay={appStatus.options.Gallery.AutoPlayVideos}
+                    autoplay={false}
                     onClick={() => {
                       onMediaItemClick({
                         dbID: item[3].db_id,
