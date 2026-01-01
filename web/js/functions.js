@@ -129,8 +129,6 @@ async function AddStopButton(actionsContainer) {
     const stopButton = actionsContainer.querySelector('.stop-button');
     if (!stopButton) return;
 
-    console.log("Status", event);
-
     //if event.detail.exec_info.queue_remaining is set and greater than 0 then enable stop button
     const queueRemaining = event.detail.exec_info && event.detail.exec_info.queue_remaining;
     if (queueRemaining && queueRemaining > 0) {
@@ -513,8 +511,6 @@ export function extensionSettings(mode = 'default') {
         }
       }
     }
-
-    console.log("Settings tree:", settingsTree);
 
     return settingsTree.QueueManager;
   }

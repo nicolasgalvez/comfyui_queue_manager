@@ -1,6 +1,6 @@
 "use client";           // (keep for app-router; harmless in pages-router)
 
-import React, {useContext, useEffect, useState, Fragment} from "react";
+import React, {useContext, useEffect, useState, Fragment, useCallback} from "react";
 import {baseURL} from "@/internals/config";
 import {apiCall, mediaType, msgLoadWorkflow, hasVideos} from "@/internals/functions";
 import {AppContext} from "@/internals/app-context";
@@ -15,8 +15,8 @@ import TableHead from '@mui/material/TableHead';
 import TableRow from '@mui/material/TableRow';
 import Paper from '@mui/material/Paper';
 import PlayArrowOutlinedIcon from '@mui/icons-material/PlayArrowOutlined';
-import {memo} from "react";
-import {CoverMedia} from "@/components/CoverMedia";
+import {memo, useMemo } from "react";
+import {MediaOutputs} from "@/models/MediaOutputs";
 
 /**
  *
@@ -26,6 +26,13 @@ import {CoverMedia} from "@/components/CoverMedia";
 const QueueItemRow = memo(function QueueItemRow({item, className, loader, index, mode, info}) {
 
   const {appStatus, setAppStatus, onMediaItemClick} = useContext(AppContext);
+
+  const mediaOutputs = useMemo(() => {
+    if (item?.[3]?.outputs && appStatus.route === "completed") {
+      return new MediaOutputs(item[3], appStatus.options?.Gallery ?? {});
+    }
+    return null;
+  },  [item, appStatus.route, appStatus.options]);
 
   async function cancelQueueItem() {
     const route = (mode === 'running' || mode === 'external') ? 'interrupt' : 'queue';
@@ -84,12 +91,13 @@ const QueueItemRow = memo(function QueueItemRow({item, className, loader, index,
         {/* Thumbnail in Cover mode */}
         {appStatus.route === 'completed' && appStatus.options.thumb_mode === "cover" && (appStatus.options.Gallery.ShowImages || appStatus.options.Gallery.ShowVideos) &&
           <TableCell className="px-3 py-1 cover">
-            {item[3].outputs && Object.values(item[3].outputs).length > 0 &&
-              <button
-                onClick={() => {onMediaItemClick({dbID: item[3].db_id, nodeKey: Object.keys(item[3].outputs)[0], fileIndex: 0})}}
-              >
-                <CoverMedia item={item[3]} />
-              </button>
+            {mediaOutputs && mediaOutputs.cover &&
+              <MediaItem
+                file={mediaOutputs.cover}
+                controls={false}
+                autoplay={false}
+                onClick={() => {onMediaItemClick({dbID: item[3].db_id, fileIndex: 0})}}
+              />
             }
           </TableCell>
         }
@@ -97,17 +105,17 @@ const QueueItemRow = memo(function QueueItemRow({item, className, loader, index,
         {/* Workflow Name */}
         <TableCell className="px-3 py-1 text-left name">
           <div className={"name-cell"}>
-            {item[3].total_files > 0 &&
-            <span className="total" title={"Total file outputs: " + item[3].total_files}
-              onClick={() => {onMediaItemClick({dbID: item[3].db_id, nodeKey: Object.keys(item[3].outputs)[0], fileIndex: 0})}}
-            >{item[3].total_files}</span>
-          }
-          <button className={'plain'} onClick={filterByWorkflow} title={"Filter view by the workflow"}>
-            {mode === 'external'
-              ? "External job"
-              : (item[3].extra_pnginfo.workflow.workflow_name ? item[3].extra_pnginfo.workflow.workflow_name : "")
+            {mediaOutputs && item[3].total_files > 0 &&
+              <span className="total" title={"Total file outputs: " + mediaOutputs.total}
+                onClick={() => {onMediaItemClick({dbID: item[3].db_id, fileIndex: 0})}}
+              >{mediaOutputs.total}</span>
             }
-          </button>
+            <button className={'plain'} onClick={filterByWorkflow} title={"Filter view by the workflow"}>
+              {mode === 'external'
+                ? "External job"
+                : (item[3].extra_pnginfo.workflow.workflow_name ? item[3].extra_pnginfo.workflow.workflow_name : "")
+              }
+            </button>
           </div>
 
         </TableCell>
@@ -141,43 +149,21 @@ const QueueItemRow = memo(function QueueItemRow({item, className, loader, index,
         <tr className="dark:odd:bg-neutral-900 odd:bg-neutral-100 gallery" key={"gallery" + item[3].db_id}>
           <td colSpan={3} className="px-3 py-1">
             <div className="flex flex-wrap gap-2 items">
-              {Object.keys(item[3].outputs).map(nodeID => {
-                const outputs = item[3].outputs[nodeID];
-                const files = outputs.images ?? outputs.gifs ?? [];
-                const { isImage, isVideo } = mediaType(outputs);
-                const hasVideo = hasVideos(item[3].outputs);
-
-                const {
-                  ShowImages,
-                  ShowVideos,
-                  HideImagesWhenVideoExists,
-                  AutoPlayVideos
-                } = appStatus.options.Gallery;
-
-                const shouldShowMedia =
-                  (isImage && ShowImages && (!hasVideo || !HideImagesWhenVideoExists)) ||
-                  (isVideo && ShowVideos);
-
-                return files.map((image, fileIndex) => (
-                  <Fragment key={image.filename + '-' + image.subfolder}>
-                    {shouldShowMedia &&
-                      <MediaItem
-                        filename={image.filename}
-                        subfolder={image.subfolder}
-                        autoplay={AutoPlayVideos}
-                        onClick={() => {
-                          onMediaItemClick({
-                            dbID: item[3].db_id,
-                            nodeKey: nodeID,
-                            fileIndex: fileIndex
-                          })
-                        }}
-                      />
-                    }
-
-                  </Fragment>
-                ));
-              })}
+              {mediaOutputs && mediaOutputs.files && mediaOutputs.files.length > 0 &&
+                mediaOutputs.files.map((file, fileIndex) => (
+                  <MediaItem
+                    key={file.filename + '-' + file.subfolder}
+                    file={file}
+                    autoplay={appStatus.options.Gallery.AutoPlayVideos}
+                    onClick={() => {
+                      onMediaItemClick({
+                        dbID: item[3].db_id,
+                        fileIndex: fileIndex
+                      })
+                    }}
+                  />
+                ))
+              }
             </div>
           </td>
         </tr>

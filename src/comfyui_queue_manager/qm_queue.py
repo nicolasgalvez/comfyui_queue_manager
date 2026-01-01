@@ -146,15 +146,24 @@ class QM_Queue:
                             # If we have outputs then add them to the item
                             item[3]["outputs"] = json.loads(row["outputs"])
                             # Count all files in outputs
-                            total_files = 0
+                            total_images = 0
+                            total_videos = 0
                             for output in item[3]["outputs"].values():
                                 if "images" in output:
-                                    total_files += len(output["images"])
+                                    # if output contains "animated" key and it's true then count as video
+                                    if "animated" in output and output["animated"]:
+                                        total_videos += len(output["images"])
+                                    else:
+                                        total_images += len(output["images"])
                                 if "gifs" in output:
-                                    total_files += len(output["gifs"])
-                            item[3]["total_files"] = total_files
+                                    total_videos += len(output["gifs"])
+                            item[3]["total_files"] = total_images + total_videos
+                            item[3]["total_images"] = total_images
+                            item[3]["total_videos"] = total_videos
                         else:
                             item[3]["total_files"] = 0
+                            item[3]["total_images"] = 0
+                            item[3]["total_videos"] = 0
 
                     pending.append(tuple(item))
 
@@ -825,7 +834,10 @@ class QM_Queue:
 
         return ""
 
-    def open_file_location(self, db_id, node_key, file_index=0):
+    def open_file_location(self, db_id, filename="", subfolder=""):
+        if filename == "":
+            return None
+
         # Get outputs metadata for the given item ID
         row = read_single(
             """
@@ -839,24 +851,26 @@ class QM_Queue:
         if row is None:
             return None
 
-        file_index = int(file_index)
-
+        # Cycle through nodes, check if "images" and "gifs" have the filename and subfolder combination
         row = json.loads(row[0])
-        # Check if the nodeKey exists in the outputs
-        if node_key not in row:
-            qm_log.error("Node key '%s' not found in outputs", node_key)
-            return None
+        found = False
+        for node_id, output in row.items():
+            files = []
+            if "images" in output:
+                files = output["images"]
+            elif "gifs" in output:
+                files = output["gifs"]
 
-        # Check if the fileIndex is valid
-        if file_index < 0 or file_index >= len(row[node_key]["images"]):
-            qm_log.error("File index %d is out of range for node key '%s'", file_index, node_key)
-            return None
-        # Get the file path from the outputs
-        filename = row[node_key]["images"][file_index].get("filename", None)
-        subfolder = row[node_key]["images"][file_index].get("subfolder", None)
+            for file in files:
+                if (file["filename"] == filename) and file["subfolder"] == subfolder:
+                    filename = file["filename"]
+                    found = True
+                    break
 
-        if filename is None:
-            qm_log.error("Filename not found in outputs for node key '%s'", node_key)
+            if found:
+                break
+
+        if not found:
             return None
 
         # Get outputs folder path from settings

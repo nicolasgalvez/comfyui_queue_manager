@@ -2,7 +2,8 @@ import {memo, useEffect, useRef} from "react";
 import {baseURL} from "@/internals/config";
 
 
-export const MediaItem = memo(function MediaItem({filename, subfolder, onClick, autoplay, className="", controls=true, toggleable=false}) {
+export const MediaItem = memo(function MediaItem({file, onClick, autoplay, className="", controls=true, toggleable=false}) {
+  const {filename, subfolder} = file;
   const videoRef = useRef(null);
   const ext = filename.split('.').pop().toLowerCase();
   const isVideo = ext === "mp4" || ext === "webm";

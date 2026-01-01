@@ -231,14 +231,14 @@ class QM_Server:
         @PromptServer.instance.routes.get("/queue_manager/open_location")
         async def open_location(request):
             id = request.query.get("id", None)
-            nodeKey = request.query.get("nodeKey", None)
-            fileIndex = request.query.get("fileIndex", None)
+            filename = request.query.get("filename", None)
+            subfolder = request.query.get("subfolder", None)
 
             # If any is None, return error
-            if id is None or nodeKey is None or fileIndex is None:
+            if id is None or filename is None:
                 return web.json_response({"error": "Missing parameters"}, status=400)
 
-            result = self.queue_manager.queue.open_file_location(id, nodeKey, fileIndex)
+            result = self.queue_manager.queue.open_file_location(id, filename, subfolder)
 
             # Return result of the operation
             if result is None:
@@ -319,7 +319,7 @@ class QM_Server:
 
             # Set the specific option
             self.queue_manager.options.set(option, value)
-            qm_log.info(f"Set option {option} to {value}")
+            # qm_log.info(f"Set option {option} to {value}")
 
             return web.json_response({"success": True})
 

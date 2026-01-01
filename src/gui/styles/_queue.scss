@@ -447,6 +447,10 @@ button {
     display: inline-flex;
     border: 1px solid transparent;
 
+    svg {
+      margin-left: 0;
+    }
+
     &.disabled {
       pointer-events: none;
       opacity: 0.4;

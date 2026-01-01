@@ -18,14 +18,14 @@ import Button from "@mui/material/Button";
 import DeleteOutlineSharpIcon from "@mui/icons-material/DeleteOutlineSharp";
 import {apiCall, msgLoadWorkflow} from "@/internals/functions";
 import GalleryProgressBar from "@/components/GalleryProgressBar";
-import {CoverMedia} from "@/components/CoverMedia";
 import {AppContext} from "@/internals/app-context";
 import {MediaItem} from "@/components/MediaItem";
+import {OrderedMap} from "@/models/OrderedMap";
 
 export default function Gallery({items, activeItem}) {
   /**
    * Gallery state
-   * @type {Array} - array of gallery items
+   * @type {OrderedMap} - custom array of gallery items
    */
   const [ galleryItems, setGalleryItems ] = useState(null);
   const [ mediaItem, setMediaItem ] = useState(null);
@@ -51,14 +51,22 @@ export default function Gallery({items, activeItem}) {
     }));
   }
 
-  function totalItemFiles(item) {
-    // Calculate total of all files in all nodes of the queue item, queueItem.outputs is an array with nodes
-    return item.outputs.reduce((acc, node) => {
-      if (node.files && Array.isArray(node.files)) {
-        return acc + node.files.length;
-      }
-      return acc;
-    }, 0);
+  function updateMediaItem(items) {
+    const itemIndex = items.indexOf(activeItem.dbID);
+    if (itemIndex === -1) {
+      console.error('Item with dbID not found in gallery data:', activeItem);
+      return;
+    }
+
+    const queueItem = items.get(activeItem.dbID);
+
+    setMediaItem({
+      itemIndex: itemIndex,
+      queueItem: queueItem,
+      fileIndex: activeItem.fileIndex,
+      file: queueItem.outputs.files[activeItem.fileIndex],
+      totalFiles: queueItem.outputs.total
+    });
   }
 
   function previousImage() {
@@ -68,58 +76,32 @@ export default function Gallery({items, activeItem}) {
       setMediaItem(prev => ({
         ...prev,
         fileIndex: mediaItem.fileIndex - 1,
-        file: mediaItem.node.files[mediaItem.fileIndex - 1]
+        file: mediaItem.queueItem.outputs.files[mediaItem.fileIndex - 1]
       }));
 
       return;
     }
 
-    // no more image, show previous node with last file
-    previousNode(true);
-  }
-
-  function previousNode(showLastFile = false) {
-    // is there previous node in the current queue item?
-    if (mediaItem.nodeIndex > 0) {
-      const prevNodeIndex = mediaItem.nodeIndex - 1;
-      const prevNode = mediaItem.queueItem.outputs[prevNodeIndex];
-      // if showLastFile is true, then show last file in the previous node
-      const prevFileIndex = showLastFile ? prevNode.files.length - 1 : 0;
-
-      setMediaItem(prev => ({
-        ...prev,
-        nodeIndex: prevNodeIndex,
-        node: prevNode,
-        fileIndex: prevFileIndex,
-        file: prevNode.files[prevFileIndex]
-      }));
-
-      return;
-    }
-
-    // no more nodes, show previous item with last file
-    previousItem(showLastFile);
+    // no more files in the item, show previous item with last file
+    previousItem(true);
   }
 
   function previousItem(showLastFile = false) {
     // is there previous item in the gallery?
     if (mediaItem.itemIndex > 0) {
       const prevItemIndex = mediaItem.itemIndex - 1;
-      const prevQueueItem = galleryItems[prevItemIndex];
+      const prevQueueItem = galleryItems.at(prevItemIndex);
+
       // if showLastFile is true, then show last file in the previous node
-      const prevNodeIndex = showLastFile ? prevQueueItem.outputs.length - 1 : 0;
-      const prevNode = prevQueueItem.outputs[prevNodeIndex];
-      const prevFileIndex = showLastFile ? prevNode.files.length - 1 : 0;
+      const prevFileIndex = showLastFile ? prevQueueItem.outputs.files.length - 1 : 0;
 
       setMediaItem(prev => ({
         ...prev,
         itemIndex: prevItemIndex,
         queueItem: prevQueueItem,
-        nodeIndex: prevNodeIndex,
-        node: prevNode,
         fileIndex: prevFileIndex,
-        file: prevNode.files[prevFileIndex],
-        totalFiles: totalItemFiles(prevQueueItem)
+        file: prevQueueItem.outputs.files[prevFileIndex],
+        totalFiles: prevQueueItem.outputs.total
       }));
     }
   }
@@ -128,38 +110,17 @@ export default function Gallery({items, activeItem}) {
     let newData = null;
 
     // us there next file in the current node?
-    if (mediaItem.fileIndex < mediaItem.node.files.length - 1) {
+    if (mediaItem.fileIndex < mediaItem.queueItem.outputs.files.length - 1) {
       setMediaItem(prev => ({
         ...prev,
         fileIndex: mediaItem.fileIndex + 1,
-        file: mediaItem.node.files[mediaItem.fileIndex + 1]
+        file: mediaItem.queueItem.outputs.files[mediaItem.fileIndex + 1]
       }));
 
       return;
     }
 
     // no more image, show next node
-    nextNode();
-  }
-
-  function nextNode() {
-    // is there next node in the current queue item?
-    if (mediaItem.nodeIndex < mediaItem.queueItem.outputs.length - 1) {
-      const nextNodeIndex = mediaItem.nodeIndex + 1;
-      const nextNode = mediaItem.queueItem.outputs[nextNodeIndex];
-
-      setMediaItem(prev => ({
-        ...prev,
-        nodeIndex: nextNodeIndex,
-        node: nextNode,
-        fileIndex: 0,
-        file: nextNode.files[0]
-      }));
-
-      return;
-    }
-
-    // no more nodes, show next item
     nextItem();
   }
 
@@ -167,18 +128,16 @@ export default function Gallery({items, activeItem}) {
     // is there next item in the gallery?
     if (mediaItem.itemIndex < galleryItems.length - 1) {
       const nextItemIndex = mediaItem.itemIndex + 1;
-      const nextQueueItem = galleryItems[nextItemIndex];
-      const nextNode = nextQueueItem.outputs[0];
+      const nextQueueItem = galleryItems.at(nextItemIndex);
+
 
       setMediaItem(prev => ({
         ...prev,
         itemIndex: nextItemIndex,
         queueItem: nextQueueItem,
-        nodeIndex: 0,
-        node: nextNode,
         fileIndex: 0,
-        file: nextNode.files[0],
-        totalFiles: totalItemFiles(nextQueueItem)
+        file: nextQueueItem.outputs.files[0],
+        totalFiles: nextQueueItem.outputs.total
       }));
     }
   }
@@ -189,18 +148,11 @@ export default function Gallery({items, activeItem}) {
   function isLastItem() {
     return mediaItem.itemIndex === galleryItems.length - 1;
   }
-  function isFirstNode() {
-    return mediaItem.nodeIndex === 0 && isFirstItem();
-  }
-  function isLastNode() {
-    return mediaItem.nodeIndex === mediaItem.queueItem.outputs.length - 1 &&
-           isLastItem();
-  }
   function isFirstImage() {
-    return mediaItem.fileIndex === 0 && isFirstNode();
+    return mediaItem.fileIndex === 0 && isFirstItem();
   }
   function isLastImage() {
-    return mediaItem.fileIndex === mediaItem.node.files.length - 1 && isLastNode();
+    return mediaItem.fileIndex === mediaItem.queueItem.outputs.files.length - 1 && isLastItem();
   }
 
   function toggleActionsMenu() {
@@ -248,8 +200,7 @@ export default function Gallery({items, activeItem}) {
       // reset media item to a new image
       // if we are deleting the last item, new image will be from previous item, otherwise it will be from the next item
       const nextItemIndex = mediaItem.itemIndex < galleryItems.length - 1 ? mediaItem.itemIndex + 1 : mediaItem.itemIndex - 1;
-      const nextQueueItem = galleryItems[nextItemIndex];
-      const nextNode = nextQueueItem.outputs[0];
+      const nextQueueItem = galleryItems.at(nextItemIndex);
 
       // console.log("Deleting workflow:", {
       //   itemIndex: mediaItem.itemIndex,
@@ -259,19 +210,18 @@ export default function Gallery({items, activeItem}) {
       setMediaItem({
         itemIndex: (mediaItem.itemIndex === galleryItems.length - 1) ? nextItemIndex : mediaItem.itemIndex, // actual index changes only if we deleted the last item
         queueItem: nextQueueItem,
-        nodeIndex: 0,
-        node: nextNode,
         fileIndex: 0,
-        file: nextNode.files[0],
-        totalFiles: totalItemFiles(nextQueueItem)
+        file: nextQueueItem.outputs.files[0],
+        totalFiles: nextQueueItem.outputs.total
       });
 
       // delete workflow from gallery items
       setGalleryItems(prevItems => {
         if (!prevItems || prevItems.length === 0) {
-          return [];
+          return new OrderedMap();
         }
-        return prevItems.filter(item => item.dbID !== mediaItem.queueItem.dbID);
+        prevItems.delete(mediaItem.queueItem.dbID);
+        return new OrderedMap(prevItems.entries());
       });
 
     } catch (error) {
@@ -280,7 +230,12 @@ export default function Gallery({items, activeItem}) {
   })
 
   const openImageLocation = useEvent(async (event) => {
-    const queryArgs = `?id=${mediaItem.queueItem.dbID}&nodeKey=${mediaItem.node.nodeKey}&fileIndex=${mediaItem.fileIndex}`;
+    const file = mediaItem.queueItem.outputs.files[mediaItem.fileIndex];
+    if (!file) {
+      console.error("No file found to open location:", mediaItem);
+      return;
+    }
+    const queryArgs = `?id=${mediaItem.queueItem.dbID}&filename=${file.filename}&subfolder=${file.subfolder}`;
 
     await apiCall(`${baseURL}queue_manager/open_location` + queryArgs, null, "GET");
   });
@@ -298,22 +253,12 @@ export default function Gallery({items, activeItem}) {
         nextImage();
       }
 
-      // Nodes
-    } else if (event.key === 'ArrowUp') {
-      if (!isFirstNode()) {
-        previousNode();
-      }
-    } else if (event.key === 'ArrowDown') {
-      if (!isLastNode()) {
-        nextNode();
-      }
-
       // Items
-    } else if (event.key === 'PageUp') {
+    } else if (event.key === 'ArrowUp') {
       if (!isFirstItem()) {
         previousItem();
       }
-    } else if (event.key === 'PageDown') {
+    } else if (event.key === 'ArrowDown') {
       if (!isLastItem()) {
         nextItem();
       }
@@ -325,16 +270,13 @@ export default function Gallery({items, activeItem}) {
     } else if (event.key === 'Home') {
       // Go to first item
       if (galleryItems && galleryItems.length > 0) {
-        const firstItem = galleryItems[0];
-        const firstNode = firstItem.outputs[0];
+        const firstItem = galleryItems.first;
         setMediaItem({
           itemIndex: 0,
           queueItem: firstItem,
-          nodeIndex: 0,
-          node: firstNode,
           fileIndex: 0,
-          file: firstNode.files[0],
-          totalFiles: totalItemFiles(firstItem)
+          file: firstItem.outputs.files[0],
+          totalFiles: firstItem.outputs.total
         });
       }
 
@@ -342,17 +284,14 @@ export default function Gallery({items, activeItem}) {
     } else if (event.key === 'End') {
       // Go to last item
       if (galleryItems && galleryItems.length > 0) {
-        const lastItem = galleryItems[galleryItems.length - 1];
-        const lastNode = lastItem.outputs[lastItem.outputs.length - 1];
-        const lastFileIndex = lastNode.files.length - 1;
+        const lastItem = galleryItems.last;
+        const lastFileIndex = lastItem.outputs.files.length - 1;
         setMediaItem({
           itemIndex: galleryItems.length - 1,
           queueItem: lastItem,
-          nodeIndex: lastItem.outputs.length - 1,
-          node: lastNode,
           fileIndex: lastFileIndex,
-          file: lastNode.files[lastFileIndex],
-          totalFiles: totalItemFiles(lastItem)
+          file: lastItem.outputs.files[lastFileIndex],
+          totalFiles: lastItem.outputs.total
         });
       }
     }
@@ -361,61 +300,27 @@ export default function Gallery({items, activeItem}) {
   function onItemClick(itemIndex) {
     // go to item in gallery
     if (galleryItems && galleryItems.length > 0 && itemIndex >= 0 && itemIndex < galleryItems.length) {
-      const queueItem = galleryItems[itemIndex];
-      const firstNode = queueItem.outputs[0];
+      const queueItem = galleryItems.at(itemIndex);
       setMediaItem({
         itemIndex: itemIndex,
         queueItem: queueItem,
-        nodeIndex: 0,
-        node: firstNode,
         fileIndex: 0,
-        file: firstNode.files[0],
-        totalFiles: totalItemFiles(queueItem)
+        file: queueItem.outputs.files[0],
+        totalFiles: queueItem.outputs.total
       });
     }
   }
 
-  function updateMediaItem(items) {
-    const itemIndex = items.findIndex(item => item.dbID === activeItem.dbID);
-    if (itemIndex === -1) {
-      console.error('Item with dbID not found in gallery data:', activeItem);
-      return;
-    }
-
-    const queueItem = items[itemIndex];
-
-    const nodeIndex = queueItem.outputs.findIndex(item => item.nodeKey === activeItem.nodeKey);
-
-    if (nodeIndex === -1) {
-      console.error('Node not found in queue item outputs:', activeItem.nodeKey);
-      return;
-    }
-    const node = queueItem.outputs[nodeIndex];
-    const file = node.files[activeItem.fileIndex];
-
-    // calculate total of all files in all nodes of the queue item, queueItem.outputs is an array with nodes
-    const totalFiles = totalItemFiles(queueItem);
-
-    setMediaItem({
-      itemIndex: itemIndex,
-      queueItem: queueItem,
-      nodeIndex: nodeIndex,
-      node: node,
-      fileIndex: activeItem.fileIndex,
-      file: file,
-      totalFiles: totalFiles
-    });
-  }
 
   useEffect(() => {
 
-    // in items find one that has dbID equal to data.dbID
     if (!items || items.length === 0) {
       return;
     }
 
     setGalleryItems(items);
 
+    // in items find one that has dbID equal to activeItem.dbID
     updateMediaItem(items);
 
   }, [items]);
@@ -549,7 +454,7 @@ export default function Gallery({items, activeItem}) {
      * Keyboard navigation
      */
     window.addEventListener("keydown", keyboardNavigation);
-  }, []);
+  }, [keyboardNavigation, onOutsideClickActionsMenu]);
 
 
   return (
@@ -565,38 +470,28 @@ export default function Gallery({items, activeItem}) {
 
         <figure>
           <MediaItem
-            filename={mediaItem.file.filename}
-            subfolder={mediaItem.file.subfolder}
+            file={mediaItem.file}
             autoplay={appStatus.options.Gallery.AutoPlayVideos}
             toggleable={true}
           />
           <div className={'node-thumbs'}>
-            <button type={"button"} className={"prev-node" + (isFirstNode() ? ' inactive':'')} onClick={() => previousNode()} title={'Previous Node (↑)'}>
-              <KeyboardDoubleArrowLeftSharpIcon fontSize="inherit" />
-            </button>
-
             <div className={"node-thumbs-container"} ref={thumbsContainerRef}>
               {/*  Display all files from the node */}
-              {mediaItem.node.files.map((image, index) => (
+              {mediaItem.queueItem.outputs.files.map((file, index) => (
                 <MediaItem
                   key={index}
-                  filename={image.filename}
-                  subfolder={image.subfolder}
+                  file={file}
                   className={`node-thumb ${index === mediaItem.fileIndex ? 'active' : ''}`}
                   controls={false}
                   autoplay={false}
                   onClick={() => setMediaItem(prev => ({
                     ...prev,
                     fileIndex: index,
-                    file: image
+                    file: file
                   }))}
                 />
               ))}
             </div>
-
-            <button type={"button"} className={"next-node" + (isLastNode() ? ' inactive':'')} onClick={() => nextNode()} title={'Next Node (↓)'}>
-              <KeyboardDoubleArrowRightSharpIcon fontSize="inherit" />
-            </button>
           </div>
         </figure>
         <nav className={"gallery-nav"}>
@@ -622,14 +517,26 @@ export default function Gallery({items, activeItem}) {
           {mediaItem.itemIndex > 0 && (
             <button type={"button"} className={"prev-item"} onClick={() => previousItem()} title={'Previous Prompt (PgUp)'}>
               <KeyboardDoubleArrowLeftSharpIcon fontSize="inherit" />
-              <CoverMedia item={galleryItems[mediaItem.itemIndex - 1]} force={true} />
+
+              <MediaItem
+                file={galleryItems.at(mediaItem.itemIndex - 1).outputs.files[0]}
+                className={"cover-media-thumb"}
+                controls={false}
+                autoplay={false}
+              />
+
             </button>
           )}
 
           {mediaItem.itemIndex < galleryItems.length - 1 && (
             <button type={"button"} className={"next-item"} onClick={() => nextItem()} title={'Next Prompt (PgDown)'}>
               <KeyboardDoubleArrowRightSharpIcon fontSize="inherit" />
-              <CoverMedia item={galleryItems[mediaItem.itemIndex + 1]} force={true} />
+              <MediaItem
+                file={galleryItems.at(mediaItem.itemIndex + 1).outputs.files[0]}
+                className={"cover-media-thumb"}
+                controls={false}
+                autoplay={false}
+              />
             </button>
           )}
         </nav>
@@ -667,7 +574,7 @@ export default function Gallery({items, activeItem}) {
         </nav>
 
         {galleryItems && galleryItems.length > 0 &&
-          <GalleryProgressBar galleryItems={galleryItems} mediaItem={mediaItem} onItemClick={onItemClick} />
+          <GalleryProgressBar galleryItems={Array.from(galleryItems.values())} mediaItem={mediaItem} onItemClick={onItemClick} />
         }
       </div>
       }

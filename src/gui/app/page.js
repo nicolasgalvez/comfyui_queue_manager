@@ -27,6 +27,8 @@ import Gallery from "@/components/Gallery";
 import {SplashScreen} from "@/components/SplashScreen";
 
 import {compareVersions} from "@/internals/functions";
+import {MediaOutputs} from "@/models/MediaOutputs";
+import {OrderedMap} from "@/models/OrderedMap"
 
 const VisuallyHiddenInput = styled('input')({
   clip: 'rect(0 0 0 0)',
@@ -413,41 +415,22 @@ export default function Home() {
    * Pack outputs and sent to gallery iframe
    */
   const onMediaItemClick = useCallback((mediaItem) => {
-    let items = [];
-
-    const {
-      ShowImages,
-      ShowVideos
-    } = appStatus.options.Gallery;
+    let items = new OrderedMap();
 
     appStatus.queue.pending.map((item, index) => {
       // are there outputs for this item?
       if (item[3] && item[3].outputs) {
-        const hasVideo = hasVideos(item[3].outputs);
-
-        let outputs = [];
-        if (item[3].outputs) {
-          Object.keys(item[3].outputs).map((nodeKey) => {
-            // isVideo or isImage
-            const { isImage, isVideo } = mediaType(item[3].outputs[nodeKey]);
-            if ((isImage && ShowImages && (!hasVideo || !appStatus.options.Gallery.HideImagesWhenVideoExists)) || (isVideo && ShowVideos)) {
-              outputs.push({
-                nodeKey: nodeKey,
-                files: item[3].outputs[nodeKey].images || item[3].outputs[nodeKey].gifs,
-              })
-            }
-          })
-        }
+        const outputs = new MediaOutputs(item[3], appStatus.options.Gallery);
 
         // if there are outputs, add to items
-        if (outputs.length > 0) {
-          items.push({
+        if (outputs.files.length > 0) {
+          items.set(item[3].db_id, {
             dbID: item[3].db_id,
             promptID: item[1],
             number: item[0],
             workflow: item[3].extra_pnginfo.workflow,
             outputs: outputs
-          });
+          })
         }
       }
     });
