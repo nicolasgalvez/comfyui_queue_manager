@@ -48,7 +48,7 @@
         height: 100%;
         width: 100%;
 
-        &.video {
+        &.video:not(.no-ui) {
           padding-bottom: 170px;
         }
 
@@ -201,13 +201,15 @@
     }
   }
 
-  .close-button {
+  .head-nav {
     position: absolute;
     top: 0;
     right: 0;
-    transition: all 0.3s ease-in-out;
     z-index: 1;
+  }
 
+  .close-button {
+    transition: all 0.3s ease-in-out;
     &:hover {
       transform: scale(1.2);
     }

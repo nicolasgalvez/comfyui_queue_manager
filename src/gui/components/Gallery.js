@@ -11,6 +11,8 @@ import InputSharpIcon from '@mui/icons-material/InputSharp';
 import PhotoSizeSelectActualSharpIcon from '@mui/icons-material/PhotoSizeSelectActualSharp';
 import DriveFileMoveSharpIcon from '@mui/icons-material/DriveFileMoveSharp';
 import MoreVertSharpIcon from '@mui/icons-material/MoreVertSharp';
+import WebAssetOffSharpIcon from '@mui/icons-material/WebAssetOffSharp';
+import BurstModeSharpIcon from '@mui/icons-material/BurstModeSharp';
 
 import {baseURL} from "@/internals/config";
 import useEvent from "react-use-event-hook";
@@ -36,8 +38,10 @@ export default function Gallery({items, activeItem}) {
 
   const mode = useAppStore((state) => state.mode);
   const galleryOptions = useOptionsStore((state) => state.Gallery);
+  const showUI = useOptionsStore((state) => state.show_gallery_ui);
 
   const setMode = useAppStore((state) => state.setMode);
+  const setDirectOption = useOptionsStore((state) => state.setDirectOption);
 
   const thumbsContainerRef = useRef(null);
 
@@ -49,6 +53,11 @@ export default function Gallery({items, activeItem}) {
     document.body.classList.remove('gallery-open');
 
     setMode("queue");
+  }
+
+  function toggleUI() {
+    apiCall('queue_manager/options', {key:"show_gallery_ui", value: !showUI}, 'POST')
+    setDirectOption("show_gallery_ui", !showUI);
   }
 
   function updateMediaItem(items) {
@@ -295,7 +304,13 @@ export default function Gallery({items, activeItem}) {
           totalFiles: lastItem.outputs.total
         });
       }
+
+      //   t toggle thumbnails
+    } else if (event.key.toLowerCase() === 't') {
+      toggleUI();
     }
+
+
   });
 
   function onItemClick(itemIndex) {
@@ -460,10 +475,21 @@ export default function Gallery({items, activeItem}) {
 
   return (
     <div className={"gallery-page"}>
+      <div className={"head-nav"}>
+          <IconButton size='large' variant="contained" className={"hide-ui"} onClick={toggleUI} title={(showUI ? "Hide" : "Show") + " thumbnails (T)"} >
+            {showUI
+              ?
+              <WebAssetOffSharpIcon fontSize="large" />
+              :
+              <BurstModeSharpIcon fontSize="large" />
+            }
+          </IconButton>
 
-      <IconButton size="large" variant="contained" className={"close-button"} onClick={closeGallery} title={"Close (Esc)"}>
-        <DisabledByDefaultIcon fontSize="large" />
-      </IconButton>
+        <IconButton size="large" variant="contained" className={"close-button"} onClick={closeGallery} title={"Close (Esc)"}>
+          <DisabledByDefaultIcon fontSize="large" />
+        </IconButton>
+      </div>
+
 
       {galleryItems &&
       <div className="image-box">
@@ -474,74 +500,81 @@ export default function Gallery({items, activeItem}) {
             file={mediaItem.file}
             autoplay={galleryOptions.AutoPlayVideos}
             toggleable={true}
+            className={(showUI ? "" : "no-ui")}
           />
-          <div className={'node-thumbs'}>
-            <div className={"node-thumbs-container"} ref={thumbsContainerRef}>
-              {/*  Display all files from the node */}
-              {mediaItem.queueItem.outputs.files.map((file, index) => (
-                <MediaItem
-                  key={index}
-                  file={file}
-                  className={`node-thumb ${index === mediaItem.fileIndex ? 'active' : ''}`}
-                  controls={false}
-                  autoplay={false}
-                  onClick={() => setMediaItem(prev => ({
-                    ...prev,
-                    fileIndex: index,
-                    file: file
-                  }))}
-                />
-              ))}
+          {showUI &&
+            <div className={'node-thumbs'}>
+              <div className={"node-thumbs-container"} ref={thumbsContainerRef}>
+                {/*  Display all files from the node */}
+                {mediaItem.queueItem.outputs.files.map((file, index) => (
+                  <MediaItem
+                    key={index}
+                    file={file}
+                    className={`node-thumb ${index === mediaItem.fileIndex ? 'active' : ''}`}
+                    controls={false}
+                    autoplay={false}
+                    onClick={() => setMediaItem(prev => ({
+                      ...prev,
+                      fileIndex: index,
+                      file: file
+                    }))}
+                  />
+                ))}
+              </div>
             </div>
-          </div>
+          }
         </figure>
-        <nav className={"gallery-nav"}>
-          {!isFirstImage() &&
-            <IconButton color="primary" size="large" onClick={() => previousImage()}
-              // disabled={mediaItem.fileIndex === 0}
-                        className={"previous-button"} title={'Previous Image (←)'}>
-              <ArrowForwardIosIcon fontSize="inherit"/>
-            </IconButton>
-          }
+        {showUI &&
+          <>
+            <nav className={"gallery-nav"}>
+              {!isFirstImage() &&
+                <IconButton color="primary" size="large" onClick={() => previousImage()}
+                  // disabled={mediaItem.fileIndex === 0}
+                            className={"previous-button"} title={'Previous Image (←)'}>
+                  <ArrowForwardIosIcon fontSize="inherit"/>
+                </IconButton>
+              }
 
-          {!isLastImage() &&
-            <IconButton color="primary" size="large" onClick={() => nextImage()}
-              // disabled={mediaItem.fileIndex === mediaItem.totalFiles - 1}
-                        className={"next-button"} title={'Next Image (→)'}>
-              <ArrowForwardIosIcon fontSize="inherit" />
-            </IconButton>
-          }
-        </nav>
+              {!isLastImage() &&
+                <IconButton color="primary" size="large" onClick={() => nextImage()}
+                  // disabled={mediaItem.fileIndex === mediaItem.totalFiles - 1}
+                            className={"next-button"} title={'Next Image (→)'}>
+                  <ArrowForwardIosIcon fontSize="inherit" />
+                </IconButton>
+              }
+            </nav>
 
-        <nav className={"footer-nav"}>
-        {/*  Nav to go to next / previous item.*/}
-          {mediaItem.itemIndex > 0 && (
-            <button type={"button"} className={"prev-item"} onClick={() => previousItem()} title={'Previous Prompt (PgUp)'}>
-              <KeyboardDoubleArrowLeftSharpIcon fontSize="inherit" />
 
-              <MediaItem
-                file={galleryItems.at(mediaItem.itemIndex - 1).outputs.files[0]}
-                className={"cover-media-thumb"}
-                controls={false}
-                autoplay={false}
-              />
+            <nav className={"footer-nav"}>
+            {/*  Nav to go to next / previous item.*/}
+              {mediaItem.itemIndex > 0 && (
+                <button type={"button"} className={"prev-item"} onClick={() => previousItem()} title={'Previous Prompt (PgUp)'}>
+                  <KeyboardDoubleArrowLeftSharpIcon fontSize="inherit" />
 
-            </button>
-          )}
+                  <MediaItem
+                    file={galleryItems.at(mediaItem.itemIndex - 1).outputs.files[0]}
+                    className={"cover-media-thumb"}
+                    controls={false}
+                    autoplay={false}
+                  />
 
-          {mediaItem.itemIndex < galleryItems.length - 1 && (
-            <button type={"button"} className={"next-item"} onClick={() => nextItem()} title={'Next Prompt (PgDown)'}>
-              <KeyboardDoubleArrowRightSharpIcon fontSize="inherit" />
-              <MediaItem
-                file={galleryItems.at(mediaItem.itemIndex + 1).outputs.files[0]}
-                className={"cover-media-thumb"}
-                controls={false}
-                autoplay={false}
-              />
-            </button>
-          )}
-        </nav>
+                </button>
+              )}
 
+              {mediaItem.itemIndex < galleryItems.length - 1 && (
+                <button type={"button"} className={"next-item"} onClick={() => nextItem()} title={'Next Prompt (PgDown)'}>
+                  <KeyboardDoubleArrowRightSharpIcon fontSize="inherit" />
+                  <MediaItem
+                    file={galleryItems.at(mediaItem.itemIndex + 1).outputs.files[0]}
+                    className={"cover-media-thumb"}
+                    controls={false}
+                    autoplay={false}
+                  />
+                </button>
+              )}
+            </nav>
+          </>
+        }
         <nav className={"media-actions"}>
           <IconButton size="large" variant="contained" className={"trigger"} onClick={toggleActionsMenu}>
             <MoreVertSharpIcon fontSize="medium" />

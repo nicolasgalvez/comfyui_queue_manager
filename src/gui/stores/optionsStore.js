@@ -10,6 +10,7 @@ export const useOptionsStore = create((set) => ({
   thumb_mode: 'cover',
   thumb_size: 150,
   cover_size: 50,
+  show_gallery_ui: true,
 
   /**
    * Set a single option within a category

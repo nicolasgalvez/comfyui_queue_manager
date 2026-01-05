@@ -254,6 +254,7 @@ class QM_Server:
             "thumb_mode": "cover",
             "queue_paused": False,
             "splash_screen": "0.0.0",  # last seen splash screen version
+            "show_gallery_ui": True,
         }
 
         # Get options
@@ -313,6 +314,10 @@ class QM_Server:
             elif option == "cover_size":  # cover size must be a positive integer between 50 and 500
                 if not isinstance(value, int) or value < 25 or value > 200:
                     return web.json_response({"error": "Invalid cover_size value"}, status=400)
+            #     Boolean options
+            elif option == "queue_paused" or option == "show_gallery_ui":
+                if not isinstance(value, bool):
+                    return web.json_response({"error": "Invalid " + option + " value"}, status=400)
             elif (
                 option == "splash_screen"
             ):  # splash_screen we always set to current version (indication that user has seen the latest splash)
