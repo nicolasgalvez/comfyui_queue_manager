@@ -1,7 +1,6 @@
 "use client";
 
 import React, {useContext, useEffect, useState, Fragment } from "react";
-import {AppContext} from "@/internals/app-context";
 import Table from '@mui/material/Table';
 import TableBody from '@mui/material/TableBody';
 import TableCell from '@mui/material/TableCell';

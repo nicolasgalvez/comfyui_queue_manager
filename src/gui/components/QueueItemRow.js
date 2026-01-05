@@ -66,12 +66,6 @@ export const QueueItemRow = memo(function QueueItemRow({item, className, loader,
   }
 
   async function filterByWorkflow() {
-    // setAppStatus(prev => ({...prev, filters: {...appStatus.filters, workflow: {
-    //       type: 'workflow',
-    //       value: item[3].extra_pnginfo.workflow.id,
-    //       valueLabel: item[3].extra_pnginfo.workflow.workflow_name
-    //     }}}));
-
     setFilters({...filters, workflow: {
         type: 'workflow',
         value: item[3].extra_pnginfo.workflow.id,

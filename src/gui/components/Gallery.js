@@ -18,9 +18,10 @@ import Button from "@mui/material/Button";
 import DeleteOutlineSharpIcon from "@mui/icons-material/DeleteOutlineSharp";
 import {apiCall, msgLoadWorkflow} from "@/internals/functions";
 import GalleryProgressBar from "@/components/GalleryProgressBar";
-import {AppContext} from "@/internals/app-context";
 import {MediaItem} from "@/components/MediaItem";
 import {OrderedMap} from "@/models/OrderedMap";
+import {useAppStore} from "@/stores/appStore";
+import {useOptionsStore} from "@/stores/optionsStore";
 
 export default function Gallery({items, activeItem}) {
   /**
@@ -33,7 +34,10 @@ export default function Gallery({items, activeItem}) {
     actionsMenuOpen: false,
   });
 
-  const { appStatus, setAppStatus } = useContext(AppContext);
+  const mode = useAppStore((state) => state.mode);
+  const galleryOptions = useOptionsStore((state) => state.Gallery);
+
+  const setMode = useAppStore((state) => state.setMode);
 
   const thumbsContainerRef = useRef(null);
 
@@ -44,11 +48,7 @@ export default function Gallery({items, activeItem}) {
     // remove class from body
     document.body.classList.remove('gallery-open');
 
-    // set app status galleryOpen to false
-    setAppStatus((prev) => ({
-      ...prev,
-      mode: 'queue',
-    }));
+    setMode("queue");
   }
 
   function updateMediaItem(items) {
@@ -472,7 +472,7 @@ export default function Gallery({items, activeItem}) {
         <figure>
           <MediaItem
             file={mediaItem.file}
-            autoplay={appStatus.options.Gallery.AutoPlayVideos}
+            autoplay={galleryOptions.AutoPlayVideos}
             toggleable={true}
           />
           <div className={'node-thumbs'}>

@@ -347,6 +347,7 @@ export default function Home() {
         onParentKeypress(event.data.message);
         break;
       case "QM_QueueManager_Hello":
+        useAppStore.getState().setClientId(event.data.clientId);
         setAllOptions({...event.data.settings});
         break;
       case "QM_Setting_Changed":
@@ -367,7 +368,6 @@ export default function Home() {
         const SettingKey = settingPath[1];
 
         if (exists) {
-          // setAppStatus(prev => ({ ...prev, options: {...prev.options, [settingPath[0]]: {...prev.options[settingPath[0]], [settingPath[1]]: event.data.message.newValue} }}));
           setOption(CategorySlug, SettingKey, event.data.message.newValue);
         }
 
@@ -682,10 +682,9 @@ export default function Home() {
               <button
                 className="dark:bg-neutral-700 bg-neutral-400 text-neutral-200 light:text-neutral-800 close hover:bg-neutral-500"
                 onClick={() => {
+                  // remove the filter from the filters object
                   const prev = useAppStore.getState().filters;
                   setFilters((({[filter.type]: _, ...f}) => f)(prev));
-                  // remove the filter from the filters object
-                  // setAppStatus(prev => ({...prev, filters: (({[filter.type]: _, ...f}) => f)(prev.filters)}));
                 }}
               >
                 <svg viewBox="0 0 24 24" width="1.2em" height="1.2em">
@@ -700,7 +699,6 @@ export default function Home() {
           <button
             className="dark:bg-neutral-700 bg-neutral-400 text-neutral-200 light:text-neutral-800 close close-all hover:bg-neutral-500 ml-auto"
             onClick={() => {
-              // setAppStatus(prev => ({...prev, filters: null}));
               setFilters(null);
             }}
           >
@@ -772,7 +770,6 @@ export default function Home() {
                 size="small"
                 className={"page" + (appStatus.queue.info.page === 0 ? ' disabled' : '')}
                 onClick={() => {
-                  // setAppStatus(prev => ({...prev, queue: null}));
                   fetchQueueItems(appStatus.queue.info.page - 1);
                 }}
                 disabled={appStatus.queue.info.page === 0}
@@ -783,7 +780,6 @@ export default function Home() {
                     key={i}
                     className={"page" + (appStatus.queue.info.page === i ? ' active' : '')}
                     onClick={() => {
-                      // setAppStatus(prev => ({...prev, queue: null}));
                       fetchQueueItems(i);
                     }}
                   >
@@ -796,7 +792,6 @@ export default function Home() {
                 size="small"
                 className={"page" + (appStatus.queue.info.page === appStatus.queue.info.last_page ? ' disabled' : '')}
                 onClick={() => {
-                  // setAppStatus(prev => ({...prev, queue: null}));
                   fetchQueueItems(appStatus.queue.info.page + 1);
                 }}
                 disabled={appStatus.queue.info.page === appStatus.queue.info.last_page}

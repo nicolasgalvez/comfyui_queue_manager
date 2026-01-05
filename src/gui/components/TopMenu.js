@@ -6,13 +6,14 @@ import {AppContext} from "@/internals/app-context";
 import AdsClickSharpIcon from '@mui/icons-material/AdsClickSharp';
 import InfoOutlineSharpIcon from '@mui/icons-material/InfoOutlineSharp';
 import Button from "@mui/material/Button";
+import {useAppStore} from "@/stores/appStore";
 
 export default function TopMenu() {
   const [uiState, setUiState] = useState({
     menuOpen: false,
   });
 
-  const {appStatus, setAppStatus, openSplash} = useContext(AppContext)
+  const {openSplash} = useContext(AppContext)
 
   const menuRef = useRef(null);
   const toggleRef = useRef(null);
@@ -23,7 +24,7 @@ export default function TopMenu() {
 
   async function takeOver() {
     toggleMenu();
-    apiCall('queue_manager/takeover?client_id='+appStatus.clientId, null, "GET");
+    apiCall('queue_manager/takeover?client_id='+useAppStore.getState().clientId, null, "GET");
   }
 
   useEffect(() => {
