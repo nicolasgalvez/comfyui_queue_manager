@@ -366,6 +366,7 @@
 }
 
 .tabs {
+  position: relative;
   .tab {
     padding: 0.4rem 0.8rem 0.2rem;
     border: 1px solid transparent;
@@ -383,6 +384,21 @@
           background-color: $archive-color-light;
         }
       }
+    }
+  }
+
+  .play-first {
+    position: absolute;
+    top: 0;
+    right: 0;
+    box-sizing: content-box;
+    border: 1px solid transparent;
+    border-bottom: 0;
+    padding: .2rem .8rem .4rem;
+    font-size: 70%;
+
+    svg {
+      width: 1rem;
     }
   }
 }

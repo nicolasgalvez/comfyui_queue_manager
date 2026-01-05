@@ -10,6 +10,7 @@ import WallpaperSharpIcon from '@mui/icons-material/WallpaperSharp';
 import ViewModuleSharpIcon from '@mui/icons-material/ViewModuleSharp';
 import KeyboardArrowLeftSharpIcon from '@mui/icons-material/KeyboardArrowLeftSharp';
 import KeyboardArrowRightSharpIcon from '@mui/icons-material/KeyboardArrowRightSharp';
+import UploadSharpIcon from '@mui/icons-material/UploadSharp';
 import { styled } from '@mui/material/styles';
 
 import TopMenu from "@/components/TopMenu";
@@ -637,7 +638,7 @@ export default function Home() {
         *  Tabs Nav
         *
         */}
-      <div className="tabs">
+      <div className={"tabs" + (shiftDown ? ' shift-down' : '')}>
         {/* Queue */}
         <button
           className={"tab" + (route === 'queue' ? ' dark:bg-neutral-800 bg-neutral-200 active' : '')}
@@ -664,18 +665,23 @@ export default function Home() {
         >Completed
         </button>
 
+        {shiftDown && route === "archive" &&
+          <div className={"play-first"}>
+            <UploadSharpIcon /> Press Run to queue at front
+          </div>
+        }
       </div>
 
-      {/*
+        {/*
         *
         * Filters
         *
         */}
-      {isFilterOn() &&
-        <div className="filters flex items-center p-2">
-          <span className="text-neutral-500">Filters:</span>
-          {Object.values(filters).map(filter =>
-            <div className="filter flex items-center" key={filter.type}>
+        {isFilterOn() &&
+          <div className="filters flex items-center p-2">
+            <span className="text-neutral-500">Filters:</span>
+            {Object.values(filters).map(filter =>
+              <div className="filter flex items-center" key={filter.type}>
                 <span
                   className="inline-flex text-neutral-800 dark:text-neutral-200 close label"><span
                   className={'type'}>{filter.type + ": "}&nbsp;</span>{filter.valueLabel}</span>
@@ -716,7 +722,7 @@ export default function Home() {
         * Queue items table
         *
         */}
-      <div className={'queue-table' + (shiftDown ? ' shift-down' : '')}>
+      <div className={'queue-table'}>
         <Queue data={appStatus.queue}
                error={appStatus.error}
                isLoading={appStatus.loading}
