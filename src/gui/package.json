@@ -20,7 +20,8 @@
     "next": "15.3.8",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "react-use-event-hook": "^0.9.6"
+    "react-use-event-hook": "^0.9.6",
+    "zustand": "^5.0.9"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",

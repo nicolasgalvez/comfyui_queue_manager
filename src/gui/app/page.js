@@ -29,6 +29,8 @@ import {SplashScreen} from "@/components/SplashScreen";
 import {compareVersions} from "@/internals/functions";
 import {MediaOutputs} from "@/models/MediaOutputs";
 import {OrderedMap} from "@/models/OrderedMap"
+import {useOptionsStore} from "@/stores/optionsStore";
+import {useAppStore} from "@/stores/appStore";
 
 const VisuallyHiddenInput = styled('input')({
   clip: 'rect(0 0 0 0)',
@@ -47,20 +49,22 @@ export default function Home() {
     loading: true,
     error: null,
     queue: null,
-    route: 'queue', // queue, archive, completed, bin
-    clientId: null,
-    filters: null,
-    options: {
-      Basic:{},
-      Completed:{},
-      Gallery:{}
-    },
-    mode: 'queue', // queue, gallery
   });
 
-  const [keysStatus, setKeysStatus] = useState({
-    shiftDown: false,
-  });
+  const options = useOptionsStore((state) => state);
+  const setAllOptions = useOptionsStore((state) => state.setAllOptions);
+  const setOption = useOptionsStore((state) => state.setOption);
+  const setDirectOption = useOptionsStore((state) => state.setDirectOption);
+
+  const filters = useAppStore((state) => state.filters);
+  const route = useAppStore((state) => state.route);
+  const mode = useAppStore((state) => state.mode);
+  const shiftDown = useAppStore((state) => state.shiftDown);
+
+  const setFilters = useAppStore((state) => state.setFilters);
+  const setRoute = useAppStore((state) => state.setRoute);
+  const setMode = useAppStore((state) => state.setMode);
+  const setShiftDown = useAppStore((state) => state.setShiftDown);
 
   const [currentJob, setProgress] = useState({
     id: null,
@@ -118,19 +122,19 @@ export default function Home() {
 
     } catch (error) {
       setAppStatus(prev => ({...prev, loading: false, error: error.message, queue: null}));
-      console.error("Error fetching " + appStatus.route + " items:", error);
+      console.error("Error fetching " + route + " items:", error);
     }
   };
 
   async function fetchOptions() {
-    const options = await apiCall(`queue_manager/options`, null, "GET");
-      if (options) {
-        setAppStatus(prev => ({...prev, options: {...prev.options, ...options}}));
-        updateThumbnailSize(null, options.thumb_size ? options.thumb_size : 150);
-        updateCoverSize(null, options.cover_size ? options.cover_size : 50);
+    const newOptions = await apiCall(`queue_manager/options`, null, "GET");
+      if (newOptions) {
+        setAllOptions({...newOptions});
+        updateThumbnailSize(null, newOptions.thumb_size ? newOptions.thumb_size : 150);
+        updateCoverSize(null, newOptions.cover_size ? newOptions.cover_size : 50);
 
         // show splash screen if needed
-        if (compareVersions(options.splash_screen, options.__version__) < 0) {
+        if (compareVersions(newOptions.splash_screen, newOptions.__version__) < 0) {
           setShowSplash(true);
         }
 
@@ -176,14 +180,14 @@ export default function Home() {
 
   function appendFilters(queryArgs) {
     if (isFilterOn()) {
-      queryArgs += (queryArgs ? '&filters=' : '?filters=') + encodeURIComponent(JSON.stringify(appStatus.filters));
+      queryArgs += (queryArgs ? '&filters=' : '?filters=') + encodeURIComponent(JSON.stringify(filters));
     }
     return queryArgs;
   }
 
   function appendRoute(queryArgs) {
-    if (appStatus.route) {
-      queryArgs += (queryArgs ? '&route=' : '?route=') + appStatus.route;
+    if (route) {
+      queryArgs += (queryArgs ? '&route=' : '?route=') + route;
     }
     return queryArgs;
   }
@@ -200,20 +204,20 @@ export default function Home() {
 
   async function playAllArchive() {
     await apiCall('queue_manager/play-archive', {
-      client_id: appStatus.clientId,
-      filters: isFilterOn() ? appStatus.filters : null,
+      client_id: useAppStore.getState().clientId,
+      filters: isFilterOn() ? filters : null,
     })
   }
 
   async function deleteFromQueue() {
-    let queryArgs = appendFilters("?route=" + appStatus.route);
+    let queryArgs = appendFilters("?route=" + route);
 
     try {
       const response = await fetch(`${baseURL}queue_manager/queue${queryArgs}`, {
         method: "DELETE",
       });
     } catch (error) {
-      console.error(`Error deleting items from ${appStatus.route}:`, error);
+      console.error(`Error deleting items from ${route}:`, error);
     }
   }
 
@@ -233,14 +237,14 @@ export default function Home() {
   }
 
   function isFilterOn() {
-    return appStatus.filters && Object.keys(appStatus.filters).length > 0;
+    return filters && Object.keys(filters).length > 0;
   }
 
   const onQueueStatusUpdated = (event) => {
 
     switch (event.data.message.name) {
       case "status":
-        if (appStatus.route === 'queue' || appStatus.route === 'completed') {
+        if (route === 'queue' || route === 'completed') {
           fetchQueueItems((appStatus.queue && appStatus.queue.info) ? appStatus.queue.info.page : 0);
         }
         break;
@@ -324,7 +328,7 @@ export default function Home() {
     }
 
     if (keypress.key === "Shift") {
-      setKeysStatus(prev => ({...prev, shiftDown: keypress.isDown}));
+      setShiftDown(keypress.isDown);
     }
   }
 
@@ -343,14 +347,13 @@ export default function Home() {
         onParentKeypress(event.data.message);
         break;
       case "QM_QueueManager_Hello":
-        // console.log("QM_QueueManager_Hello", event.data);
-        setAppStatus(prev => ({ ...prev, clientId: event.data.clientId, options: {...appStatus.options, ...event.data.settings} }));
+        setAllOptions({...event.data.settings});
         break;
       case "QM_Setting_Changed":
         // console.log("QM_Setting_Changed", event.data.message);
-        // check if path like "Gallery.ShowImages" in event.data.message.setting represent an existing object path in appStatus.options
+        // check if path like "Gallery.ShowImages" in event.data.message.setting represent an existing object path in options
         const settingPath = event.data.message.setting.split('.');
-        let current = appStatus.options;
+        let current = options;
         let exists = true;
         for (const segment of settingPath) {
           if (current.hasOwnProperty(segment)) {
@@ -360,8 +363,12 @@ export default function Home() {
           }
         }
 
+        const CategorySlug = settingPath[0];
+        const SettingKey = settingPath[1];
+
         if (exists) {
-          setAppStatus(prev => ({ ...prev, options: {...prev.options, [settingPath[0]]: {...prev.options[settingPath[0]], [settingPath[1]]: event.data.message.newValue} }}));
+          // setAppStatus(prev => ({ ...prev, options: {...prev.options, [settingPath[0]]: {...prev.options[settingPath[0]], [settingPath[1]]: event.data.message.newValue} }}));
+          setOption(CategorySlug, SettingKey, event.data.message.newValue);
         }
 
         break;
@@ -379,14 +386,14 @@ export default function Home() {
 
     const formData = new FormData();
     formData.append("queue_json", file);
-    formData.append("client_id", appStatus.clientId);
+    formData.append("client_id", useAppStore.getState().clientId);
 
     const comfyApiKey = localStorage.getItem("comfy_api_key");
     if (comfyApiKey) {
       formData.append("api_key_comfy_org", comfyApiKey);
     }
 
-    if (appStatus.route === 'archive') {
+    if (route === 'archive') {
       formData.append("archive", true);
     }
 
@@ -420,7 +427,7 @@ export default function Home() {
     appStatus.queue.pending.map((item, index) => {
       // are there outputs for this item?
       if (item[3] && item[3].outputs) {
-        const outputs = new MediaOutputs(item[3], appStatus.options.Gallery);
+        const outputs = new MediaOutputs(item[3], options.Gallery);
 
         // if there are outputs, add to items
         if (outputs.files.length > 0) {
@@ -461,7 +468,7 @@ export default function Home() {
       window.parent.postMessage({
         type: "QM_Gallery_Show",
       }, "*");
-      setAppStatus((prev) => ({ ...prev, mode: 'gallery' }));
+      setMode("gallery");
 
       // add class to body
       document.body.classList.add('gallery-open');
@@ -479,7 +486,7 @@ export default function Home() {
   function onThumbSizeCommited(event, newValue) {
     // update options on the server
     setTimeout(() =>{
-      setAppStatus(prev => ({ ...prev, options: {...prev.options, thumb_size: newValue} }));
+      setDirectOption("thumb_size", newValue);
       apiCall('queue_manager/options', {key:"thumb_size", value: newValue}, 'POST')
     })
   }
@@ -491,14 +498,14 @@ export default function Home() {
   function onCoverSizeCommited(event, newValue) {
     // update options on the server
     setTimeout(() =>{
-      setAppStatus(prev => ({ ...prev, options: {...prev.options, cover_size: newValue} }));
+      setDirectOption("cover_size", newValue);
       apiCall('queue_manager/options', {key:"cover_size", value: newValue}, 'POST')
     })
   }
 
   const setThumbMode = useEvent((mode) => {
     // update options on the server
-    setAppStatus(prev => ({...prev, options: {...prev.options, thumb_mode: mode}}));
+    setDirectOption("thumb_mode", mode);
     apiCall('queue_manager/options', {key:"thumb_mode", value: mode}, 'POST');
   });
 
@@ -512,14 +519,14 @@ export default function Home() {
 
   const closeSplash = useEvent(event => {
     setShowSplash(false);
-    if (!appStatus.options.splash_screen || appStatus.options.splash_screen !== appStatus.options.__version__) {
+    if (!options.splash_screen || options.splash_screen !== options.__version__) {
       apiCall('queue_manager/options', {key:"splash_screen", value: true}, 'POST');
     }
   })
 
   useEffect(() => {
     fetchQueueItems()
-  }, [appStatus.filters]);
+  }, [filters]);
 
   // when progress data is updated
   useEffect(() => {
@@ -573,12 +580,12 @@ export default function Home() {
     setAppStatus(prev => ({ ...prev, queue: null }));
 
     // When loading completed route, clear outputs if any (lightbox request will need to recalculate them) and pull options (since they can be changed in another tab
-    if (appStatus.route === 'completed') {
+    if (route === 'completed') {
       fetchOptions();
     }
 
     fetchQueueItems();
-  }, [appStatus.route]);
+  }, [route]);
 
   useEffect(() => {
     const onResize = () => applyGridVars(latestThumbSizePxRef.current);
@@ -602,10 +609,14 @@ export default function Home() {
     window.addEventListener("message", handleMessage);
 
     window.addEventListener('keydown', e => {
-      setKeysStatus(prev => ({...prev, shiftDown: true}));
+      if (e.key === "Shift") {
+        setShiftDown(true);
+      }
     });
     window.addEventListener('keyup', e => {
-      setKeysStatus(prev => ({...prev, shiftDown: false}));
+      if (e.key === "Shift") {
+        setShiftDown(false);
+      }
     });
 
     window.parent.postMessage(
@@ -617,7 +628,7 @@ export default function Home() {
   }, []);
 
   return (
-    <div className={`route-${appStatus.route} qm-container mode-${appStatus.mode}`}>
+    <div className={`route-${route} qm-container mode-${mode}`}>
       <AppContext.Provider value={appContextValue}>
       <TopMenu />
 
@@ -629,26 +640,26 @@ export default function Home() {
       <div className="tabs">
         {/* Queue */}
         <button
-          className={"tab" + (appStatus.route === 'queue' ? ' dark:bg-neutral-800 bg-neutral-200 active' : '')}
+          className={"tab" + (route === 'queue' ? ' dark:bg-neutral-800 bg-neutral-200 active' : '')}
           onClick={() => {
-            setAppStatus(prev => ({...prev, route: 'queue'}));
+            setRoute('queue');
           }}
         >Queue
         </button>
 
         {/* Archive */}
         <button
-          className={"tab archive" + (appStatus.route === 'archive' ? ' active' : '')}
+          className={"tab archive" + (route === 'archive' ? ' active' : '')}
           onClick={() => {
-            setAppStatus(prev => ({...prev, route: 'archive'}));
+            setRoute('archive');
           }}
         >Archive
         </button>
 
         {/* Completed */}
-        <button className={"tab completed" + (appStatus.route === 'completed' ? ' active' : '')}
+        <button className={"tab completed" + (route === 'completed' ? ' active' : '')}
                 onClick={() => {
-                  setAppStatus(prev => ({...prev, route: 'completed'}));
+                  setRoute('completed');
                 }}
         >Completed
         </button>
@@ -663,7 +674,7 @@ export default function Home() {
       {isFilterOn() &&
         <div className="filters flex items-center p-2">
           <span className="text-neutral-500">Filters:</span>
-          {Object.values(appStatus.filters).map(filter =>
+          {Object.values(filters).map(filter =>
             <div className="filter flex items-center" key={filter.type}>
                 <span
                   className="inline-flex text-neutral-800 dark:text-neutral-200 close label"><span
@@ -671,8 +682,10 @@ export default function Home() {
               <button
                 className="dark:bg-neutral-700 bg-neutral-400 text-neutral-200 light:text-neutral-800 close hover:bg-neutral-500"
                 onClick={() => {
+                  const prev = useAppStore.getState().filters;
+                  setFilters((({[filter.type]: _, ...f}) => f)(prev));
                   // remove the filter from the filters object
-                  setAppStatus(prev => ({...prev, filters: (({[filter.type]: _, ...f}) => f)(prev.filters)}));
+                  // setAppStatus(prev => ({...prev, filters: (({[filter.type]: _, ...f}) => f)(prev.filters)}));
                 }}
               >
                 <svg viewBox="0 0 24 24" width="1.2em" height="1.2em">
@@ -687,7 +700,8 @@ export default function Home() {
           <button
             className="dark:bg-neutral-700 bg-neutral-400 text-neutral-200 light:text-neutral-800 close close-all hover:bg-neutral-500 ml-auto"
             onClick={() => {
-              setAppStatus(prev => ({...prev, filters: null}));
+              // setAppStatus(prev => ({...prev, filters: null}));
+              setFilters(null);
             }}
           >
             <svg viewBox="0 0 24 24" width="1.2em" height="1.2em">
@@ -704,13 +718,12 @@ export default function Home() {
         * Queue items table
         *
         */}
-      <div className={'queue-table' + (appStatus.shiftDown ? ' shift-down' : '')}>
+      <div className={'queue-table' + (shiftDown ? ' shift-down' : '')}>
         <Queue data={appStatus.queue}
                error={appStatus.error}
                isLoading={appStatus.loading}
                progress={currentJob.progress}
-               route={appStatus.route}
-               shiftDown={keysStatus.shiftDown}
+               route={route}
         />
       </div>
 
@@ -721,27 +734,27 @@ export default function Home() {
         */}
       <footer className={"footer"}>
         {/* On Complete route show thumbnail mode and size controls */}
-        {appStatus.route === 'completed' && (appStatus.options.Gallery.ShowImages || appStatus.options.Gallery.ShowVideos) &&
+        {route === 'completed' && (options.Gallery.ShowImages || options.Gallery.ShowVideos) &&
           <Stack spacing={1} direction="row" sx={{ alignItems: 'center' }}>
             <Stack spacing={1} className={"thumb-mode"} direction="row" sx={{ alignItems: 'center', justifyContent: 'start', flex:1 }} p={1}>
               <div title="No thumbnails">
-                <ImageNotSupportedSharpIcon className={appStatus.options.thumb_mode === "none" ? 'active' : ''} onClick={() => setThumbMode("none")} />
+                <ImageNotSupportedSharpIcon className={options.thumb_mode === "none" ? 'active' : ''} onClick={() => setThumbMode("none")} />
               </div>
               <div title="Cover image only" >
-                <WallpaperSharpIcon className={appStatus.options.thumb_mode === "cover" ? 'active' : ''} onClick={() => setThumbMode("cover")} />
+                <WallpaperSharpIcon className={options.thumb_mode === "cover" ? 'active' : ''} onClick={() => setThumbMode("cover")} />
               </div>
               <div title="Show all outputs">
-                <ViewModuleSharpIcon className={appStatus.options.thumb_mode === "grid" ? 'active' : ''} onClick={() => setThumbMode("grid")} />
+                <ViewModuleSharpIcon className={options.thumb_mode === "grid" ? 'active' : ''} onClick={() => setThumbMode("grid")} />
               </div>
             </Stack>
-            {appStatus.options.thumb_mode === "grid" &&
-              <ThumbSlider min={50} max={500} value={appStatus.options.thumb_size ? appStatus.options.thumb_size : 150}
+            {options.thumb_mode === "grid" &&
+              <ThumbSlider min={50} max={500} value={options.thumb_size ? options.thumb_size : 150}
                            onChange={updateThumbnailSize}
                            onChangeCommitted={onThumbSizeCommited}
               />
             }
-            {appStatus.options.thumb_mode === "cover" &&
-              <ThumbSlider min={25} max={200} value={appStatus.options.cover_size ? appStatus.options.cover_size : 50}
+            {options.thumb_mode === "cover" &&
+              <ThumbSlider min={25} max={200} value={options.cover_size ? options.cover_size : 50}
                            onChange={updateCoverSize}
                            onChangeCommitted={onCoverSizeCommited}
               />
@@ -800,7 +813,7 @@ export default function Home() {
 
 
               {/* Queue Actions  */}
-              {appStatus.route === 'queue' &&
+              {route === 'queue' &&
                 <>
                   <Button onClick={archiveAll} variant="contained" color="warning" size="small">Archive
                     All {isFilterOn() ? "*" : "Pending"}
@@ -822,7 +835,7 @@ export default function Home() {
               }
 
               {/* Archive Actions */}
-              {appStatus.route === 'archive' &&
+              {route === 'archive' &&
                 <>
                   <Button variant="contained" size="small" onClick={playAllArchive}
                           className="hover:bg-neutral-700 text-neutral-200 dark:text-neutral-900 py-1 px-2 rounded mr-1 border-0 run run-all">
@@ -838,7 +851,7 @@ export default function Home() {
               }
 
               {/* Completed Actions */}
-              {appStatus.route === 'completed' &&
+              {route === 'completed' &&
                 <>
                   <Button variant="contained" color="secondary" size="small"  href={baseURL + "queue_manager/export" + appendFilters("?route=completed")}>
                     <FileDownloadOutlinedIcon />&nbsp;&nbsp;Export {isFilterOn() ? "*" : "Completed Jobs"}
@@ -851,14 +864,14 @@ export default function Home() {
             </>
           }
 
-          {['queue', 'archive'].includes(appStatus.route) &&
+          {['queue', 'archive'].includes(route) &&
             <form
               method="post"
               encType="multipart/form-data"
               className={"import-form"}
             >
               <Button variant="contained" color="secondary" size="small" component="label">
-                <DriveFolderUploadOutlinedIcon />&nbsp;&nbsp;Import {appStatus.route === 'queue' ? 'Queue' : 'Archive'}
+                <DriveFolderUploadOutlinedIcon />&nbsp;&nbsp;Import {route === 'queue' ? 'Queue' : 'Archive'}
                 <VisuallyHiddenInput
                   type="file"
                   onChange={uploadQueue}
@@ -874,7 +887,7 @@ export default function Home() {
           </Stack>
         </div>
       </footer>
-      {appStatus.mode === 'gallery' && galleryData &&
+      {mode === 'gallery' && galleryData &&
         <Gallery items={galleryData.items} activeItem={galleryData.activeItem} />
       }
       {showSplash &&
