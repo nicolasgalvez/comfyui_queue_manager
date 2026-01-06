@@ -17,6 +17,11 @@ export default [
         ...globals.browser,
         ...globals.es2021,
       },
+      parserOptions: {
+        ecmaFeatures: {
+          jsx: true,
+        },
+      },
     },
     plugins: {
       react,
