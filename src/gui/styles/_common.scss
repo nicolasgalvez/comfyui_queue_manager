@@ -1,0 +1,38 @@
+.media-item {
+  &.video.play-button {
+    position: relative;
+
+    &:after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cdefs%3E%3Cfilter id='shadow' x='-20%25' y='-20%25' width='140%25' height='140%25'%3E%3CfeDropShadow dx='2' dy='2' stdDeviation='6' flood-color='%23000' flood-opacity='0.5'/%3E%3C/filter%3E%3C/defs%3E%3Cpolygon points='16,12 52,32 16,52' fill='%23ffffff' filter='url(%23shadow)'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: center;
+      background-size: clamp(15px, 25%, 50px);
+
+      transform: scale(1);
+      transform-origin: center;
+      will-change: transform;
+      backface-visibility: hidden;
+
+      transition: transform 0.2s ease-in;
+    }
+
+    &:hover:after {
+      transform: scale(1.2);
+    }
+
+    &.large-play-button {
+      &:after {
+        background-size: clamp(30px, 40%, 80px);
+      }
+
+      &:hover:after {
+        transform: scale(1.25);
+      }
+    }
+  }
+}

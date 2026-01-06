@@ -510,7 +510,7 @@ export default function Gallery({items, activeItem}) {
                   <MediaItem
                     key={index}
                     file={file}
-                    className={`node-thumb ${index === mediaItem.fileIndex ? 'active' : ''}`}
+                    className={`node-thumb play-button large-play-button ${index === mediaItem.fileIndex ? 'active' : ''}`}
                     controls={false}
                     autoplay={false}
                     onClick={() => setMediaItem(prev => ({
@@ -553,7 +553,7 @@ export default function Gallery({items, activeItem}) {
 
                   <MediaItem
                     file={galleryItems.at(mediaItem.itemIndex - 1).outputs.files[0]}
-                    className={"cover-media-thumb"}
+                    className={"cover-media-thumb play-button large-play-button"}
                     controls={false}
                     autoplay={false}
                   />
@@ -566,7 +566,7 @@ export default function Gallery({items, activeItem}) {
                   <KeyboardDoubleArrowRightSharpIcon fontSize="inherit" />
                   <MediaItem
                     file={galleryItems.at(mediaItem.itemIndex + 1).outputs.files[0]}
-                    className={"cover-media-thumb"}
+                    className={"cover-media-thumb play-button large-play-button"}
                     controls={false}
                     autoplay={false}
                   />

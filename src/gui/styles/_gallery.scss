@@ -252,6 +252,10 @@
       outline: none;
       transition: 0.2s ease all;
 
+      .media-item {
+        height: 100%;
+      }
+
       svg {
         position: absolute;
         top: -20px;

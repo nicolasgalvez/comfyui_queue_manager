@@ -93,10 +93,6 @@ export const QueueItemRow = memo(function QueueItemRow({item, className, loader,
 
         {/* Thumbnail in Cover mode */}
         {route === 'completed' && thumbMode === "cover" && (galleryOptions.ShowImages || galleryOptions.ShowVideos) &&
-          (() => {
-            console.log("Cover render");
-            return true;
-          })() &&
           <TableCell className="px-3 py-1 cover">
             {mediaOutputs && mediaOutputs.cover &&
               <MediaItem
@@ -104,6 +100,7 @@ export const QueueItemRow = memo(function QueueItemRow({item, className, loader,
                 controls={false}
                 autoplay={false}
                 onClick={() => {onMediaItemClick({dbID: item[3].db_id, fileIndex: 0})}}
+                className={'play-button'}
               />
             }
           </TableCell>
