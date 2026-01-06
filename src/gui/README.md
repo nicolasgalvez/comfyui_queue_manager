@@ -1,4 +1,4 @@
-The frontend is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+The frontend is a React project built with Vite and run by bun (can use npm too).
 
 ## Getting Started
 
@@ -13,7 +13,7 @@ Open [http://localhost:3000](http://localhost:3000) with your browser to see the
 ## Gotchas
 ### Frontend in development mode vs production mode
 Coding front end in development mode (with `npm run dev`) is faster thanks to fast reloads.
-In queue-manager.js set variable QM_ENVIRONMENT to `development` to enable dev mode source of the nextjs iframe.
+In queue-manager.js set variable QM_ENVIRONMENT to `development` to enable dev mode source of the react app iframe.
 
 
 #### Cross-Origin issues
