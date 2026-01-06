@@ -37,6 +37,13 @@ body {
   overflow: hidden;
 }
 
+#root {
+  display: flex;
+  flex-direction: column;
+  background-color: red;
+  height: 100%;
+}
+
 * {
   box-sizing: border-box;
 }

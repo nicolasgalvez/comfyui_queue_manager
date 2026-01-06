@@ -3,10 +3,10 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev --hostname localhost --turbopack",
-    "build": "cross-env ENVO=prod next build",
-    "start": "next start",
-    "lint": "next lint"
+    "dev": "vite --host localhost",
+    "build": "vite build",
+    "preview": "vite preview --host localhost",
+    "lint": "eslint ."
   },
   "dependencies": {
     "@emotion/cache": "^11.14.0",
@@ -26,11 +26,13 @@
   "devDependencies": {
     "@eslint/eslintrc": "^3",
     "@tailwindcss/postcss": "^4.1.6",
+    "@vitejs/plugin-react": "^5.1.2",
     "cross-env": "^7.0.3",
     "eslint": "^9",
     "eslint-config-next": "15.3.8",
     "postcss": "^8.5.3",
     "sass": "^1.87.0",
-    "tailwindcss": "^4.1.6"
+    "tailwindcss": "^4.1.6",
+    "vite": "^7.3.0"
   }
 }
