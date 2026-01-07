@@ -78,7 +78,7 @@ class QM_Queue:
     # NOTE: This hijack will make native queue API endpoint to not return pending items.
     # We do this to avoid bottleneck in the native queue when it goes massive
     # and to avoid duplicate bandwidth for requesting queue by execution store and queue manager.
-    def get_current_queue(self, page=0, page_size=0, route="queue", filters=None, return_meta=False):
+    def get_current_queue(self, page=0, page_size=0, route="queue", filters=None, return_meta=False, order=None):
         # qm_log.info('get_current_queue: %d, %d', page, page_size)
         # Get the first page of the current queue
 
@@ -98,7 +98,7 @@ class QM_Queue:
                 case "archive":
                     order_string = "ORDER BY queue.updated_at"
                 case "completed":
-                    order_string = "ORDER BY queue.updated_at DESC"
+                    order_string = "ORDER BY queue.updated_at ASC" if order == "asc" else "ORDER BY queue.updated_at DESC"
                     join_string = "LEFT JOIN meta as outputs ON queue.id = outputs.item_id AND outputs.key = 'outputs'"
                     select_string = f"{select_string}, outputs.value as outputs"
 

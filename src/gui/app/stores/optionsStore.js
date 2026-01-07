@@ -5,6 +5,7 @@ export const useOptionsStore = create((set) => ({
   Completed:{
     CoverThumbMode: "Cropped",
     GridThumbMode: "Square Fit",
+    ListOrder: "Newest first",
   },
   Gallery:{},
   thumb_mode: 'cover',

@@ -31,9 +31,19 @@ class QM_Server:
             # Get page size from extension settings
             settings = self.user_manager.settings.get_settings(None)
             page_size = settings.get("QueueManager.Basic.PageSize", 100)
+            if route == "completed":
+                order = settings.get("QueueManager.Completed.ListOrder", "Newest first")
+                if order == "Newest first":
+                    order = "desc"
+                else:
+                    order = "asc"
+            else:
+                order = None
 
             # pending items
-            running, pending, info = self.queue.get_current_queue(page, page_size, route=route, filters=filters, return_meta=True)
+            running, pending, info = self.queue.get_current_queue(
+                page, page_size, route=route, filters=filters, return_meta=True, order=order
+            )
 
             # Remove sensitive data
             remove_sensitive = lambda queue: [x[:5] for x in queue]

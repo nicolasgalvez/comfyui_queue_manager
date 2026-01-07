@@ -51,6 +51,7 @@ export default function Home() {
   });
 
   const options = useOptionsStore((state) => state);
+  const completedListOrder = useOptionsStore((state) => state.Completed.ListOrder);
   const setAllOptions = useOptionsStore((state) => state.setAllOptions);
   const setOption = useOptionsStore((state) => state.setOption);
   const setDirectOption = useOptionsStore((state) => state.setDirectOption);
@@ -526,6 +527,12 @@ export default function Home() {
   useEffect(() => {
     fetchQueueItems()
   }, [filters]);
+
+  useEffect(() => {
+    if (route === 'completed') {
+      fetchQueueItems();
+    }
+  }, [completedListOrder]);
 
   // when progress data is updated
   useEffect(() => {
