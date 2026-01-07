@@ -9,10 +9,10 @@ import TableHead from '@mui/material/TableHead';
 import TableRow from '@mui/material/TableRow';
 import Paper from '@mui/material/Paper';
 import {memo, useMemo } from "react";
-import {LoaderSpinner} from "@/components/LoaderSpinner";
-import {QueueItemRow} from "@/components/QueueItemRow";
-import {useAppStore} from "@/stores/appStore";
-import {useOptionsStore} from "@/stores/optionsStore";
+import {LoaderSpinner} from "../components/LoaderSpinner";
+import {QueueItemRow} from "../components/QueueItemRow";
+import {useAppStore} from "../stores/appStore";
+import {useOptionsStore} from "../stores/optionsStore";
 
 const QueueItems = memo(function QueueItems({running, pending, error, isLoading, info}) {
   return (

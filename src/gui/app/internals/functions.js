@@ -1,4 +1,4 @@
-import {baseURL} from "@/internals/config";
+import {baseURL} from "../internals/config";
 
 export async function apiCall(endpoint, data, method = "POST") {
   // is endpoint an absolute URL

@@ -1,11 +1,11 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
 
-import Home from "./app/page.jsx";
+import Home from "./app/index.jsx";
 
-import "./app/tailwind.css";
+import "./styles/tailwind.css";
 
-import "./app/globals.scss";
+import "./styles/styles.scss";
 
 import "@fontsource/roboto/300.css";
 import "@fontsource/roboto/400.css";

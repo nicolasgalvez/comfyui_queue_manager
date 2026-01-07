@@ -1,5 +1,5 @@
 import {memo, useEffect, useRef} from "react";
-import {baseURL} from "@/internals/config";
+import {baseURL} from "../internals/config";
 
 
 export const MediaItem = memo(function MediaItem({file, onClick, autoplay, className="", controls=true, toggleable=false}) {

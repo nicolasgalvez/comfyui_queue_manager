@@ -1,4 +1,4 @@
-import { hasVideos, mediaType } from "@/internals/functions";
+import { hasVideos, mediaType } from "../internals/functions";
 
 export class MediaOutputs {
   files = null;

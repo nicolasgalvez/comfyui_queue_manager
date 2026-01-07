@@ -1,6 +1,5 @@
 "use client";
 
-import PhotoOutlinedIcon from "@mui/icons-material/PhotoOutlined";
 import FileDownloadOutlinedIcon from "@mui/icons-material/FileDownloadOutlined";
 import PlayArrowOutlinedIcon from "@mui/icons-material/PlayArrowOutlined";
 import DeleteOutlineSharpIcon from "@mui/icons-material/DeleteOutlineSharp";
@@ -13,25 +12,24 @@ import KeyboardArrowRightSharpIcon from '@mui/icons-material/KeyboardArrowRightS
 import UploadSharpIcon from '@mui/icons-material/UploadSharp';
 import { styled } from '@mui/material/styles';
 
-import TopMenu from "@/components/TopMenu";
-import {Queue} from "@/components/Queue";
+import TopMenu from "./components/TopMenu";
+import {Queue} from "./components/Queue";
 import Stack from "@mui/material/Stack";
-import {Slider} from "@mui/material";
 import Button from "@mui/material/Button";
-import {baseURL} from "@/internals/config";
-import {useContext, useEffect, useState, useCallback, useMemo, useRef} from "react";
-import {apiCall, hasVideos, mediaType} from "@/internals/functions";
+import {baseURL} from "./internals/config";
+import { useEffect, useState, useCallback, useMemo, useRef} from "react";
+import {apiCall} from "./internals/functions";
 import useEvent from "react-use-event-hook";
-import {AppContext} from "@/internals/app-context";
-import ThumbSlider from "@/components/ThumbSlider";
-import Gallery from "@/components/Gallery";
-import {SplashScreen} from "@/components/SplashScreen";
+import {AppContext} from "./internals/app-context";
+import ThumbSlider from "./components/ThumbSlider";
+import Gallery from "./components/Gallery";
+import {SplashScreen} from "./components/SplashScreen";
 
-import {compareVersions} from "@/internals/functions";
-import {MediaOutputs} from "@/models/MediaOutputs";
-import {OrderedMap} from "@/models/OrderedMap"
-import {useOptionsStore} from "@/stores/optionsStore";
-import {useAppStore} from "@/stores/appStore";
+import {compareVersions} from "./internals/functions";
+import {MediaOutputs} from "./models/MediaOutputs";
+import {OrderedMap} from "./models/OrderedMap"
+import {useOptionsStore} from "./stores/optionsStore";
+import {useAppStore} from "./stores/appStore";
 
 const VisuallyHiddenInput = styled('input')({
   clip: 'rect(0 0 0 0)',

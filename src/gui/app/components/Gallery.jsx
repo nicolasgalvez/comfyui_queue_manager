@@ -14,16 +14,16 @@ import MoreVertSharpIcon from '@mui/icons-material/MoreVertSharp';
 import WebAssetOffSharpIcon from '@mui/icons-material/WebAssetOffSharp';
 import BurstModeSharpIcon from '@mui/icons-material/BurstModeSharp';
 
-import {baseURL} from "@/internals/config";
+import {baseURL} from "../internals/config";
 import useEvent from "react-use-event-hook";
 import Button from "@mui/material/Button";
 import DeleteOutlineSharpIcon from "@mui/icons-material/DeleteOutlineSharp";
-import {apiCall, msgLoadWorkflow} from "@/internals/functions";
-import GalleryProgressBar from "@/components/GalleryProgressBar";
-import {MediaItem} from "@/components/MediaItem";
-import {OrderedMap} from "@/models/OrderedMap";
-import {useAppStore} from "@/stores/appStore";
-import {useOptionsStore} from "@/stores/optionsStore";
+import {apiCall, msgLoadWorkflow} from "../internals/functions";
+import GalleryProgressBar from "../components/GalleryProgressBar";
+import {MediaItem} from "../components/MediaItem";
+import {OrderedMap} from "../models/OrderedMap";
+import {useAppStore} from "../stores/appStore";
+import {useOptionsStore} from "../stores/optionsStore";
 
 export default function Gallery({items, activeItem}) {
   /**

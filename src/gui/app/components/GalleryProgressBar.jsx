@@ -1,5 +1,3 @@
-import {useEffect, useState} from "react";
-
 export default function GalleryProgressBar({galleryItems, mediaItem, onItemClick}) {
   if (galleryItems.length === 0 || !mediaItem) {
     return null; // No items to display

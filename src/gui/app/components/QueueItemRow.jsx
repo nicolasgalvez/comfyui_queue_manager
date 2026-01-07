@@ -1,19 +1,19 @@
 "use client";
 
 import React, {useContext, Fragment } from "react";
-import {apiCall, msgLoadWorkflow, } from "@/internals/functions";
-import {AppContext} from "@/internals/app-context";
-import {MediaItem} from "@/components/MediaItem";
+import {apiCall, msgLoadWorkflow, } from "../internals/functions";
+import {AppContext} from "../internals/app-context";
+import {MediaItem} from "../components/MediaItem";
 import Button from '@mui/material/Button';
 import Stack from '@mui/material/Stack';
 import TableCell from '@mui/material/TableCell';
 import TableRow from '@mui/material/TableRow';
 import PlayArrowOutlinedIcon from '@mui/icons-material/PlayArrowOutlined';
 import {memo, useMemo } from "react";
-import {MediaOutputs} from "@/models/MediaOutputs";
-import {useOptionsStore} from "@/stores/optionsStore";
-import {useAppStore} from "@/stores/appStore";
-import {LoaderSpinner} from "@/components/LoaderSpinner";
+import {MediaOutputs} from "../models/MediaOutputs";
+import {useOptionsStore} from "../stores/optionsStore";
+import {useAppStore} from "../stores/appStore";
+import {LoaderSpinner} from "../components/LoaderSpinner";
 
 /**
  *

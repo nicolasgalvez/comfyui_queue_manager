@@ -1,12 +1,12 @@
 import {EllipsisVertical} from "lucide-react";
-import {apiCall} from "@/internals/functions";
+import {apiCall} from "../internals/functions";
 import {useContext, useState, useRef, useEffect } from "react";
-import {AppContext} from "@/internals/app-context";
+import {AppContext} from "../internals/app-context";
 
 import AdsClickSharpIcon from '@mui/icons-material/AdsClickSharp';
 import InfoOutlineSharpIcon from '@mui/icons-material/InfoOutlineSharp';
 import Button from "@mui/material/Button";
-import {useAppStore} from "@/stores/appStore";
+import {useAppStore} from "../stores/appStore";
 
 export default function TopMenu() {
   const [uiState, setUiState] = useState({
