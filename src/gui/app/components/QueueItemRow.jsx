@@ -101,6 +101,7 @@ export const QueueItemRow = memo(function QueueItemRow({item, className, loader,
                 autoplay={false}
                 onClick={() => {onMediaItemClick({dbID: item[3].db_id, fileIndex: 0})}}
                 className={'play-button'}
+                title={"Open gallery"}
               />
             }
           </TableCell>
@@ -165,6 +166,7 @@ export const QueueItemRow = memo(function QueueItemRow({item, className, loader,
                         fileIndex: fileIndex
                       })
                     }}
+                    title={"Open gallery"}
                   />
                 ))
               }

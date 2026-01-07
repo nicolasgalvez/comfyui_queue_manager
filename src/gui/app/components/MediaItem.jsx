@@ -2,7 +2,7 @@ import {memo, useEffect, useRef} from "react";
 import {baseURL} from "../internals/config";
 
 
-export const MediaItem = memo(function MediaItem({file, onClick, autoplay, className="", controls=true, toggleable=false}) {
+export const MediaItem = memo(function MediaItem({file, onClick, autoplay, className="", controls=true, toggleable=false, title=""}) {
   const {filename, subfolder} = file;
   const videoRef = useRef(null);
   const ext = filename.split('.').pop().toLowerCase();
@@ -35,7 +35,7 @@ export const MediaItem = memo(function MediaItem({file, onClick, autoplay, class
   }, [src, isVideo, autoplay]);
 
   return (
-    <div className={className + " media-item " + (isVideo ? "video" : "image")} title={"Open gallery"} onClick={onClick}>
+    <div className={className + " media-item " + (isVideo ? "video" : "image")} title={title} onClick={onClick}>
       {(ext === 'mp4' || ext === 'webm')
         ? (
           <>

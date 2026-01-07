@@ -470,6 +470,11 @@ export default function Gallery({items, activeItem}) {
      * Keyboard navigation
      */
     window.addEventListener("keydown", keyboardNavigation);
+
+    return () => {
+      window.removeEventListener("click", onOutsideClickActionsMenu);
+      window.removeEventListener("keydown", keyboardNavigation);
+    }
   }, [keyboardNavigation, onOutsideClickActionsMenu]);
 
 
@@ -505,7 +510,7 @@ export default function Gallery({items, activeItem}) {
           {showUI &&
             <div className={'node-thumbs'}>
               <div className={"node-thumbs-container"} ref={thumbsContainerRef}>
-                {/*  Display all files from the node */}
+                {/*  Display all files from the job */}
                 {mediaItem.queueItem.outputs.files.map((file, index) => (
                   <MediaItem
                     key={index}
@@ -548,7 +553,7 @@ export default function Gallery({items, activeItem}) {
             <nav className={"footer-nav"}>
             {/*  Nav to go to next / previous item.*/}
               {mediaItem.itemIndex > 0 && (
-                <button type={"button"} className={"prev-item"} onClick={() => previousItem()} title={'Previous Prompt (PgUp)'}>
+                <button type={"button"} className={"prev-item"} onClick={() => previousItem()} title={'Previous Prompt (ArrowUp)'}>
                   <KeyboardDoubleArrowLeftSharpIcon fontSize="inherit" />
 
                   <MediaItem
@@ -556,19 +561,21 @@ export default function Gallery({items, activeItem}) {
                     className={"cover-media-thumb play-button large-play-button"}
                     controls={false}
                     autoplay={false}
+                    title={'Previous Prompt (ArrowUp)'}
                   />
 
                 </button>
               )}
 
               {mediaItem.itemIndex < galleryItems.length - 1 && (
-                <button type={"button"} className={"next-item"} onClick={() => nextItem()} title={'Next Prompt (PgDown)'}>
+                <button type={"button"} className={"next-item"} onClick={() => nextItem()} title={'Next Prompt (ArrowDown)'}>
                   <KeyboardDoubleArrowRightSharpIcon fontSize="inherit" />
                   <MediaItem
                     file={galleryItems.at(mediaItem.itemIndex + 1).outputs.files[0]}
                     className={"cover-media-thumb play-button large-play-button"}
                     controls={false}
                     autoplay={false}
+                    title={'Next Prompt (ArrowDown)'}
                   />
                 </button>
               )}
