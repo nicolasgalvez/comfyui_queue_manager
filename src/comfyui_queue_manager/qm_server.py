@@ -76,7 +76,9 @@ class QM_Server:
             if "filters" in json_data:
                 filters = json_data["filters"]
 
-            moved = self.queue.play_archive(client_id, filters)
+            front = json_data.get("front", False) == True
+
+            moved = self.queue.play_archive(client_id, filters, front)
             return web.json_response({"queued": moved})
 
         # Toggle Play/Pause of the queue

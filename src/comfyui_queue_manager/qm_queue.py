@@ -96,9 +96,12 @@ class QM_Queue:
                 case "queue":
                     running.extend(self.native_queue.currently_running.values())
                 case "archive":
-                    order_string = "ORDER BY queue.updated_at"
+                    order_string = "ORDER BY queue.updated_at, number"
                 case "completed":
                     order_string = "ORDER BY queue.updated_at ASC" if order == "asc" else "ORDER BY queue.updated_at DESC"
+                    order_string += (
+                        ", number ASC" if order == "asc" else ", number DESC"
+                    )  # just in case, normally there won't be two items completed at the same time
                     join_string = "LEFT JOIN meta as outputs ON queue.id = outputs.item_id AND outputs.key = 'outputs'"
                     select_string = f"{select_string}, outputs.value as outputs"
 
@@ -612,10 +615,16 @@ class QM_Queue:
             return moved
 
     # Change status to 0 for all items with status 3, update the client_id and set correct priority for each item
-    def play_archive(self, client_id=None, filters=None):
+    def play_archive(self, client_id=None, filters=None, front=False):
         with self.native_queue.mutex:
             # Play the item from the database
             where_string, params = self.get_filters(filters, ["status = 3"])
+
+            # If front we queue from last to first to retain order after applying negative priority
+            if front:
+                order = "DESC"
+            else:
+                order = "ASC"
 
             # Get the archived items from the database
             rows = read_query(
@@ -623,7 +632,7 @@ class QM_Queue:
                 SELECT id, prompt
                 FROM queue
                 WHERE {where_string}
-                ORDER BY updated_at
+                ORDER BY updated_at {order}, `number` {order}
             """,
                 params,
             )
@@ -635,10 +644,10 @@ class QM_Queue:
 
                 item = json.loads(row[1])
                 item[3]["client_id"] = client_id
-                item[0] = PromptServer.instance.number
+                item[0] = PromptServer.instance.number * (-1 if front else 1)
                 parameters.append(
                     (
-                        PromptServer.instance.number,
+                        item[0],
                         json.dumps(item),
                         row[0],
                     )
@@ -777,16 +786,16 @@ class QM_Queue:
                     )
                     min_number -= 1
 
-            # Get task counter (highest task number) from the database
+            # Get task counter (highest absolute task number) from the database
             rows = read_single("""
-                SELECT number
+                SELECT
+                    MIN(number) as min_number,
+                    MAX(number) as max_number
                 FROM queue
                 WHERE status = 1 OR status = 0 -- pending or running
-                ORDER BY number DESC
-                LIMIT 1
             """)
             if rows:
-                task_counter = rows[0] + 1
+                task_counter = max(abs(rows[0]), abs(rows[1])) + 1
             else:
                 task_counter = 1
 

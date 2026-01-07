@@ -206,6 +206,7 @@ export default function Home() {
     await apiCall('queue_manager/play-archive', {
       client_id: useAppStore.getState().clientId,
       filters: isFilterOn() ? filters : null,
+      front: useAppStore.getState().shiftDown === true
     })
   }
 
