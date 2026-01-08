@@ -338,9 +338,6 @@ export function registerSidebar() {
           .comfyui-queue-manager { height: 100% }
         </style>
         <div class='comfyui-queue-manager flex flex-col'>
-          <header class="px-2 py-1 text-sm header">
-            QUEUE MANAGER
-          </header>
           <section class='app-iframe flex-1'>
             <iframe name="qm_queue_iframe" src="${QueueManagerURL}" class="w-full h-full border-0"></iframe>
           </section>

@@ -26,13 +26,12 @@ body {
 }
 
 body {
-  margin-top: calc(2.875rem + 1px);
   color: var(--foreground);
   background: transparent;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   display: flex;
-  height: calc(100% - 2.875rem - 1px);
+  height: 100%;
   flex-direction: column;
   overflow: hidden;
 }

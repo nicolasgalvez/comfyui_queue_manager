@@ -10,6 +10,7 @@ import ViewModuleSharpIcon from '@mui/icons-material/ViewModuleSharp';
 import KeyboardArrowLeftSharpIcon from '@mui/icons-material/KeyboardArrowLeftSharp';
 import KeyboardArrowRightSharpIcon from '@mui/icons-material/KeyboardArrowRightSharp';
 import UploadSharpIcon from '@mui/icons-material/UploadSharp';
+import Inventory2SharpIcon from '@mui/icons-material/Inventory2Sharp';
 import { styled } from '@mui/material/styles';
 
 import TopMenu from "./components/TopMenu";
@@ -84,7 +85,7 @@ export default function Home() {
   const applyGridVars = useCallback((thumbSizePx) => {
     const root = document.documentElement;
 
-    const gapPx = 0;
+    const gapPx = 6;
     const minCols = 1;
 
     // Choose basis: viewport width
@@ -636,47 +637,50 @@ export default function Home() {
 
   return (
     <div className={`route-${route} qm-container mode-${mode}`}>
+      <header className="px-2 py-1 text-sm header font-bold">
+        Queue Manager
+      </header>
       <AppContext.Provider value={appContextValue}>
-      <TopMenu />
+        <TopMenu/>
 
-      {/*
+        {/*
         *
         *  Tabs Nav
         *
         */}
-      <div className={"tabs" + (shiftDown ? ' shift-down' : '')}>
-        {/* Queue */}
-        <button
-          className={"tab" + (route === 'queue' ? ' dark:bg-neutral-800 bg-neutral-200 active' : '')}
-          onClick={() => {
-            setRoute('queue');
-          }}
-        >Queue
-        </button>
+        <div className={"tabs" + (shiftDown ? ' shift-down' : '')}>
+          {/* Queue */}
+          <button
+            className={"tab queue" + (route === 'queue' ? ' active' : '')}
+            onClick={() => {
+              setRoute('queue');
+            }}
+          >Queue
+          </button>
 
-        {/* Archive */}
-        <button
-          className={"tab archive" + (route === 'archive' ? ' active' : '')}
-          onClick={() => {
-            setRoute('archive');
-          }}
-        >Archive
-        </button>
+          {/* Archive */}
+          <button
+            className={"tab archive" + (route === 'archive' ? ' active' : '')}
+            onClick={() => {
+              setRoute('archive');
+            }}
+          >Archive
+          </button>
 
-        {/* Completed */}
-        <button className={"tab completed" + (route === 'completed' ? ' active' : '')}
-                onClick={() => {
-                  setRoute('completed');
-                }}
-        >Completed
-        </button>
+          {/* Completed */}
+          <button className={"tab completed" + (route === 'completed' ? ' active' : '')}
+                  onClick={() => {
+                    setRoute('completed');
+                  }}
+          >Completed
+          </button>
 
-        {shiftDown && route === "archive" &&
-          <div className={"play-first"}>
-            <UploadSharpIcon /> Press Run to queue at front
-          </div>
-        }
-      </div>
+          {shiftDown && route === "archive" &&
+            <div className={"play-first"}>
+              <UploadSharpIcon/> Press Run to queue at front
+            </div>
+          }
+        </div>
 
         {/*
         *
@@ -691,215 +695,227 @@ export default function Home() {
                 <span
                   className="inline-flex text-neutral-800 dark:text-neutral-200 close label"><span
                   className={'type'}>{filter.type + ": "}&nbsp;</span>{filter.valueLabel}</span>
-              <button
-                className="dark:bg-neutral-700 bg-neutral-400 text-neutral-200 light:text-neutral-800 close hover:bg-neutral-500"
-                onClick={() => {
-                  // remove the filter from the filters object
-                  const prev = useAppStore.getState().filters;
-                  setFilters((({[filter.type]: _, ...f}) => f)(prev));
-                }}
-              >
-                <svg viewBox="0 0 24 24" width="1.2em" height="1.2em">
-                  <path fill="currentColor"
-                        d="M19 6.41L17.59 5L12 10.59L6.41 5L5 6.41L10.59 12L5 17.59L6.41 19L12 13.41L17.59 19L19 17.59L13.41 12L19 6.41Z"></path>
-                </svg>
-              </button>
-            </div>
-          )}
+                <button
+                  className="dark:bg-neutral-700 bg-neutral-400 text-neutral-200 light:text-neutral-800 close hover:bg-neutral-500"
+                  onClick={() => {
+                    // remove the filter from the filters object
+                    const prev = useAppStore.getState().filters;
+                    setFilters((({[filter.type]: _, ...f}) => f)(prev));
+                  }}
+                >
+                  <svg viewBox="0 0 24 24" width="1.2em" height="1.2em">
+                    <path fill="currentColor"
+                          d="M19 6.41L17.59 5L12 10.59L6.41 5L5 6.41L10.59 12L5 17.59L6.41 19L12 13.41L17.59 19L19 17.59L13.41 12L19 6.41Z"></path>
+                  </svg>
+                </button>
+              </div>
+            )}
 
-          {/*  Clear all  */}
-          <button
-            className="dark:bg-neutral-700 bg-neutral-400 text-neutral-200 light:text-neutral-800 close close-all hover:bg-neutral-500 ml-auto"
-            onClick={() => {
-              setFilters(null);
-            }}
-          >
-            <svg viewBox="0 0 24 24" width="1.2em" height="1.2em">
-              <path fill="currentColor"
-                    d="M19 6.41L17.59 5L12 10.59L6.41 5L5 6.41L10.59 12L5 17.59L6.41 19L12 13.41L17.59 19L19 17.59L13.41 12L19 6.41Z"></path>
-            </svg>
-            Clear filters
-          </button>
-        </div>
-      }
+            {/*  Clear all  */}
+            <button
+              className="dark:bg-neutral-700 bg-neutral-400 text-neutral-200 light:text-neutral-800 close close-all hover:bg-neutral-500 ml-auto"
+              onClick={() => {
+                setFilters(null);
+              }}
+            >
+              <svg viewBox="0 0 24 24" width="1.2em" height="1.2em">
+                <path fill="currentColor"
+                      d="M19 6.41L17.59 5L12 10.59L6.41 5L5 6.41L10.59 12L5 17.59L6.41 19L12 13.41L17.59 19L19 17.59L13.41 12L19 6.41Z"></path>
+              </svg>
+              Clear filters
+            </button>
+          </div>
+        }
 
-      {/*
+        {/*
         *
         * Queue items table
         *
         */}
-      <div className={'queue-table'}>
-        <Queue data={appStatus.queue}
-               error={appStatus.error}
-               isLoading={appStatus.loading}
-               progress={currentJob.progress}
-               route={route}
-        />
-      </div>
+        <div className={'queue-table'}>
+          <Queue data={appStatus.queue}
+                 error={appStatus.error}
+                 isLoading={appStatus.loading}
+                 progress={currentJob.progress}
+                 route={route}
+          />
+        </div>
 
-      {/*
+        {/*
         *
         * Footer with paging and actions
         *
         */}
-      <footer className={"footer"}>
-        {/* On Complete route show thumbnail mode and size controls */}
-        {route === 'completed' && (options.Gallery.ShowImages || options.Gallery.ShowVideos) &&
-          <Stack spacing={1} direction="row" sx={{ alignItems: 'center' }}>
-            <Stack spacing={1} className={"thumb-mode"} direction="row" sx={{ alignItems: 'center', justifyContent: 'start', flex:1 }} p={1}>
-              <div title="No thumbnails">
-                <ImageNotSupportedSharpIcon className={options.thumb_mode === "none" ? 'active' : ''} onClick={() => setThumbMode("none")} />
-              </div>
-              <div title="Cover image only" >
-                <WallpaperSharpIcon className={options.thumb_mode === "cover" ? 'active' : ''} onClick={() => setThumbMode("cover")} />
-              </div>
-              <div title="Show all outputs">
-                <ViewModuleSharpIcon className={options.thumb_mode === "grid" ? 'active' : ''} onClick={() => setThumbMode("grid")} />
-              </div>
+        <footer className={"footer"}>
+          {/* On Complete route show thumbnail mode and size controls */}
+          {route === 'completed' && (options.Gallery.ShowImages || options.Gallery.ShowVideos) &&
+            <Stack spacing={1} direction="row" sx={{alignItems: 'center'}}>
+              <Stack spacing={1} className={"thumb-mode"} direction="row"
+                     sx={{alignItems: 'center', justifyContent: 'start', flex: 1}} p={1}>
+                <div title="No thumbnails">
+                  <ImageNotSupportedSharpIcon className={options.thumb_mode === "none" ? 'active' : ''}
+                                              onClick={() => setThumbMode("none")}/>
+                </div>
+                <div title="Cover image only">
+                  <WallpaperSharpIcon className={options.thumb_mode === "cover" ? 'active' : ''}
+                                      onClick={() => setThumbMode("cover")}/>
+                </div>
+                <div title="Show all outputs">
+                  <ViewModuleSharpIcon className={options.thumb_mode === "grid" ? 'active' : ''}
+                                       onClick={() => setThumbMode("grid")}/>
+                </div>
+              </Stack>
+              {options.thumb_mode === "grid" &&
+                <ThumbSlider min={50} max={500} value={options.thumb_size ? options.thumb_size : 150}
+                             onChange={updateThumbnailSize}
+                             onChangeCommitted={onThumbSizeCommited}
+                />
+              }
+              {options.thumb_mode === "cover" &&
+                <ThumbSlider min={25} max={200} value={options.cover_size ? options.cover_size : 50}
+                             onChange={updateCoverSize}
+                             onChangeCommitted={onCoverSizeCommited}
+                />
+              }
             </Stack>
-            {options.thumb_mode === "grid" &&
-              <ThumbSlider min={50} max={500} value={options.thumb_size ? options.thumb_size : 150}
-                           onChange={updateThumbnailSize}
-                           onChangeCommitted={onThumbSizeCommited}
-              />
-            }
-            {options.thumb_mode === "cover" &&
-              <ThumbSlider min={25} max={200} value={options.cover_size ? options.cover_size : 50}
-                           onChange={updateCoverSize}
-                           onChangeCommitted={onCoverSizeCommited}
-              />
-            }
-          </Stack>
 
-        }
-
-        {/* Paging */}
-        <div className={"paging flex"}>
-          {appStatus.queue && appStatus.queue.info && (appStatus.queue.info.last_page > 0) &&
-            <>
-              {/* Previous page if needed */}
-              <Button
-                size="small"
-                className={"page" + (appStatus.queue.info.page === 0 ? ' disabled' : '')}
-                onClick={() => {
-                  fetchQueueItems(appStatus.queue.info.page - 1);
-                }}
-                disabled={appStatus.queue.info.page === 0}
-              ><KeyboardArrowLeftSharpIcon /></Button>
-              <div className={'pages flex'}>
-                {Array.from({length: (appStatus.queue.info.last_page + 1)}, (_, i) => (
-                  <button
-                    key={i}
-                    className={"page" + (appStatus.queue.info.page === i ? ' active' : '')}
-                    onClick={() => {
-                      fetchQueueItems(i);
-                    }}
-                  >
-                    {i + 1}
-                  </button>
-                ))}
-              </div>
-              {/* Next page if needed */}
-              <Button
-                size="small"
-                className={"page" + (appStatus.queue.info.page === appStatus.queue.info.last_page ? ' disabled' : '')}
-                onClick={() => {
-                  fetchQueueItems(appStatus.queue.info.page + 1);
-                }}
-                disabled={appStatus.queue.info.page === appStatus.queue.info.last_page}
-              ><KeyboardArrowRightSharpIcon /></Button>
-            </>
           }
-        </div>
 
-        {/* Footer Actions */}
-        <div className="p-2 flex actions">
-          <Stack direction="row" spacing={1} className={'min-w-full'} useFlexGap>
-          {appStatus.queue && (appStatus.queue.running.length > 0 || appStatus.queue.pending.length > 0) &&
-            <>
+          {/* Paging */}
+          <div className={"paging flex"}>
+            {appStatus.queue && appStatus.queue.info && (appStatus.queue.info.last_page > 0) &&
+              <>
+                {/* Previous page if needed */}
+                <Button
+                  size="small"
+                  className={"page" + (appStatus.queue.info.page === 0 ? ' disabled' : '')}
+                  onClick={() => {
+                    fetchQueueItems(appStatus.queue.info.page - 1);
+                  }}
+                  disabled={appStatus.queue.info.page === 0}
+                ><KeyboardArrowLeftSharpIcon/></Button>
+                <div className={'pages flex'}>
+                  {Array.from({length: (appStatus.queue.info.last_page + 1)}, (_, i) => (
+                    <button
+                      key={i}
+                      className={"page" + (appStatus.queue.info.page === i ? ' active' : '')}
+                      onClick={() => {
+                        fetchQueueItems(i);
+                      }}
+                    >
+                      {i + 1}
+                    </button>
+                  ))}
+                </div>
+                {/* Next page if needed */}
+                <Button
+                  size="small"
+                  className={"page" + (appStatus.queue.info.page === appStatus.queue.info.last_page ? ' disabled' : '')}
+                  onClick={() => {
+                    fetchQueueItems(appStatus.queue.info.page + 1);
+                  }}
+                  disabled={appStatus.queue.info.page === appStatus.queue.info.last_page}
+                ><KeyboardArrowRightSharpIcon/></Button>
+              </>
+            }
+          </div>
 
-
-              {/* Queue Actions  */}
-              {route === 'queue' &&
+          {/* Footer Actions */}
+          <div className="p-2 flex actions">
+            <Stack direction="row" spacing={1} className={'min-w-full'} useFlexGap>
+              {appStatus.queue && (appStatus.queue.running.length > 0 || appStatus.queue.pending.length > 0) &&
                 <>
-                  <Button onClick={archiveAll} variant="contained" color="warning" size="small">Archive
-                    All {isFilterOn() ? "*" : "Pending"}
-                  </Button>
-                  <Button variant="contained" color="secondary" size="small"  href={baseURL + "queue_manager/export" + appendFilters("")}>
-                    <FileDownloadOutlinedIcon />&nbsp;&nbsp;Export {isFilterOn() ? "*" : "Queue"}
-                  </Button>
-                  {isFilterOn()
-                    ?
-                    <Button variant="contained" color="error" size="small" onClick={deleteFromQueue} className={"order-last"} sx={{ ml: 'auto' }}>
-                      <DeleteOutlineSharpIcon />&nbsp;&nbsp;Delete All *
-                    </Button>
-                    :
-                    <Button variant="contained" color="error" size="small" onClick={clearPending} className={"order-last"} sx={{ ml: 'auto' }}>
-                      <DeleteOutlineSharpIcon />&nbsp;&nbsp;Delete All Pending
-                    </Button>
+
+
+                  {/* Queue Actions  */}
+                  {route === 'queue' &&
+                    <>
+                      <Button onClick={archiveAll} variant="contained" color="warning" size="small">
+                        <Inventory2SharpIcon/>&nbsp;
+                        Archive All {isFilterOn() ? "*" : "Pending"}
+                      </Button>
+                      <Button variant="contained" color="secondary" size="small"
+                              href={baseURL + "queue_manager/export" + appendFilters("")}>
+                        <FileDownloadOutlinedIcon/>&nbsp;&nbsp;Export {isFilterOn() ? "*" : "Queue"}
+                      </Button>
+                      {isFilterOn()
+                        ?
+                        <Button variant="contained" color="error" size="small" onClick={deleteFromQueue}
+                                className={"order-last"} sx={{ml: 'auto'}}>
+                          <DeleteOutlineSharpIcon/>&nbsp;&nbsp;Delete All *
+                        </Button>
+                        :
+                        <Button variant="contained" color="error" size="small" onClick={clearPending}
+                                className={"order-last"} sx={{ml: 'auto'}}>
+                          <DeleteOutlineSharpIcon/>&nbsp;&nbsp;Delete All Pending
+                        </Button>
+                      }
+                    </>
+                  }
+
+                  {/* Archive Actions */}
+                  {route === 'archive' &&
+                    <>
+                      <Button variant="contained" size="small" onClick={playAllArchive}
+                              className="hover:bg-neutral-700 text-neutral-200 dark:text-neutral-900 py-1 px-2 rounded mr-1 border-0 run run-all">
+                        <PlayArrowOutlinedIcon/>&nbsp;&nbsp;Run All {isFilterOn() ? "*" : ""}
+                      </Button>
+                      <Button variant="contained" color="secondary" size="small"
+                              href={baseURL + "queue_manager/export" + appendFilters("?route=archive")}>
+                        <FileDownloadOutlinedIcon/>&nbsp;&nbsp;Export {isFilterOn() ? "*" : "Archive"}
+                      </Button>
+                      <Button onClick={deleteFromQueue} variant="contained" color="error" size="small"
+                              className={"order-last"} sx={{ml: 'auto'}}>
+                        <DeleteOutlineSharpIcon/>&nbsp;&nbsp;Delete {isFilterOn() ? "All *" : "All Archive"}
+                      </Button>
+                    </>
+                  }
+
+                  {/* Completed Actions */}
+                  {route === 'completed' &&
+                    <>
+                      <Button variant="contained" color="secondary" size="small"
+                              href={baseURL + "queue_manager/export" + appendFilters("?route=completed")}>
+                        <FileDownloadOutlinedIcon/>&nbsp;&nbsp;Export {isFilterOn() ? "*" : "Completed Jobs"}
+                      </Button>
+                      <Button variant="contained" color="error" size="small" onClick={deleteFromQueue}
+                              className={"order-last"} sx={{ml: 'auto'}}>
+                        <DeleteOutlineSharpIcon/>&nbsp;&nbsp;Delete {isFilterOn() ? "All *" : "All Completed Jobs"}
+                      </Button>
+                    </>
                   }
                 </>
               }
 
-              {/* Archive Actions */}
-              {route === 'archive' &&
-                <>
-                  <Button variant="contained" size="small" onClick={playAllArchive}
-                          className="hover:bg-neutral-700 text-neutral-200 dark:text-neutral-900 py-1 px-2 rounded mr-1 border-0 run run-all">
-                  <PlayArrowOutlinedIcon />&nbsp;&nbsp;Run All {isFilterOn() ? "*" : ""}
+              {['queue', 'archive'].includes(route) &&
+                <form
+                  method="post"
+                  encType="multipart/form-data"
+                  className={"import-form"}
+                >
+                  <Button variant="contained" color="secondary" size="small" component="label">
+                    <DriveFolderUploadOutlinedIcon/>&nbsp;&nbsp;Import {route === 'queue' ? 'Queue' : 'Archive'}
+                    <VisuallyHiddenInput
+                      type="file"
+                      onChange={uploadQueue}
+                      multiple
+                      name="queue_json"
+                      accept=".json"
+                      required
+                    />
                   </Button>
-                  <Button variant="contained" color="secondary" size="small" href={baseURL + "queue_manager/export" + appendFilters("?route=archive")}>
-                    <FileDownloadOutlinedIcon />&nbsp;&nbsp;Export {isFilterOn() ? "*" : "Archive"}
-                  </Button>
-                  <Button onClick={deleteFromQueue} variant="contained" color="error" size="small" className={"order-last"} sx={{ ml: 'auto' }}>
-                    <DeleteOutlineSharpIcon />&nbsp;&nbsp;Delete {isFilterOn() ? "All *" : "All Archive"}
-                  </Button>
-                </>
+                </form>
               }
 
-              {/* Completed Actions */}
-              {route === 'completed' &&
-                <>
-                  <Button variant="contained" color="secondary" size="small"  href={baseURL + "queue_manager/export" + appendFilters("?route=completed")}>
-                    <FileDownloadOutlinedIcon />&nbsp;&nbsp;Export {isFilterOn() ? "*" : "Completed Jobs"}
-                  </Button>
-                  <Button variant="contained" color="error" size="small"  onClick={deleteFromQueue} className={"order-last"} sx={{ ml: 'auto' }}>
-                    <DeleteOutlineSharpIcon />&nbsp;&nbsp;Delete {isFilterOn() ? "All *" : "All Completed Jobs"}
-                  </Button>
-                </>
-              }
-            </>
-          }
-
-          {['queue', 'archive'].includes(route) &&
-            <form
-              method="post"
-              encType="multipart/form-data"
-              className={"import-form"}
-            >
-              <Button variant="contained" color="secondary" size="small" component="label">
-                <DriveFolderUploadOutlinedIcon />&nbsp;&nbsp;Import {route === 'queue' ? 'Queue' : 'Archive'}
-                <VisuallyHiddenInput
-                  type="file"
-                  onChange={uploadQueue}
-                  multiple
-                  name="queue_json"
-                  accept=".json"
-                  required
-                />
-              </Button>
-            </form>
-          }
-
-          </Stack>
-        </div>
-      </footer>
-      {mode === 'gallery' && galleryData &&
-        <Gallery items={galleryData.items} activeItem={galleryData.activeItem} />
-      }
-      {showSplash &&
-        <SplashScreen onClick={closeSplash} />
-      }
+            </Stack>
+          </div>
+        </footer>
+        {mode === 'gallery' && galleryData &&
+          <Gallery items={galleryData.items} activeItem={galleryData.activeItem}/>
+        }
+        {showSplash &&
+          <SplashScreen onClick={closeSplash}/>
+        }
       </AppContext.Provider>
     </div>
   );
