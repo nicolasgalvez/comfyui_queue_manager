@@ -141,6 +141,11 @@ export const QueueItemRow = memo(function QueueItemRow({item, className, loader,
                 Run
               </Button>
             }
+            {route === 'completed' &&
+              <Button variant="contained" size="small" className={"view"} onClick={() => {onMediaItemClick({dbID: item[3].db_id, fileIndex: 0})}} title="View outputs in gallery">
+                View
+              </Button>
+            }
           </Stack>
         </TableCell>
       </TableRow>
