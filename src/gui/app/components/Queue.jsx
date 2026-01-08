@@ -66,7 +66,7 @@ export const Queue = memo(function Queue( { data, isLoading, error, progress } )
                 {route === 'completed' && thumbMode === "cover" && (galleryOptions.ShowImages || galleryOptions.ShowVideos) &&
                   <TableCell className="px-3 py-2 cover">Thumbnail</TableCell>
                 }
-                <TableCell className="px-3 py-2 text-left">Workflow</TableCell>
+                <TableCell className="px-3 py-2 text-left workflow-column">Workflow</TableCell>
                 <TableCell className="px-3 py-2" align="right">Actions</TableCell>
               </TableRow>
             </TableHead>

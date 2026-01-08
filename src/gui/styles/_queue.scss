@@ -87,6 +87,10 @@ header.header {
   thead {
     tr {
     }
+
+    .workflow-column {
+      width: 100%;
+    }
   }
 
   .running {
@@ -344,6 +348,8 @@ header.header {
   }
 
   .cover {
+    text-align: center;
+
     .media-item {
       width: var(--cover-size);
       height: var(--cover-size);
@@ -351,7 +357,7 @@ header.header {
       border-radius: 10px;
       outline: 1px solid transparent;
       cursor: pointer;
-      margin: 6px;
+      margin: 6px auto;
 
       img, video {
         width: 100%;
