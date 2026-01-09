@@ -31,6 +31,7 @@ import {MediaOutputs} from "./models/MediaOutputs";
 import {OrderedMap} from "./models/OrderedMap"
 import {useOptionsStore} from "./stores/optionsStore";
 import {useAppStore} from "./stores/appStore";
+import {MenuItem, Pagination, Select} from "@mui/material";
 
 const VisuallyHiddenInput = styled('input')({
   clip: 'rect(0 0 0 0)',
@@ -782,43 +783,48 @@ export default function Home() {
           }
 
           {/* Paging */}
-          <div className={"paging flex"}>
-            {appStatus.queue && appStatus.queue.info && (appStatus.queue.info.last_page > 0) &&
-              <>
-                {/* Previous page if needed */}
-                <Button
-                  size="small"
-                  className={"page" + (appStatus.queue.info.page === 0 ? ' disabled' : '')}
-                  onClick={() => {
-                    fetchQueueItems(appStatus.queue.info.page - 1);
+          {appStatus.queue && appStatus.queue.info && (appStatus.queue.info.last_page > 0) &&
+            <>
+              <div className={"pagination"}>
+                <Pagination
+                  shape="rounded"
+                  variant="outlined"
+                  boundaryCount={2}
+                  siblingCount={2}
+                  page={appStatus.queue.info.page + 1}
+                  onChange={(event, value) => {
+                    fetchQueueItems(value - 1);
                   }}
-                  disabled={appStatus.queue.info.page === 0}
-                ><KeyboardArrowLeftSharpIcon/></Button>
-                <div className={'pages flex'}>
-                  {Array.from({length: (appStatus.queue.info.last_page + 1)}, (_, i) => (
-                    <button
-                      key={i}
-                      className={"page" + (appStatus.queue.info.page === i ? ' active' : '')}
-                      onClick={() => {
-                        fetchQueueItems(i);
+                  count={appStatus.queue.info.last_page + 1}></Pagination>
+
+                {/* If more than 11 pages show page selector */}
+                {appStatus.queue.info.last_page > 10 &&
+                  <div className="page-selector">
+                    <Select
+                      value={appStatus.queue.info.page}
+                      onChange={(event) => {
+                        const pageNum = event.target.value;
+                        fetchQueueItems(pageNum);
                       }}
+                      size="small"
                     >
-                      {i + 1}
-                    </button>
-                  ))}
-                </div>
-                {/* Next page if needed */}
-                <Button
-                  size="small"
-                  className={"page" + (appStatus.queue.info.page === appStatus.queue.info.last_page ? ' disabled' : '')}
-                  onClick={() => {
-                    fetchQueueItems(appStatus.queue.info.page + 1);
-                  }}
-                  disabled={appStatus.queue.info.page === appStatus.queue.info.last_page}
-                ><KeyboardArrowRightSharpIcon/></Button>
-              </>
-            }
-          </div>
+                      {[...Array(appStatus.queue.info.last_page + 1).keys()].map((pageNum) => (
+                        <MenuItem
+                          key={pageNum}
+                          value={pageNum}
+                        >
+                          {pageNum + 1}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </div>
+                }
+              </div>
+
+
+            </>
+
+          }
 
           {/* Footer Actions */}
           <div className="p-2 flex actions">
