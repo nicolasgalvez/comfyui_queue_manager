@@ -83,6 +83,8 @@ export default function Home() {
 
   const latestThumbSizePxRef = useRef(150);
 
+  const fetchIdRef = useRef(0);
+
   const applyGridVars = useCallback((thumbSizePx) => {
     const root = document.documentElement;
 
@@ -102,29 +104,41 @@ export default function Home() {
     root.style.setProperty("--gap", `${gapPx}px`);
     root.style.setProperty("--cols", String(cols));
   }, []);
+
   const fetchQueueItems = async (page) => {
-    setAppStatus(prev => ({...prev, loading: true, error: null}));
-    try {
-      let queryArgs = '';
-      if (page) {
-        queryArgs = "?page=" + page;
+    const fetchId = ++fetchIdRef.current;
+
+    setAppStatus((prev) => ({ ...prev, loading: true, error: null }));
+
+    setTimeout(async () => {
+      try {
+        let queryArgs = "";
+        if (page !== undefined && page !== null) queryArgs = `?page=${page}`;
+
+        queryArgs = appendFilters(queryArgs);
+        queryArgs = appendRoute(queryArgs);
+
+        const response = await fetch(`${baseURL}queue_manager/queue${queryArgs}`);
+        if (!response.ok) throw new Error("Network response was not ok");
+
+        const queue = await response.json();
+
+        // If a newer fetch started after this one, ignore this response
+        if (fetchId !== fetchIdRef.current) return;
+
+        setAppStatus((prev) => ({ ...prev, loading: false, error: null, queue }));
+      } catch (error) {
+        if (fetchId !== fetchIdRef.current) return;
+
+        setAppStatus((prev) => ({
+          ...prev,
+          loading: false,
+          error: error?.message ?? String(error),
+          queue: null,
+        }));
+        console.error(`Error fetching ${route} items:`, error);
       }
-
-      queryArgs = appendFilters(queryArgs);
-      queryArgs = appendRoute(queryArgs);
-
-
-      const response = await fetch(`${baseURL}queue_manager/queue` + queryArgs);
-      if (!response.ok) {
-        throw new Error("Network response was not ok");
-      }
-      const queue = await response.json();
-      setAppStatus(prev => ({...prev, loading: false, error: null, queue}));
-
-    } catch (error) {
-      setAppStatus(prev => ({...prev, loading: false, error: error.message, queue: null}));
-      console.error("Error fetching " + route + " items:", error);
-    }
+    })
   };
 
   async function fetchOptions() {

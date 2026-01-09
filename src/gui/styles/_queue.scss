@@ -553,7 +553,7 @@ button {
     gap: 4px 0;
   }
 
-  @media (max-width: 540px) {
+  @media (max-width: 620px) {
     button {
       font-size: 0.7rem;
       min-width: 24px;
@@ -564,6 +564,11 @@ button {
   .page-selector {
     margin-left: 20px;
 
+    @media (max-width: 620px) {
+      height: 24px;
+      display: flex;
+    }
+
     .MuiInputBase-input {
       height: 32px !important;
       box-sizing: border-box;
@@ -571,6 +576,11 @@ button {
       display: flex;
       align-items: center;
       font-size: 0.875rem;
+
+      @media (max-width: 620px) {
+        height: 24px !important;
+        font-size: 0.7rem;
+      }
     }
   }
 
