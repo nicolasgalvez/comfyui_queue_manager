@@ -76,7 +76,7 @@ export const Queue = memo(function Queue({ data, isLoading, error, progress }) {
           <Table className="min-w-full border border-0" size="small" stickyHeader>
             <TableHead className="dark:bg-neutral-800 bg-neutral-200 text-xs uppercase">
               <TableRow>
-                <TableCell className="px-3 py-2 text-left">\#</TableCell>
+                <TableCell className="px-3 py-2 text-left">#</TableCell>
                 {route === "completed" &&
                   thumbMode === "cover" &&
                   (galleryOptions.ShowImages || galleryOptions.ShowVideos) && (

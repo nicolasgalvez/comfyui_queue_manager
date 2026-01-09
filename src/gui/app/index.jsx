@@ -7,8 +7,6 @@ import DriveFolderUploadOutlinedIcon from "@mui/icons-material/DriveFolderUpload
 import ImageNotSupportedSharpIcon from '@mui/icons-material/ImageNotSupportedSharp';
 import WallpaperSharpIcon from '@mui/icons-material/WallpaperSharp';
 import ViewModuleSharpIcon from '@mui/icons-material/ViewModuleSharp';
-import KeyboardArrowLeftSharpIcon from '@mui/icons-material/KeyboardArrowLeftSharp';
-import KeyboardArrowRightSharpIcon from '@mui/icons-material/KeyboardArrowRightSharp';
 import UploadSharpIcon from '@mui/icons-material/UploadSharp';
 import Inventory2SharpIcon from '@mui/icons-material/Inventory2Sharp';
 import { styled } from '@mui/material/styles';
@@ -84,6 +82,14 @@ export default function Home() {
   const latestThumbSizePxRef = useRef(150);
 
   const fetchIdRef = useRef(0);
+
+  const queryKey = useMemo(() => {
+    const f = filters ? JSON.stringify(filters) : "";
+    const order = route === "completed" ? String(completedListOrder ?? "") : "";
+    return `${route}|${f}|${order}`;
+  }, [route, filters, completedListOrder]);
+  const lastQueryKeyRef = useRef(null);
+
 
   const applyGridVars = useCallback((thumbSizePx) => {
     const root = document.documentElement;
@@ -532,14 +538,20 @@ export default function Home() {
   })
 
   useEffect(() => {
-    fetchQueueItems()
-  }, [filters]);
+    // Prevent double-fire
+    if (lastQueryKeyRef.current === queryKey) return;
+    lastQueryKeyRef.current = queryKey;
 
-  useEffect(() => {
-    if (route === 'completed') {
-      fetchQueueItems();
+    // Clear current data to avoid showing wrong route/page data
+    setAppStatus((prev) => ({ ...prev, queue: null }));
+
+    // Only completed route needs options refresh
+    if (route === "completed") {
+      fetchOptions();
     }
-  }, [completedListOrder]);
+
+    fetchQueueItems();
+  }, [queryKey]);
 
   // when progress data is updated
   useEffect(() => {
@@ -588,17 +600,6 @@ export default function Home() {
   }, [appStatus.queue]);
 
   useEffect(() => {
-    setAppStatus(prev => ({ ...prev, queue: null }));
-
-    // When loading completed route, clear outputs if any (lightbox request will need to recalculate them) and pull options (since they can be changed in another tab
-    if (route === 'completed') {
-      fetchOptions();
-    }
-
-    fetchQueueItems();
-  }, [route]);
-
-  useEffect(() => {
     const onResize = () => applyGridVars(latestThumbSizePxRef.current);
 
     window.addEventListener("resize", onResize, { passive: true });
@@ -614,7 +615,6 @@ export default function Home() {
 
   // on mount get the queue items from the server
   useEffect(() => {
-    fetchQueueItems();
     fetchOptions();
 
     window.addEventListener("message", handleMessage);
