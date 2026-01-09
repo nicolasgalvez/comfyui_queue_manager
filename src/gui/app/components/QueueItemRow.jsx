@@ -21,7 +21,6 @@ import {LoaderSpinner} from "../components/LoaderSpinner";
  *
  */
 export const QueueItemRow = memo(function QueueItemRow({item, className, loader, index, mode, info }) {
-  // console.log("QueueItemRow", item[3].db_id);
   const {onMediaItemClick} = useContext(AppContext);
 
   const galleryOptions = useOptionsStore((state) => state.Gallery);
@@ -50,7 +49,6 @@ export const QueueItemRow = memo(function QueueItemRow({item, className, loader,
    * Post message to parent window to load workflow stored in pnginfo
    */
   async function loadQueueItem() {
-    // console.log("Loading queue item", item);
     msgLoadWorkflow(item[3].extra_pnginfo.workflow, item[0]);
   }
 

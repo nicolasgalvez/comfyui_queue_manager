@@ -105,7 +105,6 @@ export default function Home() {
   const fetchQueueItems = async (page) => {
     setAppStatus(prev => ({...prev, loading: true, error: null}));
     try {
-      // console.log("Fetching queue items from", baseURL);
       let queryArgs = '';
       if (page) {
         queryArgs = "?page=" + page;
@@ -153,13 +152,11 @@ export default function Home() {
       }
     }
 
-    // console.log("Node IDs", nodeIDs);
     return nodeIDs;
   }
 
   function getTheJob(jobID, queue) {
     if (!queue) {
-      // console.log("No queue data yet, skipping");
       return null;
     }
 
@@ -253,12 +250,10 @@ export default function Home() {
         break;
       case "execution_start":
         const {prompt_id} = event.data.message.detail;
-        // console.log("Execution started: ", status.queue, prompt_id);
 
         const theJob = getTheJob(prompt_id, appStatus.queue);
 
         if (theJob) {
-          // console.log("Job found: ", theJob);
           const nodeIDs = getNodeIDs(theJob[3].extra_pnginfo.workflow.nodes);
           // set the current job
           setProgress(prev => ({
@@ -278,7 +273,6 @@ export default function Home() {
         break;
 
       case 'execution_cached':
-        // console.log("Execution cached: ", event.data.message);
         // set cached node ids as executed
         const {nodes} = event.data.message.detail; // array of node id strings
 
@@ -291,7 +285,6 @@ export default function Home() {
           newNodes[node] = true;
         }
 
-        // console.log("newNodes: ", newNodes);
 
         setProgress(prev => ({
           ...prev,
@@ -319,7 +312,6 @@ export default function Home() {
         break;
 
       case "queue-manager-queue-updated":
-        // console.log("Queue Manager: queue updated: ", event.data.message);
         fetchQueueItems()
         break;
     }
@@ -336,7 +328,6 @@ export default function Home() {
   }
 
   const handleMessage = useEvent((event) => {
-    // console.log("Received message from parent", event,event.data.type, event.data.message);
     // In production must be same origin, in development as set in config.js
     if (event.origin !== (baseURL === '/' ? window.location.protocol + "//" + window.location.host : baseURL.replace(/\/+$/, ""))) {
       return;
@@ -354,7 +345,6 @@ export default function Home() {
         setAllOptions({...event.data.settings});
         break;
       case "QM_Setting_Changed":
-        // console.log("QM_Setting_Changed", event.data.message);
         // check if path like "Gallery.ShowImages" in event.data.message.setting represent an existing object path in options
         const settingPath = event.data.message.setting.split('.');
         let current = options;
@@ -562,10 +552,8 @@ export default function Home() {
   useEffect(() => {
     // Are we already tracking a job but have not saved the workflow data yet?
     if (currentJob.id && currentJob.integrity === false) {
-      // console.log("New Queue loaded. Already tracking a job. Checking for workflow data...");
       const theJob = getTheJob(currentJob.id, appStatus.queue);
       if (theJob) {
-        // console.log("Job found: ", theJob);
         const nodeIDs = getNodeIDs(theJob[3].extra_pnginfo.workflow.nodes);
 
         // if we already marked some nodes as executed do not overwrite them

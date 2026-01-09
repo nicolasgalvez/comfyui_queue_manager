@@ -212,11 +212,6 @@ export default function Gallery({items, activeItem}) {
       const nextItemIndex = mediaItem.itemIndex < galleryItems.length - 1 ? mediaItem.itemIndex + 1 : mediaItem.itemIndex - 1;
       const nextQueueItem = galleryItems.at(nextItemIndex);
 
-      // console.log("Deleting workflow:", {
-      //   itemIndex: mediaItem.itemIndex,
-      //   nextItemIndex,
-      // })
-
       setMediaItem({
         itemIndex: (mediaItem.itemIndex === galleryItems.length - 1) ? nextItemIndex : mediaItem.itemIndex, // actual index changes only if we deleted the last item
         queueItem: nextQueueItem,

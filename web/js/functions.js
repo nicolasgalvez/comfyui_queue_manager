@@ -21,7 +21,6 @@ function postMessageToIframe(message, type) {
 
   const iframe = theIframe();
   if (iframe && iframe.contentWindow) {
-    // console.log("Posting message to iframe", event, QueueManagerURL);
     iframe.contentWindow.postMessage({
       type: type,
       message: message
@@ -193,7 +192,6 @@ export async function uiSetup () {
   const actionsContainer = document.querySelector(nodeSelector);
 
   if (actionsContainer) {
-    console.log("Actions container found", actionsContainer);
     await AddButtons(actionsContainer);
     return;
   }
@@ -354,7 +352,7 @@ export function registerSidebar() {
         style.type = "text/css";
         style.id = "comfyui-queue-manager-stylesheet";
         style.onload = function() {
-          // console.log("Queue Manager stylesheet loaded");
+
         };
         document.head.appendChild(style);
       }
