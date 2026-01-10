@@ -1,39 +1,59 @@
+// `src/gui/app/components/Queue.jsx`
+
 "use client";
 
-import React, {useContext, useEffect, useState, Fragment } from "react";
-import Table from '@mui/material/Table';
-import TableBody from '@mui/material/TableBody';
-import TableCell from '@mui/material/TableCell';
-import TableContainer from '@mui/material/TableContainer';
-import TableHead from '@mui/material/TableHead';
-import TableRow from '@mui/material/TableRow';
-import Paper from '@mui/material/Paper';
-import {memo, useMemo } from "react";
-import {LoaderSpinner} from "../components/LoaderSpinner";
-import {QueueItemRow} from "../components/QueueItemRow";
-import {useAppStore} from "../stores/appStore";
-import {useOptionsStore} from "../stores/optionsStore";
+import React, { memo, useMemo } from "react";
+import Table from "@mui/material/Table";
+import TableBody from "@mui/material/TableBody";
+import TableCell from "@mui/material/TableCell";
+import TableContainer from "@mui/material/TableContainer";
+import TableHead from "@mui/material/TableHead";
+import TableRow from "@mui/material/TableRow";
+import Paper from "@mui/material/Paper";
+import { LoaderSpinner } from "../components/LoaderSpinner";
+import { QueueItemRow } from "../components/QueueItemRow";
+import { useAppStore } from "../stores/appStore";
+import { useOptionsStore } from "../stores/optionsStore";
 
 const QueueItems = memo(function QueueItems({ running, pending, info }) {
+  // Read global state ONCE here (parent of many rows)
+  const route = useAppStore((state) => state.route);
+  const filters = useAppStore((state) => state.filters);
+
+  const thumbMode = useOptionsStore((state) => state.thumb_mode);
+  const galleryOptions = useOptionsStore((state) => state.Gallery);
+
+  // Optional: keep object identity stable if upstream recreates it
+  const stableGalleryOptions = useMemo(() => galleryOptions, [galleryOptions]);
+
   return (
     <>
       {running.map((item) => (
         <QueueItemRow
+          key={item?.[3]?.db_id ?? item?.[1]}
           item={item}
-          key={item[1]}
-          className={"running"}
+          className="running"
           loader={true}
-          mode={item[3].extra_pnginfo ? "running" : "external"}
+          mode={item?.[3]?.extra_pnginfo ? "running" : "external"}
           info={info}
+          route={route}
+          thumbMode={thumbMode}
+          galleryOptions={stableGalleryOptions}
+          filters={filters}
         />
       ))}
+
       {pending.map((item, index) => (
         <QueueItemRow
+          key={item?.[3]?.db_id ?? `${item?.[1]}-${index}`}
           item={item}
-          key={item[3].db_id}
-          className={"pending"}
+          className="pending"
           index={index}
           info={info}
+          route={route}
+          thumbMode={thumbMode}
+          galleryOptions={stableGalleryOptions}
+          filters={filters}
         />
       ))}
     </>
@@ -47,7 +67,6 @@ export const Queue = memo(function Queue({ data, isLoading, error, progress }) {
   const options = useOptionsStore((state) => state.Completed);
   const galleryOptions = useOptionsStore((state) => state.Gallery);
 
-  // lowercase and replace spaces with _
   const coverMode = String(options.CoverThumbMode ?? "Cropped")
     .toLowerCase()
     .replace(/\s+/g, "_");
