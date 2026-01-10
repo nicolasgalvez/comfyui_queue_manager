@@ -5,10 +5,6 @@ import React, { memo, useCallback, useContext, useMemo } from "react";
 import { apiCall, msgLoadWorkflow } from "../internals/functions";
 import { AppContext } from "../internals/app-context";
 import { MediaItem } from "../components/MediaItem";
-import Button from "@mui/material/Button";
-import Stack from "@mui/material/Stack";
-import TableCell from "@mui/material/TableCell";
-import TableRow from "@mui/material/TableRow";
 import PlayArrowOutlinedIcon from "@mui/icons-material/PlayArrowOutlined";
 import { MediaOutputs } from "../models/MediaOutputs";
 import { LoaderSpinner } from "../components/LoaderSpinner";
@@ -100,15 +96,15 @@ export const QueueItemRow = memo(
         * Queue Item Details
         *
         */}
-        <TableRow className={className ? ` ${className}` : ""}>
-          <TableCell className="px-3 py-1 serial">
+        <tr className={className ? ` ${className}` : ""}>
+          <td className="px-3 py-1 serial">
             <span>{rowIndex}</span>
             {loader ? <LoaderSpinner /> : null}
-          </TableCell>
+          </td>
 
           {/* Thumbnail in Cover mode */}
           {showCover ? (
-            <TableCell className="px-3 py-1 cover">
+            <td className="px-3 py-1 cover">
               {mediaOutputs?.cover ? (
                 <MediaItem
                   file={mediaOutputs.cover}
@@ -119,11 +115,11 @@ export const QueueItemRow = memo(
                   title="Open gallery"
                 />
               ) : null}
-            </TableCell>
+            </td>
           ) : null}
 
           {/* Workflow Name */}
-          <TableCell className="px-3 py-1 text-left name">
+          <td className="px-3 py-1 text-left name">
             <div className="name-cell">
               {mediaOutputs && item[3].total_files > 0 ? (
                 <span
@@ -143,12 +139,12 @@ export const QueueItemRow = memo(
                     : ""}
               </button>
             </div>
-          </TableCell>
+          </td>
 
           {/* Item Actions */}
-          <TableCell className="px-3 py-1 text-right actions">
-            <Stack direction="row" sx={{ justifyContent: "flex-end" }} spacing={1}>
-              <Button
+          <td className="px-3 py-1 text-right actions">
+            <div direction="row" sx={{ justifyContent: "flex-end" }} spacing={1}>
+              <button
                 variant="contained"
                 size="small"
                 color="error"
@@ -156,10 +152,10 @@ export const QueueItemRow = memo(
                 title="Delete workflow from queue"
               >
                 Delete
-              </Button>
+              </button>
 
               {mode !== "external" ? (
-                <Button
+                <button
                   variant="contained"
                   size="small"
                   color="success"
@@ -167,11 +163,11 @@ export const QueueItemRow = memo(
                   title="Load workflow"
                 >
                   Load
-                </Button>
+                </button>
               ) : null}
 
               {route === "queue" && mode !== "running" ? (
-                <Button
+                <button
                   variant="contained"
                   size="small"
                   color="warning"
@@ -179,11 +175,11 @@ export const QueueItemRow = memo(
                   title="Move to the archive"
                 >
                   Archive
-                </Button>
+                </button>
               ) : null}
 
               {route === "archive" ? (
-                <Button
+                <button
                   variant="contained"
                   size="small"
                   className="run"
@@ -192,11 +188,11 @@ export const QueueItemRow = memo(
                   startIcon={<PlayArrowOutlinedIcon fontSize="small" />}
                 >
                   Run
-                </Button>
+                </button>
               ) : null}
 
               {route === "completed" ? (
-                <Button
+                <button
                   variant="contained"
                   size="small"
                   className="view"
@@ -204,11 +200,11 @@ export const QueueItemRow = memo(
                   title="View outputs in gallery"
                 >
                   View
-                </Button>
+                </button>
               ) : null}
-            </Stack>
-          </TableCell>
-        </TableRow>
+            </div>
+          </td>
+        </tr>
 
         {/*
         *
@@ -216,8 +212,8 @@ export const QueueItemRow = memo(
         *
         */}
         {showGrid ? (
-          <TableRow className="dark:odd:bg-neutral-900 odd:bg-neutral-100 gallery">
-            <TableCell colSpan={3} className="px-3 py-1">
+          <tr className="dark:odd:bg-neutral-900 odd:bg-neutral-100 gallery">
+            <td colSpan={3} className="px-3 py-1">
               <div className="flex flex-wrap gap-2 items">
                 {mediaOutputs?.files?.length
                   ? mediaOutputs.files.map((file, fileIndex) => (
@@ -231,8 +227,8 @@ export const QueueItemRow = memo(
                     ))
                   : null}
               </div>
-            </TableCell>
-          </TableRow>
+            </td>
+          </tr>
         ) : null}
       </>
     );
