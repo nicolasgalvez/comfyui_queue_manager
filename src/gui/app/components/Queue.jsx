@@ -3,13 +3,6 @@
 "use client";
 
 import React, { memo, useMemo } from "react";
-import Table from "@mui/material/Table";
-import TableBody from "@mui/material/TableBody";
-import TableCell from "@mui/material/TableCell";
-import TableContainer from "@mui/material/TableContainer";
-import TableHead from "@mui/material/TableHead";
-import TableRow from "@mui/material/TableRow";
-import Paper from "@mui/material/Paper";
 import { LoaderSpinner } from "../components/LoaderSpinner";
 import { QueueItemRow } from "../components/QueueItemRow";
 import { useAppStore } from "../stores/appStore";
@@ -90,59 +83,59 @@ export const Queue = memo(function Queue({ data, isLoading, error, progress }) {
       }
       style={{ "--job-progress": progress + "%" }}
     >
-      <Paper sx={{ width: "100%", overflow: "hidden" }}>
-        <TableContainer>
-          <Table className="min-w-full border border-0" size="small" stickyHeader>
-            <TableHead className="dark:bg-neutral-800 bg-neutral-200 text-xs uppercase">
-              <TableRow>
-                <TableCell className="px-3 py-2 text-left">#</TableCell>
+      <div style={{ width: "100%", overflow: "hidden" }}>
+        <>
+          <table className="min-w-full border border-0" size="small" stickyHeader>
+            <thead className="dark:bg-neutral-800 bg-neutral-200 text-xs uppercase">
+              <tr>
+                <th className="px-3 py-2 text-left">#</th>
                 {route === "completed" &&
                   thumbMode === "cover" &&
                   (galleryOptions.ShowImages || galleryOptions.ShowVideos) && (
-                    <TableCell className="px-3 py-2 cover">Thumbnail</TableCell>
+                    <th className="px-3 py-2 cover">Thumbnail</th>
                   )}
-                <TableCell className="px-3 py-2 text-left workflow-column">
+                <th className="px-3 py-2 text-left workflow-column">
                   Workflow
-                </TableCell>
-                <TableCell className="px-3 py-2" align="right">
+                </th>
+                <th className="px-3 py-2" align="right">
                   Actions
-                </TableCell>
-              </TableRow>
-            </TableHead>
+                </th>
+              </tr>
+            </thead>
 
-            <TableBody>
+            <tbody>
               {error && (
-                <TableRow>
-                  <TableCell colSpan={3} className="text-red-500 text-center info-cell">
+                <tr>
+                  <td colSpan={3} className="text-red-500 text-center info-cell">
                     Loading failed: {error}
-                  </TableCell>
-                </TableRow>
+                  </td>
+                </tr>
               )}
 
               {!isLoading && (!data || (!running.length && !pending.length)) && (
-                <TableRow>
-                  <TableCell colSpan={3} className="italic text-center info-cell">
+                <tr>
+                  <td colSpan={3} className="italic text-center info-cell">
                     No items.
-                  </TableCell>
-                </TableRow>
+                  </td>
+                </tr>
               )}
 
               {isLoading && !data && (
-                <TableRow>
-                  <TableCell className="px-3 py-1 serial">
+                <tr>
+                  <td className="px-3 py-1 serial">
                     <LoaderSpinner />
-                  </TableCell>
-                  <TableCell colSpan={2} className="italic text-center info-cell">
+                  </td>
+                  <td colSpan={2} className="italic text-center info-cell">
                     Loading...
-                  </TableCell>
-                </TableRow>
+                  </td>
+                </tr>
               )}
 
               {data && <QueueItems running={running} pending={pending} info={data.info} />}
-            </TableBody>
-          </Table>
-        </TableContainer>
-      </Paper>
+            </tbody>
+          </table>
+        </>
+      </div>
     </div>
   );
 });
