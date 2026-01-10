@@ -30,6 +30,7 @@ import {OrderedMap} from "./models/OrderedMap"
 import {useOptionsStore} from "./stores/optionsStore";
 import {useAppStore} from "./stores/appStore";
 import {MenuItem, Pagination, Select} from "@mui/material";
+import {LoaderSpinner} from "@/app/components/LoaderSpinner";
 
 const VisuallyHiddenInput = styled('input')({
   clip: 'rect(0 0 0 0)',
@@ -111,58 +112,117 @@ export default function Home() {
     root.style.setProperty("--cols", String(cols));
   }, []);
 
-  const fetchQueueItems = async (page) => {
+  const isFilterOn = useCallback(() => {
+    return filters && Object.keys(filters).length > 0;
+  }, [filters]);
+
+  const appendFilters = useCallback((queryArgs, _filters) => {
+    if (!_filters) {
+      _filters = filters;
+    }
+
+    if (_filters && Object.keys(_filters).length > 0) {
+      queryArgs += (queryArgs ? '&filters=' : '?filters=') + encodeURIComponent(JSON.stringify(_filters));
+    }
+    return queryArgs;
+  }, [filters]);
+
+
+  const appendRoute = useCallback((queryArgs, _route) => {
+    if (!_route) {
+      _route = route;
+    }
+
+    if (_route) {
+      queryArgs += (queryArgs ? '&route=' : '?route=') + _route;
+    }
+    return queryArgs;
+  }, [route]);
+
+  const updateCoverSize = useCallback((event, newValue) => {
+    document.documentElement.style.setProperty('--cover-size', newValue + 'px');
+  }, []);
+
+  const onCoverSizeCommited = useCallback((event, newValue) => {
+    // update options on the server
+    setTimeout(() => {
+      setDirectOption("cover_size", newValue);
+      apiCall('queue_manager/options', { key: "cover_size", value: newValue }, 'POST');
+    });
+  }, [setDirectOption]);
+
+  const updateThumbnailSize = useCallback((event, newValue) => {
+    const n = Number(newValue);
+    const thumbSizePx = Number.isFinite(n) && n > 0 ? n : 150;
+
+    latestThumbSizePxRef.current = thumbSizePx;
+    applyGridVars(thumbSizePx);
+  }, [applyGridVars]);
+
+  const fetchOptions = useCallback(async () => {
+    const newOptions = await apiCall(`queue_manager/options`, null, "GET");
+    if (newOptions) {
+      setAllOptions({ ...newOptions });
+      updateThumbnailSize(null, newOptions.thumb_size ? newOptions.thumb_size : 150);
+      updateCoverSize(null, newOptions.cover_size ? newOptions.cover_size : 50);
+
+      // show splash screen if needed
+      if (compareVersions(newOptions.splash_screen, newOptions.__version__) < 0) {
+        setShowSplash(true);
+      }
+    } else {
+      console.error("Failed to fetch options");
+    }
+  }, [setAllOptions, updateCoverSize, updateThumbnailSize]);
+
+  const fetchQueueItems = useCallback(async ({page, route, filters} = {}) => {
+
     const fetchId = ++fetchIdRef.current;
+
+    let queryArgs = "";
+    if (page !== undefined && page !== null) queryArgs = `?page=${page}`;
+
+    queryArgs = appendFilters(queryArgs, filters);
+    queryArgs = appendRoute(queryArgs, route);
 
     setAppStatus((prev) => ({ ...prev, loading: true, error: null }));
 
-    setTimeout(async () => {
-      try {
-        let queryArgs = "";
-        if (page !== undefined && page !== null) queryArgs = `?page=${page}`;
+    try {
+      const response = await fetch(`${baseURL}queue_manager/queue${queryArgs}`);
+      if (!response.ok) throw new Error("Network response was not ok");
 
-        queryArgs = appendFilters(queryArgs);
-        queryArgs = appendRoute(queryArgs);
+      const queue = await response.json();
 
-        const response = await fetch(`${baseURL}queue_manager/queue${queryArgs}`);
-        if (!response.ok) throw new Error("Network response was not ok");
+      // If a newer fetch started after this one, ignore this response
+      if (fetchId !== fetchIdRef.current) return;
 
-        const queue = await response.json();
+      if (route) {
+        setRoute(route);
 
-        // If a newer fetch started after this one, ignore this response
-        if (fetchId !== fetchIdRef.current) return;
-
-        setAppStatus((prev) => ({ ...prev, loading: false, error: null, queue }));
-      } catch (error) {
-        if (fetchId !== fetchIdRef.current) return;
-
-        setAppStatus((prev) => ({
-          ...prev,
-          loading: false,
-          error: error?.message ?? String(error),
-          queue: null,
-        }));
-        console.error(`Error fetching ${route} items:`, error);
-      }
-    })
-  };
-
-  async function fetchOptions() {
-    const newOptions = await apiCall(`queue_manager/options`, null, "GET");
-      if (newOptions) {
-        setAllOptions({...newOptions});
-        updateThumbnailSize(null, newOptions.thumb_size ? newOptions.thumb_size : 150);
-        updateCoverSize(null, newOptions.cover_size ? newOptions.cover_size : 50);
-
-        // show splash screen if needed
-        if (compareVersions(newOptions.splash_screen, newOptions.__version__) < 0) {
-          setShowSplash(true);
+        if (route === "completed") {
+          setTimeout(() => {
+            fetchOptions();
+          });
         }
+      }
 
-      } else {
-        console.error("Failed to fetch options");
+      if (filters) {
+        setFilters(filters);
+      }
+
+      setAppStatus((prev) => ({ ...prev, loading: false, error: null, queue }));
+    } catch (error) {
+      if (fetchId !== fetchIdRef.current) return;
+
+      setAppStatus((prev) => ({
+        ...prev,
+        loading: false,
+        error: error?.message ?? String(error),
+        queue: null,
+      }));
+      console.error(`Error fetching ${route} items:`, error);
     }
-  }
+  }, [appendFilters, appendRoute, fetchOptions, setFilters, setRoute]);
 
   function getNodeIDs(nodes) {
     const nodeIDs = {};
@@ -195,20 +255,6 @@ export default function Home() {
     }
 
     return null;
-  }
-
-  function appendFilters(queryArgs) {
-    if (isFilterOn()) {
-      queryArgs += (queryArgs ? '&filters=' : '?filters=') + encodeURIComponent(JSON.stringify(filters));
-    }
-    return queryArgs;
-  }
-
-  function appendRoute(queryArgs) {
-    if (route) {
-      queryArgs += (queryArgs ? '&route=' : '?route=') + route;
-    }
-    return queryArgs;
   }
 
   async function archiveAll() {
@@ -256,10 +302,6 @@ export default function Home() {
       }
   }
 
-  function isFilterOn() {
-    return filters && Object.keys(filters).length > 0;
-  }
-
   const onQueueStatusUpdated = (event) => {
 
     switch (event.data.message.name) {
@@ -268,67 +310,69 @@ export default function Home() {
           fetchQueueItems((appStatus.queue && appStatus.queue.info) ? appStatus.queue.info.page : 0);
         }
         break;
-      case "execution_start":
-        const {prompt_id} = event.data.message.detail;
+      case "execution_start": {
+          const {prompt_id} = event.data.message.detail;
 
-        const theJob = getTheJob(prompt_id, appStatus.queue);
+          const theJob = getTheJob(prompt_id, appStatus.queue);
 
-        if (theJob) {
-          const nodeIDs = getNodeIDs(theJob[3].extra_pnginfo.workflow.nodes);
-          // set the current job
+          if (theJob) {
+            const nodeIDs = getNodeIDs(theJob[3].extra_pnginfo.workflow.nodes);
+            // set the current job
+            setProgress(prev => ({
+              ...prev,
+              id: prompt_id,
+              nodes: nodeIDs,
+              integrity: true
+            }));
+
+            break;
+          }
+
+          // set the current job with the prompt id and false integrity flag
+          // we don't have the workflow data yet, so set integrity to false so we can pick up progress later when we get the workflow data
+          setProgress(prev => ({...prev, id: prompt_id, integrity: false, nodes: {}}));
+        }
+        break;
+
+      case 'execution_cached': {
+          // set cached node ids as executed
+          const {nodes} = event.data.message.detail; // array of node id strings
+
+          if (!nodes || nodes.length === 0) {
+            return;
+          }
+
+          const newNodes = {};
+          for (const node of nodes) {
+            newNodes[node] = true;
+          }
+
+
           setProgress(prev => ({
             ...prev,
-            id: prompt_id,
-            nodes: nodeIDs,
-            integrity: true
+            nodes: {
+              ...prev.nodes,
+              ...newNodes
+            }
           }));
-
-          break;
         }
-
-        // set the current job with the prompt id and false integrity flag
-        // we don't have the workflow data yet, so set integrity to false so we can pick up progress later when we get the workflow data
-        setProgress(prev => ({...prev, id: prompt_id, integrity: false, nodes: {}}));
-
         break;
 
-      case 'execution_cached':
-        // set cached node ids as executed
-        const {nodes} = event.data.message.detail; // array of node id strings
-
-        if (!nodes || nodes.length === 0) {
-          return;
-        }
-
-        const newNodes = {};
-        for (const node of nodes) {
-          newNodes[node] = true;
-        }
-
-
-        setProgress(prev => ({
-          ...prev,
-          nodes: {
-            ...prev.nodes,
-            ...newNodes
+      case "executing": {
+          // set executed node id as executed
+          const node_id = event.data.message.detail;
+          if (!node_id) {
+            return;
           }
-        }));
-        break;
 
-      case "executing":
-        // set executed node id as executed
-        const node_id = event.data.message.detail;
-        if (!node_id) {
-          return;
+          setProgress(prev => ({
+            ...prev,
+            nodes: {
+              ...prev.nodes,
+              [node_id]: true
+            }
+          }));
         }
-
-        setProgress(prev => ({
-          ...prev,
-          nodes: {
-            ...prev.nodes,
-            [node_id]: true
-          }
-        }));
         break;
 
       case "queue-manager-queue-updated":
@@ -364,26 +408,26 @@ export default function Home() {
         useAppStore.getState().setClientId(event.data.clientId);
         setAllOptions({...event.data.settings});
         break;
-      case "QM_Setting_Changed":
-        // check if path like "Gallery.ShowImages" in event.data.message.setting represent an existing object path in options
-        const settingPath = event.data.message.setting.split('.');
-        let current = options;
-        let exists = true;
-        for (const segment of settingPath) {
-          if (current.hasOwnProperty(segment)) {
-            current = current[segment];
-          } else {
-            exists = false;
+      case "QM_Setting_Changed": {
+          // check if path like "Gallery.ShowImages" in event.data.message.setting represent an existing object path in options
+          const settingPath = event.data.message.setting.split('.');
+          let current = options;
+          let exists = true;
+          for (const segment of settingPath) {
+            if (Object.prototype.hasOwnProperty.call(current, segment)) {
+              current = current[segment];
+            } else {
+              exists = false;
+            }
+          }
+
+          const CategorySlug = settingPath[0];
+          const SettingKey = settingPath[1];
+
+          if (exists) {
+            setOption(CategorySlug, SettingKey, event.data.message.newValue);
           }
         }
-
-        const CategorySlug = settingPath[0];
-        const SettingKey = settingPath[1];
-
-        if (exists) {
-          setOption(CategorySlug, SettingKey, event.data.message.newValue);
-        }
-
         break;
     }
   });
@@ -431,6 +475,18 @@ export default function Home() {
     }
   });
 
+  const openGallery = useCallback((galleryData = null) => {
+    if (galleryData) {
+      window.parent.postMessage({
+        type: "QM_Gallery_Show",
+      }, "*");
+      setMode("gallery");
+
+      // add class to body
+      document.body.classList.add('gallery-open');
+    }
+  }, [setMode]);
+
   /**
    * Pack outputs and sent to gallery iframe
    */
@@ -474,27 +530,7 @@ export default function Home() {
     })
 
     openGallery(mediaItem);
-  }, [appStatus.queue, galleryData]);
-
-  function openGallery(galleryData = null) {
-    if (galleryData) {
-      window.parent.postMessage({
-        type: "QM_Gallery_Show",
-      }, "*");
-      setMode("gallery");
-
-      // add class to body
-      document.body.classList.add('gallery-open');
-    }
-  }
-
-  function updateThumbnailSize(event, newValue) {
-    const n = Number(newValue);
-    const thumbSizePx = Number.isFinite(n) && n > 0 ? n : 150;
-
-    latestThumbSizePxRef.current = thumbSizePx;
-    applyGridVars(thumbSizePx);
-  }
+  }, [appStatus.queue, galleryData, openGallery, options.Gallery]);
 
   function onThumbSizeCommited(event, newValue) {
     // update options on the server
@@ -504,17 +540,6 @@ export default function Home() {
     })
   }
 
-  function updateCoverSize(event, newValue) {
-    document.documentElement.style.setProperty('--cover-size', newValue + 'px');
-  }
-
-  function onCoverSizeCommited(event, newValue) {
-    // update options on the server
-    setTimeout(() =>{
-      setDirectOption("cover_size", newValue);
-      apiCall('queue_manager/options', {key:"cover_size", value: newValue}, 'POST')
-    })
-  }
 
   const setThumbMode = useEvent((mode) => {
     // update options on the server
@@ -527,8 +552,8 @@ export default function Home() {
   });
 
   const appContextValue = useMemo(() => {
-    return { appStatus, setAppStatus, onMediaItemClick, openSplash };
-  }, [appStatus, onMediaItemClick]);
+    return { onMediaItemClick, openSplash, fetchQueueItems };
+  }, [onMediaItemClick, openSplash, fetchQueueItems]);
 
   const closeSplash = useEvent(event => {
     setShowSplash(false);
@@ -536,22 +561,6 @@ export default function Home() {
       apiCall('queue_manager/options', {key:"splash_screen", value: true}, 'POST');
     }
   })
-
-  useEffect(() => {
-    // Prevent double-fire
-    if (lastQueryKeyRef.current === queryKey) return;
-    lastQueryKeyRef.current = queryKey;
-
-    // Clear current data to avoid showing wrong route/page data
-    setAppStatus((prev) => ({ ...prev, queue: null }));
-
-    // Only completed route needs options refresh
-    if (route === "completed") {
-      fetchOptions();
-    }
-
-    fetchQueueItems();
-  }, [queryKey]);
 
   // when progress data is updated
   useEffect(() => {
@@ -597,7 +606,7 @@ export default function Home() {
         }));
       }
     }
-  }, [appStatus.queue]);
+  }, [appStatus.queue, currentJob.id, currentJob.integrity, currentJob.nodes]);
 
   useEffect(() => {
     const onResize = () => applyGridVars(latestThumbSizePxRef.current);
@@ -615,6 +624,7 @@ export default function Home() {
 
   // on mount get the queue items from the server
   useEffect(() => {
+    fetchQueueItems({route: "queue"});
     fetchOptions();
 
     window.addEventListener("message", handleMessage);
@@ -639,9 +649,12 @@ export default function Home() {
   }, []);
 
   return (
-    <div className={`route-${route} qm-container mode-${mode}`}>
+    <div className={`route-${route} qm-container mode-${mode}` + (appStatus.loading ? ' loading' : '')}>
       <header className="px-2 py-1 text-sm header font-bold">
         Queue Manager
+        {appStatus.loading &&
+          <LoaderSpinner />
+        }
       </header>
       <AppContext.Provider value={appContextValue}>
         <TopMenu/>
@@ -656,7 +669,7 @@ export default function Home() {
           <button
             className={"tab queue" + (route === 'queue' ? ' active' : '')}
             onClick={() => {
-              setRoute('queue');
+              fetchQueueItems({route: "queue"});
             }}
           >Queue
           </button>
@@ -665,7 +678,7 @@ export default function Home() {
           <button
             className={"tab archive" + (route === 'archive' ? ' active' : '')}
             onClick={() => {
-              setRoute('archive');
+              fetchQueueItems({route: "archive"});
             }}
           >Archive
           </button>
@@ -673,7 +686,7 @@ export default function Home() {
           {/* Completed */}
           <button className={"tab completed" + (route === 'completed' ? ' active' : '')}
                   onClick={() => {
-                    setRoute('completed');
+                    fetchQueueItems({route: "completed"});
                   }}
           >Completed
           </button>
@@ -703,7 +716,8 @@ export default function Home() {
                   onClick={() => {
                     // remove the filter from the filters object
                     const prev = useAppStore.getState().filters;
-                    setFilters((({[filter.type]: _, ...f}) => f)(prev));
+                    const newFilters = (({[filter.type]: _, ...f}) => f)(prev);
+                    fetchQueueItems({filters: newFilters})
                   }}
                 >
                   <svg viewBox="0 0 24 24" width="1.2em" height="1.2em">
@@ -718,7 +732,7 @@ export default function Home() {
             <button
               className="dark:bg-neutral-700 bg-neutral-400 text-neutral-200 light:text-neutral-800 close close-all hover:bg-neutral-500 ml-auto"
               onClick={() => {
-                setFilters(null);
+                fetchQueueItems({filters: {}});
               }}
             >
               <svg viewBox="0 0 24 24" width="1.2em" height="1.2em">
@@ -795,7 +809,7 @@ export default function Home() {
                   siblingCount={2}
                   page={appStatus.queue.info.page + 1}
                   onChange={(event, value) => {
-                    fetchQueueItems(value - 1);
+                    fetchQueueItems({page:value -1});
                   }}
                   count={appStatus.queue.info.last_page + 1}></Pagination>
 
@@ -806,7 +820,7 @@ export default function Home() {
                       value={appStatus.queue.info.page}
                       onChange={(event) => {
                         const pageNum = event.target.value;
-                        fetchQueueItems(pageNum);
+                        fetchQueueItems({page:pageNum});
                       }}
                       size="small"
                     >

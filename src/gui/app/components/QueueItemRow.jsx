@@ -21,7 +21,7 @@ import {LoaderSpinner} from "../components/LoaderSpinner";
  *
  */
 export const QueueItemRow = memo(function QueueItemRow({item, className, loader, index, mode, info }) {
-  const {onMediaItemClick} = useContext(AppContext);
+  const {onMediaItemClick, fetchQueueItems} = useContext(AppContext);
 
   const galleryOptions = useOptionsStore((state) => state.Gallery);
   const route = useAppStore((state) => state.route);
@@ -63,12 +63,16 @@ export const QueueItemRow = memo(function QueueItemRow({item, className, loader,
     await apiCall(`queue_manager/play`, {items: [item[3].db_id], front: useAppStore.getState().shiftDown === true, clientId: useAppStore.getState().clientId})
   }
 
-  async function filterByWorkflow() {
-    setFilters({...filters, workflow: {
-        type: 'workflow',
-        value: item[3].extra_pnginfo.workflow.id,
-        valueLabel: item[3].extra_pnginfo.workflow.workflow_name
-    }});
+  async function filterByWorkflow(id, name) {
+    fetchQueueItems(
+      { filters: {
+        ...filters, workflow: {
+          type: 'workflow',
+          value: item[3].extra_pnginfo.workflow.id,
+          valueLabel: item[3].extra_pnginfo.workflow.workflow_name
+        }
+      }}
+    );
   }
 
 

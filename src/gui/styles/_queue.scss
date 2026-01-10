@@ -11,11 +11,22 @@ header.header {
   border-bottom: 1px solid var(--color-neutral-700);
   margin-bottom: 0.6rem;
   background-color: var(--background);
+  gap: 0.5rem;
+
+  svg {
+    margin-top: -1px;
+  }
 }
 
 .queue-table {
   flex: 1;
   overflow: hidden;
+
+  .loading & {
+    pointer-events: none;
+    user-select: none;
+    opacity: 0.6;
+  }
 
   .table-wrapper {
     overflow: hidden;
@@ -163,16 +174,6 @@ header.header {
     td.actions {
       position: relative;
       vertical-align: middle;
-    }
-
-    .loader {
-      display: inline-block;
-      vertical-align: middle;
-
-      svg {
-        animation: spin 2s linear infinite;
-        width: 1rem;
-      }
     }
   }
 
@@ -774,4 +775,24 @@ button {
   display: flex;
   flex-direction: column;
   height: 100%;
+}
+
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.loader {
+  display: inline-block;
+  vertical-align: middle;
+
+  svg {
+    animation: spin 2s linear infinite;
+    width: 1rem;
+  }
 }

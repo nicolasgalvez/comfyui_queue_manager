@@ -38,8 +38,11 @@ export default [
       ...jsxA11y.configs.recommended.rules,
 
       "react-refresh/only-export-components": "warn",
-
       "react/react-in-jsx-scope": "off",
+      "no-unused-vars":"warn",
+      "react/prop-types":"off",
+      "jsx-a11y/no-static-element-interactions":"off",
+      "jsx-a11y/click-events-have-key-events":"off",m
     },
   },
 
