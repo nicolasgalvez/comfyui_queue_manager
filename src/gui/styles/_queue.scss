@@ -37,6 +37,8 @@ header.header {
     width: 100%;
     overflow: auto;
     height: 100%;
+    position: relative;
+    border-top: 1px solid var(--color-neutral-700);
   }
 
   table {
@@ -45,22 +47,10 @@ header.header {
 
     th {
       background-color: var(--background);
-      border-top: 1px solid var(--color-neutral-700);
-    }
-  }
-
-  .MuiPaper-root {
-    overflow: hidden;
-    height: 100%;
-  }
-
-  .MuiTableContainer-root {
-    height: 100%;
-  }
-
-  .MuiTableRow-head {
-    th {
-      border-top: 1px solid var(--color-neutral-700);
+      position: sticky;
+      top: 0;
+      z-index:
+    3;
 
       &:not(:last-child) {
         &:after {
@@ -76,12 +66,9 @@ header.header {
     }
   }
 
-  .route-archive & {
-    background-color: $archive-color-darker;
-
-    @media (prefers-color-scheme: light) {
-      background-color: $archive-color-light;
-    }
+  .MuiPaper-root {
+    overflow: hidden;
+    height: 100%;
   }
 
   tr {
@@ -91,13 +78,11 @@ header.header {
       color: var(--foreground-faded);
     }
 
-    .route-archive & {
-      &:nth-child(odd) {
-        background-color: #ffffff05;
+    &:nth-child(odd) {
+      background-color: #ffffff05;
 
-        @media (prefers-color-scheme: light) {
-          background-color: #ffffff88;
-        }
+      @media (prefers-color-scheme: light) {
+        background-color: #ffffff88;
       }
     }
   }
@@ -109,6 +94,10 @@ header.header {
     .workflow-column {
       width: 100%;
     }
+  }
+
+  td {
+    border-bottom: 1px solid var(--color-neutral-800);
   }
 
   td.actions {
