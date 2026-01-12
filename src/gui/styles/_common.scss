@@ -95,4 +95,8 @@
   &.blue-button {
     @include shiny-button("blue", #acf, #6af, #9cf);
   }
+
+  &.violet-button {
+    @include shiny-button("violet", #caf, #a36aff, #d69fff);
+  }
 }

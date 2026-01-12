@@ -186,7 +186,7 @@ export const QueueItemRow = memo(
               {route === "completed" ? (
                 <button
 
-                  className="view"
+                  className="view violet-button shiny-button"
                   onClick={() => onMediaItemClick({ dbID: dbId, fileIndex: 0 })}
                   title="View outputs in gallery"
                 >
