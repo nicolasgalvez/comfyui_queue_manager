@@ -22,7 +22,7 @@ header.header {
   flex: 1;
   overflow: hidden;
 
-  .loading & {
+  .reloading & {
     pointer-events: none;
     user-select: none;
     opacity: 0.6;
@@ -33,12 +33,19 @@ header.header {
     height: 100%;
   }
 
+  .table-container {
+    width: 100%;
+    overflow: auto;
+    height: 100%;
+  }
+
   table {
     width: 100%;
     max-width: 100%;
 
     th {
       background-color: var(--background);
+      border-top: 1px solid var(--color-neutral-700);
     }
   }
 
@@ -101,6 +108,28 @@ header.header {
 
     .workflow-column {
       width: 100%;
+    }
+  }
+
+  td.actions {
+    .buttons {
+      display: flex;
+
+      button {
+        margin: 0 1px 0 0;
+
+        &:first-child {
+          border-top-right-radius: 0;
+          border-bottom-right-radius: 0;
+        }
+        &:last-child {
+          border-top-left-radius: 0;
+          border-bottom-left-radius: 0;
+        }
+        &:not(:first-child):not(:last-child) {
+          border-radius: 0;
+        }
+      }
     }
   }
 
@@ -234,26 +263,6 @@ header.header {
 
             @media (prefers-color-scheme: light) {
               color: saddlebrown;
-            }
-          }
-        }
-      }
-
-      &.actions {
-        .MuiStack-root {
-          button {
-            margin: 0 1px 0 0;
-
-            &:first-child {
-              border-top-right-radius: 0;
-              border-bottom-right-radius: 0;
-            }
-            &:last-child {
-              border-top-left-radius: 0;
-              border-bottom-left-radius: 0;
-            }
-            &:not(:first-child):not(:last-child) {
-              border-radius: 0;
             }
           }
         }

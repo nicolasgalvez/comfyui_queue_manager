@@ -47,6 +47,7 @@ const VisuallyHiddenInput = styled('input')({
 export default function Home() {
   const [appStatus, setAppStatus] = useState({
     loading: true,
+    reloading: false,
     error: null,
     queue: null,
   });
@@ -175,7 +176,8 @@ export default function Home() {
     }
   }, [setAllOptions, updateCoverSize, updateThumbnailSize]);
 
-  const fetchQueueItems = useCallback(async ({page, route, filters} = {}) => {
+  const fetchQueueItems = useCallback(async ({page, route, filters, reload = false} = {}) => {
+    console.trace("Fetch");
 
     const fetchId = ++fetchIdRef.current;
 
@@ -185,7 +187,7 @@ export default function Home() {
     queryArgs = appendFilters(queryArgs, filters);
     queryArgs = appendRoute(queryArgs, route);
 
-    setAppStatus((prev) => ({ ...prev, loading: true, error: null }));
+    setAppStatus((prev) => ({ ...prev, loading: true, error: null, reloading: reload }));
 
     try {
       const response = await fetch(`${baseURL}queue_manager/queue${queryArgs}`);
@@ -210,13 +212,14 @@ export default function Home() {
         setFilters(filters);
       }
 
-      setAppStatus((prev) => ({ ...prev, loading: false, error: null, queue }));
+      setAppStatus((prev) => ({ ...prev, loading: false, error: null, queue, reloading: false }));
     } catch (error) {
       if (fetchId !== fetchIdRef.current) return;
 
       setAppStatus((prev) => ({
         ...prev,
         loading: false,
+        reloading: false,
         error: error?.message ?? String(error),
         queue: null,
       }));
@@ -649,7 +652,7 @@ export default function Home() {
   }, []);
 
   return (
-    <div className={`route-${route} qm-container mode-${mode}` + (appStatus.loading ? ' loading' : '')}>
+    <div className={`route-${route} qm-container mode-${mode}` + (appStatus.loading ? ' loading' : '') + (appStatus.reloading ? ' reloading' : '')}>
       <header className="px-2 py-1 text-sm header font-bold">
         Queue Manager
         {appStatus.loading &&
@@ -669,7 +672,7 @@ export default function Home() {
           <button
             className={"tab queue" + (route === 'queue' ? ' active' : '')}
             onClick={() => {
-              fetchQueueItems({route: "queue"});
+              fetchQueueItems({route: "queue", reload: true});
             }}
           >Queue
           </button>
@@ -678,7 +681,7 @@ export default function Home() {
           <button
             className={"tab archive" + (route === 'archive' ? ' active' : '')}
             onClick={() => {
-              fetchQueueItems({route: "archive"});
+              fetchQueueItems({route: "archive", reload: true});
             }}
           >Archive
           </button>
@@ -686,7 +689,7 @@ export default function Home() {
           {/* Completed */}
           <button className={"tab completed" + (route === 'completed' ? ' active' : '')}
                   onClick={() => {
-                    fetchQueueItems({route: "completed"});
+                    fetchQueueItems({route: "completed", reload: true});
                   }}
           >Completed
           </button>
@@ -809,7 +812,7 @@ export default function Home() {
                   siblingCount={2}
                   page={appStatus.queue.info.page + 1}
                   onChange={(event, value) => {
-                    fetchQueueItems({page:value -1});
+                    fetchQueueItems({page:value -1, reload: true});
                   }}
                   count={appStatus.queue.info.last_page + 1}></Pagination>
 
@@ -820,7 +823,7 @@ export default function Home() {
                       value={appStatus.queue.info.page}
                       onChange={(event) => {
                         const pageNum = event.target.value;
-                        fetchQueueItems({page:pageNum});
+                        fetchQueueItems({page:pageNum, reload: true});
                       }}
                       size="small"
                     >

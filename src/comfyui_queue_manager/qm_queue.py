@@ -509,7 +509,7 @@ class QM_Queue:
 
     def archive_items(self, items):
         """
-        Archive items from the database
+        Archive items to the database
         """
         with self.native_queue.mutex:
             # Archive the item from the database

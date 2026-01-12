@@ -83,7 +83,7 @@ export const Queue = memo(function Queue({ data, isLoading, error, progress }) {
       }
       style={{ "--job-progress": progress + "%" }}
     >
-      <div style={{ width: "100%", overflow: "hidden" }}>
+      <div className={"table-container"}>
         <>
           <table className="min-w-full border border-0" size="small" stickyHeader>
             <thead className="dark:bg-neutral-800 bg-neutral-200 text-xs uppercase">

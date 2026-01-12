@@ -143,11 +143,9 @@ export const QueueItemRow = memo(
 
           {/* Item Actions */}
           <td className="px-3 py-1 text-right actions">
-            <div direction="row" sx={{ justifyContent: "flex-end" }} spacing={1}>
+            <div style={{ justifyContent: "flex-end" }}  className="buttons">
               <button
-                variant="contained"
-                size="small"
-                color="error"
+                className="delete red-button shiny-button"
                 onClick={cancelQueueItem}
                 title="Delete workflow from queue"
               >
@@ -156,9 +154,7 @@ export const QueueItemRow = memo(
 
               {mode !== "external" ? (
                 <button
-                  variant="contained"
-                  size="small"
-                  color="success"
+                  className="load green-button shiny-button"
                   onClick={loadQueueItem}
                   title="Load workflow"
                 >
@@ -168,9 +164,7 @@ export const QueueItemRow = memo(
 
               {route === "queue" && mode !== "running" ? (
                 <button
-                  variant="contained"
-                  size="small"
-                  color="warning"
+                  className="archive yellow-button shiny-button"
                   onClick={archiveQueueItem}
                   title="Move to the archive"
                 >
@@ -180,21 +174,18 @@ export const QueueItemRow = memo(
 
               {route === "archive" ? (
                 <button
-                  variant="contained"
-                  size="small"
-                  className="run"
+                  className="run blue-button shiny-button"
                   onClick={playItem}
                   title="Move to queue"
-                  startIcon={<PlayArrowOutlinedIcon fontSize="small" />}
                 >
+                  <PlayArrowOutlinedIcon fontSize="small" />
                   Run
                 </button>
               ) : null}
 
               {route === "completed" ? (
                 <button
-                  variant="contained"
-                  size="small"
+
                   className="view"
                   onClick={() => onMediaItemClick({ dbID: dbId, fileIndex: 0 })}
                   title="View outputs in gallery"
