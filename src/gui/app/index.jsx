@@ -177,7 +177,6 @@ export default function Home() {
   }, [setAllOptions, updateCoverSize, updateThumbnailSize]);
 
   const fetchQueueItems = useCallback(async ({page, route, filters, reload = false} = {}) => {
-    console.trace("Fetch");
 
     const fetchId = ++fetchIdRef.current;
 
@@ -847,7 +846,7 @@ export default function Home() {
 
           {/* Footer Actions */}
           <div className="p-2 flex actions">
-            <Stack direction="row" spacing={1} className={'min-w-full'} useFlexGap>
+            <Stack direction="row" spacing={1} className={'min-w-full buttons'}>
               {appStatus.queue && (appStatus.queue.running.length > 0 || appStatus.queue.pending.length > 0) &&
                 <>
 
@@ -855,58 +854,50 @@ export default function Home() {
                   {/* Queue Actions  */}
                   {route === 'queue' &&
                     <>
-                      <Button onClick={archiveAll} variant="contained" color="warning" size="small">
+                      <button onClick={archiveAll} className={"shiny-button yellow-button"}>
                         <Inventory2SharpIcon/>&nbsp;
                         Archive All {isFilterOn() ? "*" : "Pending"}
-                      </Button>
-                      <Button variant="contained" color="secondary" size="small"
+                      </button>
+                      <a className={"shiny-button"}
                               href={baseURL + "queue_manager/export" + appendFilters("")}>
                         <FileDownloadOutlinedIcon/>&nbsp;&nbsp;Export {isFilterOn() ? "*" : "Queue"}
-                      </Button>
-                      {isFilterOn()
-                        ?
-                        <Button variant="contained" color="error" size="small" onClick={deleteFromQueue}
-                                className={"order-last"} sx={{ml: 'auto'}}>
-                          <DeleteOutlineSharpIcon/>&nbsp;&nbsp;Delete All *
-                        </Button>
-                        :
-                        <Button variant="contained" color="error" size="small" onClick={clearPending}
-                                className={"order-last"} sx={{ml: 'auto'}}>
-                          <DeleteOutlineSharpIcon/>&nbsp;&nbsp;Delete All Pending
-                        </Button>
-                      }
+                      </a>
+                      <button color="error" onClick={isFilterOn() ? deleteFromQueue : clearPending}
+                              className={"order-last delete red-button shiny-button"} >
+                        <DeleteOutlineSharpIcon/>&nbsp;&nbsp;Delete All {isFilterOn() ? "*" : "Pending"}
+                      </button>
                     </>
                   }
 
                   {/* Archive Actions */}
                   {route === 'archive' &&
                     <>
-                      <Button variant="contained" size="small" onClick={playAllArchive}
-                              className="hover:bg-neutral-700 text-neutral-200 dark:text-neutral-900 py-1 px-2 rounded mr-1 border-0 run run-all">
+                      <button onClick={playAllArchive}
+                              className="shiny-button blue-button">
                         <PlayArrowOutlinedIcon/>&nbsp;&nbsp;Run All {isFilterOn() ? "*" : ""}
-                      </Button>
-                      <Button variant="contained" color="secondary" size="small"
+                      </button>
+                      <a className={"shiny-button"}
                               href={baseURL + "queue_manager/export" + appendFilters("?route=archive")}>
                         <FileDownloadOutlinedIcon/>&nbsp;&nbsp;Export {isFilterOn() ? "*" : "Archive"}
-                      </Button>
-                      <Button onClick={deleteFromQueue} variant="contained" color="error" size="small"
-                              className={"order-last"} sx={{ml: 'auto'}}>
+                      </a>
+                      <button onClick={deleteFromQueue}
+                              className={"shiny-button delete red-button order-last"}>
                         <DeleteOutlineSharpIcon/>&nbsp;&nbsp;Delete {isFilterOn() ? "All *" : "All Archive"}
-                      </Button>
+                      </button>
                     </>
                   }
 
                   {/* Completed Actions */}
                   {route === 'completed' &&
                     <>
-                      <Button variant="contained" color="secondary" size="small"
+                      <a className={"shiny-button"}
                               href={baseURL + "queue_manager/export" + appendFilters("?route=completed")}>
                         <FileDownloadOutlinedIcon/>&nbsp;&nbsp;Export {isFilterOn() ? "*" : "Completed Jobs"}
-                      </Button>
-                      <Button variant="contained" color="error" size="small" onClick={deleteFromQueue}
-                              className={"order-last"} sx={{ml: 'auto'}}>
+                      </a>
+                      <button onClick={deleteFromQueue}
+                              className={"order-last delete red-button shiny-button"}>
                         <DeleteOutlineSharpIcon/>&nbsp;&nbsp;Delete {isFilterOn() ? "All *" : "All Completed Jobs"}
-                      </Button>
+                      </button>
                     </>
                   }
                 </>
@@ -918,7 +909,7 @@ export default function Home() {
                   encType="multipart/form-data"
                   className={"import-form"}
                 >
-                  <Button variant="contained" color="secondary" size="small" component="label">
+                  <Button variant="contained" color="inherit" size="small" component="label" className={"shiny-button"}>
                     <DriveFolderUploadOutlinedIcon/>&nbsp;&nbsp;Import {route === 'queue' ? 'Queue' : 'Archive'}
                     <VisuallyHiddenInput
                       type="file"

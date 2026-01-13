@@ -531,15 +531,6 @@ button {
   }
 }
 
-
-.import-form {
-  label {
-    font-size: 0.8rem;
-    display: inline-block;
-    cursor: pointer;
-  }
-}
-
 .pagination {
   padding-top: 0.8rem;
   padding-bottom: 0.4rem;
@@ -754,10 +745,6 @@ button {
 
 .MuiButton-sizeSmall {
   line-height: 1 !important;
-
-  svg {
-    margin-left: -0.4rem  ;
-  }
 }
 
 .MuiSvgIcon-fontSizeSmall {
