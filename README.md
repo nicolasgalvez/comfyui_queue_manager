@@ -152,17 +152,16 @@ Typical use case is to connect the `workflow_name` output to a node that accepts
 - **Completed** tab can display results in 3 different modes: List, Cover, Grid.
 - In **List** no media previews are shown, only job details. In **Cover** mode a first image is shown in the table. In **Grid** mode all media outputs (depending on settings) are shown in a grid layout.
 ![modes.png](readme-img/modes.png)
-- In every mode small indicator next to the workflow name shows how many media outputs were produced by the job.
+- In every mode a small indicator next to the workflow name shows how many media outputs were produced by the job.
 - Clicking on a thumbnail or outputs indicator opens the Gallery view.
 - In Cover and Grid modes you can adjust size of the thumbnails using the slider on the bottom right of the window.
 ![mediaitem.png](readme-img/mediaitem.png)
 #### Gallery view
 - In the **Gallery** view you can see all media outputs from the currently displayed **Completed** page. This is important to note: only outputs from jobs on current page will show in the gallery i.e. if there are 100 jobs per page then only outputs from those 100 jobs will be displayed in the gallery.
-- You can cycle through media items individually, skip through nodes or entire jobs to quickly navigate through results.
+- You can cycle through media items individually or skip through entire jobs to quickly navigate through results.
 - In the **Gallery** view several keyboard shortcuts are available:
   - **Arrow Left / Right**: go to previous / next media item
-  - **Arrow Up / Down**: go to previous / next node's outputs
-  - **Page Up / Down**: go to previous / next job
+  - **Arrow Up / Down**: go to previous / next job
   - **Home**: go to first media item
   - **End**: go to last media item
   - **Escape**: close Gallery view
