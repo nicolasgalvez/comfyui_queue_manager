@@ -707,14 +707,14 @@ export default function Home() {
         */}
         {isFilterOn() &&
           <div className="filters flex items-center p-2">
-            <span className="text-neutral-500">Filters:</span>
+            <span className="text-neutral-100">Filters:</span>
             {Object.values(filters).map(filter =>
               <div className="filter flex items-center" key={filter.type}>
                 <span
                   className="inline-flex text-neutral-800 dark:text-neutral-200 close label"><span
                   className={'type'}>{filter.type + ": "}&nbsp;</span>{filter.valueLabel}</span>
                 <button
-                  className="dark:bg-neutral-700 bg-neutral-400 text-neutral-200 light:text-neutral-800 close hover:bg-neutral-500"
+                  className="shiny-button close "
                   onClick={() => {
                     // remove the filter from the filters object
                     const prev = useAppStore.getState().filters;
@@ -732,7 +732,7 @@ export default function Home() {
 
             {/*  Clear all  */}
             <button
-              className="dark:bg-neutral-700 bg-neutral-400 text-neutral-200 light:text-neutral-800 close close-all hover:bg-neutral-500 ml-auto"
+              className="close close-all ml-auto shiny-button"
               onClick={() => {
                 fetchQueueItems({filters: {}});
               }}

@@ -61,8 +61,8 @@ export default function TopMenu() {
         ref={menuRef}
         className={"top-menu" + (uiState.menuOpen ? ' open' : '')}>
         <div className={"container"}>
-          <Button size={"small"}  type={"button"} variant="contained" color="secondary"  className={"button"} onClick={takeOver}><AdsClickSharpIcon /> Take over focus</Button>
-          <Button size={"small"}  type={"button"} variant="contained" color="secondary"  className={"button"} onClick={() => {toggleMenu(); openSplash()}}><InfoOutlineSharpIcon /> About Queue Manager</Button>
+          <button type={"button"}  className={"button shiny-button"} onClick={takeOver}><AdsClickSharpIcon /> Take over focus</button>
+          <button type={"button"}  className={"button shiny-button"} onClick={() => {toggleMenu(); openSplash()}}><InfoOutlineSharpIcon /> About Queue Manager</button>
         </div>
       </section>
     </>

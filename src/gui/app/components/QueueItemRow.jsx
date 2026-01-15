@@ -8,6 +8,7 @@ import { MediaItem } from "../components/MediaItem";
 import PlayArrowOutlinedIcon from "@mui/icons-material/PlayArrowOutlined";
 import { MediaOutputs } from "../models/MediaOutputs";
 import { LoaderSpinner } from "../components/LoaderSpinner";
+import {useAppStore} from "@/app/stores/appStore";
 
 export const QueueItemRow = memo(
   function QueueItemRow({
@@ -41,8 +42,8 @@ export const QueueItemRow = memo(
     }, [mode, item]);
 
     const loadQueueItem = useCallback(() => {
-      if (workflow?.workflow) {
-        msgLoadWorkflow(workflow.workflow, item[0]);
+      if (workflow) {
+        msgLoadWorkflow(workflow, item[0]);
       }
     }, [workflow, item]);
 
@@ -123,7 +124,7 @@ export const QueueItemRow = memo(
             <div className="name-cell">
               {mediaOutputs && item[3].total_files > 0 ? (
                 <span
-                  className="total"
+                  className="total shiny-button"
                   title={`Total file outputs: ${mediaOutputs.total}`}
                   onClick={() => onMediaItemClick({ dbID: dbId, fileIndex: 0 })}
                 >

@@ -85,7 +85,7 @@ export const Queue = memo(function Queue({ data, isLoading, error, progress }) {
     >
       <div className={"table-container"}>
         <>
-          <table className="min-w-full border border-0" size="small" stickyHeader>
+          <table className="min-w-full border border-0">
             <thead className="dark:bg-neutral-800 bg-neutral-200 text-xs uppercase">
               <tr>
                 <th className="px-3 py-2 text-left">#</th>

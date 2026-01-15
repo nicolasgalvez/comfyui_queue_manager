@@ -67,6 +67,10 @@
   transition: background-color 300ms ease, color 300ms ease;
   text-shadow: 0 0 3px black;
 
+  &.ml-auto {
+    margin-left: auto;
+  }
+
   &:hover {
     background: #222922;
     z-index: 1;
