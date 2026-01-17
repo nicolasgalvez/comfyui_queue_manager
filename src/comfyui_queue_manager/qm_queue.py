@@ -795,7 +795,10 @@ class QM_Queue:
                 WHERE status = 1 OR status = 0 -- pending or running
             """)
             if rows:
-                task_counter = max(abs(rows[0]), abs(rows[1])) + 1
+                min_num = rows[0] if rows[0] is not None else 0
+                max_num = rows[1] if rows[1] is not None else 0
+
+                task_counter = max(abs(min_num), abs(max_num)) + 1
             else:
                 task_counter = 1
 

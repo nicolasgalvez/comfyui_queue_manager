@@ -4,6 +4,10 @@ footer.footer {
   border-top: 1px solid var(--color-neutral-700);
   background-color: var(--background);
 
+  @media (prefers-color-scheme: light) {
+    background-color: var(--background-light);
+  }
+
 
   .actions {
     font-size: 0.8em;
@@ -39,6 +43,10 @@ footer.footer {
       justify-content: center;
       white-space: nowrap;
       padding: 5px 15px 5px 10px;
+
+      @media (prefers-color-scheme: light) {
+        border-color: #fff;
+      }
     }
 
     button {
@@ -46,7 +54,7 @@ footer.footer {
       padding: 5px 15px 5px 10px;
 
       @media (prefers-color-scheme: light) {
-        color: white;
+        border-color: #fff;
       }
 
       &.run-all {
@@ -75,6 +83,12 @@ footer.footer {
         font-weight: normal;
         padding: 5px 15px 5px 10px;
 
+        @media (prefers-color-scheme: light) {
+          color: #333;
+          border-color: #fff;
+          box-shadow: 0 2px 1px #eee4;
+        }
+
         &:hover {
           color: black;
           text-shadow: none;
@@ -85,7 +99,7 @@ footer.footer {
     @media (prefers-color-scheme: light) {
       a
       {
-        color: black;
+        color: #333;
       }
     }
 
@@ -132,6 +146,33 @@ footer.footer {
           background-color: white;
           color: black;
         }
+      }
+    }
+  }
+
+  .MuiPaginationItem-page {
+    @media (prefers-color-scheme: light) {
+      color: black;
+      background-color: #fff8;
+
+      &:hover {
+        background-color: white;
+      }
+
+      &.Mui-selected {
+        background-color: white;
+        border-color: black;
+      }
+    }
+  }
+
+  .MuiPaginationItem-previousNext {
+    @media (prefers-color-scheme: light) {
+      color: black;
+      background-color: #fff8;
+
+      &:hover {
+        background-color: white;
       }
     }
   }

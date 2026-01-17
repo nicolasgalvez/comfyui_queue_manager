@@ -707,7 +707,7 @@ export default function Home() {
         */}
         {isFilterOn() &&
           <div className="filters flex items-center p-2">
-            <span className="text-neutral-100">Filters:</span>
+            <h2>Filters:</h2>
             {Object.values(filters).map(filter =>
               <div className="filter flex items-center" key={filter.type}>
                 <span

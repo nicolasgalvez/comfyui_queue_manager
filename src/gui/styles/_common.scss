@@ -82,7 +82,25 @@
     top: 1px;
   }
 
-  @include shiny-button("white", #ccc, #eee, #fff);
+  // light theme
+  @media (prefers-color-scheme: light) {
+    background: #eee;
+    background: linear-gradient(#fff, #eee);
+    border: 1px solid #ccc;
+    box-shadow: 0 2px 1px #eee4;
+    color: #333;
+    text-shadow: none;
+
+    &:hover {
+      background: #ddd;
+    }
+
+    &:active {
+      background: #ccc;
+    }
+  }
+
+  @include shiny-button("white", #ccc, #eee, #fff, 5%);
 
   &.green-button {
      @include shiny-button("green", #9c9, #39aa39, rgb(0 255 0));
@@ -93,7 +111,7 @@
   }
 
   &.yellow-button {
-    @include shiny-button("yellow", #cc9, #bbbb33, #ff6);
+    @include shiny-button("yellow", #dd6, #bbbb33, #ff6);
   }
 
   &.blue-button {

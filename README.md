@@ -204,10 +204,10 @@ Don't lol. Things will change and move around a lot.
 Nevertheless, here are some pointers if you have some PR ideas for critical fixes or features:
 - `/web` is the front end part of the extension.
   - Inside is `.gui` folder which is hidden from default ComfyUI UI, but it's where the build version of the Queue Manager is.
-- The core front end functionality of the Queue Manager is a Next.js app loaded in an iframe (from  `.gui` folder). It communicates with loading part of the extension by postMessage API.
+- The core front end functionality of the Queue Manager is a React web app loaded in an iframe (from  `.gui` folder). It communicates with loading part of the extension by postMessage API.
 - Server side (python) part of the extension is in `/src/comfyui_queue_manager`
-- Source code for the Next.js app is in `/src/gui`
-- database is in `/data/` (sqlite files are created automatically on first run)
+- Source code for the React app is in `/src/gui`. I use bun to build it but you can as well use npm.
+- database is in `/data/` (sqlite files are created automatically on first run after installation)
 
 Better docs will come later.
 

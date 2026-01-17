@@ -17,8 +17,9 @@ export function SplashScreen({onClick}) {
         <p>Head over to the <b>Completed</b> tab to see previews from generated outputs (only new jobs completed after this release was introduced). Click on media item to see it in <b>Gallery</b> mode. Keyboard shortcuts available. </p>
         <h3>Settings</h3>
         <p>A new settings panel is available in <b>ComfyUI Menu -&gt; Settings -&gt; Queue Manager</b> where you can influence certain features of the extension.</p>
-        <h3>New style</h3>
+        <h3>New style and UI improvements</h3>
         <p>An attempt to make the UI look less motley. </p>
+        <p>More functional pagination experience, especially if you hoard tens of pages.</p>
         <p><br/>
           For more details check the updated manual on Github: <a href={"https://github.com/QuietNoise/comfyui_queue_manager?tab=readme-ov-file#manual"} target={"_blank"}>Queue Manager Manual</a>.
         </p>
