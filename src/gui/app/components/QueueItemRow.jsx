@@ -162,12 +162,15 @@ const executionTimeLabel = useMemo(() => {
                     : ""}
               </button>
 
-              {executionTimeLabel ? (
-                <span className="execution-time" title="Execution time">
-                  {executionTimeLabel}
-                </span>
-              ) : null}
+
             </div>
+          </td>
+          <td className={'meta-info'}>
+            {executionTimeLabel ? (
+              <div className="execution-time" title="Execution time">
+                {executionTimeLabel}
+              </div>
+            ) : null}
           </td>
 
           {/* Item Actions */}
