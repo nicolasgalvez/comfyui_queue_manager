@@ -292,6 +292,10 @@ header.header {
       & + tr.gallery {
         td {
           background: var(--background-faded);
+
+          @media (prefers-color-scheme: light) {
+            background: var(--background-light);
+          }
         }
       }
     }
@@ -306,8 +310,16 @@ header.header {
       background: var(--background-faded);
       color: var(--foreground-faded);
 
+      @media (prefers-color-scheme: light) {
+        background: var(--background-light);
+      }
+
       td {
         opacity: 1 !important;
+
+        > * {
+          opacity: 1 !important;
+        }
       }
     }
   }
