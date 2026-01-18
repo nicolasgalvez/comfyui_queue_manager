@@ -213,3 +213,6 @@ Better docs will come later.
 
 ## Have fun!
 Queue all the way to the moon.
+
+## Release Notes
+For detailed release notes please see [CHANGELOG.md](CHANGELOG.md).
