@@ -165,13 +165,17 @@ const executionTimeLabel = useMemo(() => {
 
             </div>
           </td>
-          <td className={'meta-info'}>
-            {executionTimeLabel ? (
-              <div className="execution-time" title="Execution time">
-                {executionTimeLabel}
-              </div>
-            ) : null}
-          </td>
+
+          {route === "completed" &&
+            <td className={'meta-info'}>
+              {executionTimeLabel ? (
+                <div className="execution-time" title="Execution time">
+                  {executionTimeLabel}
+                </div>
+              ) : null}
+            </td>
+          }
+
 
           {/* Item Actions */}
           <td className="px-3 py-1 text-right actions">
