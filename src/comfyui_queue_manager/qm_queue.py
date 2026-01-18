@@ -102,8 +102,10 @@ class QM_Queue:
                     order_string += (
                         ", number ASC" if order == "asc" else ", number DESC"
                     )  # just in case, normally there won't be two items completed at the same time
+
                     join_string = "LEFT JOIN meta as outputs ON queue.id = outputs.item_id AND outputs.key = 'outputs'"
-                    select_string = f"{select_string}, outputs.value as outputs"
+                    join_string += " LEFT JOIN meta as exec_time ON queue.id = exec_time.item_id AND exec_time.key = 'execution_time'"
+                    select_string = f"{select_string}, outputs.value as outputs, exec_time.value as execution_time"
 
             where_clauses = [self.get_route_query(route)]
 
@@ -167,6 +169,11 @@ class QM_Queue:
                             item[3]["total_files"] = 0
                             item[3]["total_images"] = 0
                             item[3]["total_videos"] = 0
+
+                        if row["execution_time"] is not None:
+                            item[3]["execution_time"] = float(row["execution_time"])
+                        else:
+                            item[3]["execution_time"] = None
 
                     pending.append(tuple(item))
 
@@ -285,6 +292,31 @@ class QM_Queue:
                             (
                                 db_id,
                                 json.dumps(outputs),
+                            ),
+                        )
+
+                # If status provided and success then  save execution time to the meta table
+                if status is not None and len(status) >= 3 and status[0] == "success":
+                    exec_time = None
+                    for event in status[2]:
+                        if event[0] == "execution_start":
+                            start_time = event[1]["timestamp"]
+                        if event[0] == "execution_success":
+                            end_time = event[1]["timestamp"]
+
+                            # Convert milliseconds to seconds and round to 3 decimal places
+                            exec_time = round((end_time - start_time) / 1000, 3)
+                            break
+
+                    if exec_time is not None:
+                        write_query(
+                            """
+                                INSERT INTO meta (item_id, key, value)
+                                VALUES (?, 'execution_time', ?)
+                            """,
+                            (
+                                db_id,
+                                str(exec_time),
                             ),
                         )
 

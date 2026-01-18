@@ -235,6 +235,15 @@ header.header {
           align-items: center;
         }
 
+        .execution-time {
+          margin-left: auto;
+          font-size: 0.8rem;
+          border: 1px solid var(--color-neutral-800);
+          padding: 2px 6px;
+          background-color: var(--background);
+          white-space: nowrap;
+        }
+
         .total {
           display: inline-block;
           outline: 1px solid var(--color-neutral-400);

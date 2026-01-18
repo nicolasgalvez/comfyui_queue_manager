@@ -76,6 +76,28 @@ export const QueueItemRow = memo(
       });
     }, [fetchQueueItems, filters, workflow]);
 
+const executionTimeLabel = useMemo(() => {
+  const t = item?.[3]?.execution_time;
+  if (t == null) return null;
+
+  const rawSeconds = Number(t);
+  if (!Number.isFinite(rawSeconds) || rawSeconds < 0) return null;
+
+  const totalSeconds = rawSeconds >= 60 ? Math.round(rawSeconds) : rawSeconds;
+
+  const days = Math.floor(totalSeconds / 86400);
+  const hours = Math.floor((totalSeconds % 86400) / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+
+  const secondsLabel = rawSeconds >= 60 ? `${seconds}s` : `${seconds.toFixed(2)}s`;
+
+  if (days > 0) return ` ${days}d ${hours}h ${minutes}m ${secondsLabel}`;
+  if (hours > 0) return ` ${hours}h ${minutes}m ${secondsLabel}`;
+  if (minutes > 0) return ` ${minutes}m ${secondsLabel}`;
+  return ` ${rawSeconds.toFixed(2)}s`;
+}, [item?.[3]?.execution_time]);
+
     const showCover =
       route === "completed" &&
       thumbMode === "cover" &&
@@ -139,6 +161,12 @@ export const QueueItemRow = memo(
                     ? workflow.workflow_name
                     : ""}
               </button>
+
+              {executionTimeLabel ? (
+                <span className="execution-time" title="Execution time">
+                  {executionTimeLabel}
+                </span>
+              ) : null}
             </div>
           </td>
 
