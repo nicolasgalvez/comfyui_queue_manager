@@ -104,6 +104,13 @@ When in the **Queue** tab you can archive individual items by clicking the **Arc
 
 Similarly, when in **Archive** tab you can play archived items by clicking the **Run** button in the actions column or you can play all archived items by clicking the **Run All** button on the bottom of the window.
 
+#### Run at front of the queue
+You can run an item, entire archive or filtered out list of jobs at the front of the pressing and holding the **Shift** while clicking the **Run** or **Run All** buttons.
+
+When holding Shift pressed a small indicator message will appear on top of the window to confirm that the action will run at front of queue.
+
+![shift-pressed.png](readme-img/shift-pressed.png)
+
 ### Export and Import
 
 You can export items from any tab (Queue, Archive, Completed) to a file by clicking the Export Queue/Archive/Completed button on the bottom of the window.
@@ -165,6 +172,7 @@ Typical use case is to connect the `workflow_name` output to a node that accepts
   - **Home**: go to first media item
   - **End**: go to last media item
   - **Escape**: close Gallery view
+  - **T**: toggle thumbnails on / off
 - On the bottom of the Gallery is a progress bar showing your current position in the list of media items. You can also use it to quickly skip to a specific media item by clicking on it.
 ![gallery-view.png](readme-img/gallery-view.png)
 - By default videos are played automatically. You can change that in extension settings (see below).

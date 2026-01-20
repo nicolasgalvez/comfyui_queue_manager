@@ -5,7 +5,8 @@ import {AppContext} from "../internals/app-context";
 
 import AdsClickSharpIcon from '@mui/icons-material/AdsClickSharp';
 import InfoOutlineSharpIcon from '@mui/icons-material/InfoOutlineSharp';
-import Button from "@mui/material/Button";
+import QuizSharpIcon from '@mui/icons-material/QuizSharp';
+
 import {useAppStore} from "../stores/appStore";
 
 export default function TopMenu() {
@@ -62,6 +63,7 @@ export default function TopMenu() {
         className={"top-menu" + (uiState.menuOpen ? ' open' : '')}>
         <div className={"container"}>
           <button type={"button"}  className={"button shiny-button"} onClick={takeOver}><AdsClickSharpIcon /> Take over focus</button>
+          <a className={"button shiny-button"} href={"https://github.com/QuietNoise/comfyui_queue_manager?tab=readme-ov-file#manual"} target={"_blank"}><QuizSharpIcon /> Documentation</a>
           <button type={"button"}  className={"button shiny-button"} onClick={() => {toggleMenu(); openSplash()}}><InfoOutlineSharpIcon /> About Queue Manager</button>
         </div>
       </section>

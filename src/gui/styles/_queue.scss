@@ -106,7 +106,9 @@ header.header {
       width: 100%;
 
       &:after {
-        content: none !important;
+        .route-completed & {
+          content: none !important;
+        }
       }
     }
   }
@@ -274,19 +276,22 @@ header.header {
         }
 
         &:after {
-          content: none;
+          .route-completed & {
+            content: none !important;
+          }
         }
       }
 
       &.meta-info {
         width: 1%;
+        padding-right: 12px;
       }
 
       .execution-time {
         margin-left: auto;
         font-size: 0.8rem;
         border: 1px solid var(--color-neutral-800);
-        padding: 2px 6px;
+        padding: 2px 8px;
         background-color: var(--background);
         white-space: nowrap;
         width: 100%;
@@ -322,7 +327,7 @@ header.header {
 
     &:has(+ tr.gallery:hover) {
       background: var(--background-faded);
-      color: var(--foreground-faded);
+      color: var(--foreground);
 
       @media (prefers-color-scheme: light) {
         background: var(--background-light);
@@ -637,7 +642,7 @@ button {
 .filters {
   font-size: 0.8rem;
   background-color: var(--background);
-  border-bottom: 1px solid var(--color-neutral-600);
+  border-top: 1px solid #444;
   padding: 15px;
 
   @media (prefers-color-scheme: light) {
@@ -741,7 +746,7 @@ button {
     }
   }
 
-  button {
+  .button {
     display: flex;
     align-items: center;
     gap: 0.3rem;

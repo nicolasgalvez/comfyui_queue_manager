@@ -240,7 +240,7 @@ const executionTimeLabel = useMemo(() => {
         */}
         {showGrid ? (
           <tr className="dark:odd:bg-neutral-900 odd:bg-neutral-100 gallery">
-            <td colSpan={3} className="px-3 py-1">
+            <td colSpan={4} className="px-3 py-1">
               <div className="flex flex-wrap gap-2 items">
                 {mediaOutputs?.files?.length
                   ? mediaOutputs.files.map((file, fileIndex) => (

@@ -20,9 +20,14 @@ export function SplashScreen({onClick}) {
         <h3>New style and UI improvements</h3>
         <p>An attempt to make the UI look less motley. </p>
         <p>More functional pagination experience, especially if you hoard tens of pages.</p>
+        <h3>Completion Time</h3>
+        <p>From now on completed jobs will show total execution time.</p>
         <p><br/>
-          For more details check the updated manual on Github: <a href={"https://github.com/QuietNoise/comfyui_queue_manager?tab=readme-ov-file#manual"} target={"_blank"}>Queue Manager Manual</a>.
+          <i>For more details check the updated manual on Github: <a href={"https://github.com/QuietNoise/comfyui_queue_manager?tab=readme-ov-file#manual"} target={"_blank"}>Queue Manager Manual</a>.</i><br/>
+          <i>For full Release Notes view <a href={"https://github.com/QuietNoise/comfyui_queue_manager/blob/main/CHANGELOG.md"} target={"_blank"}>Changelog</a>.</i><br />
+          <i>Leave a feedback or report an issue here <a href={"https://github.com/QuietNoise/comfyui_queue_manager/issues"} target={"_blank"}>Issues</a>. </i>
         </p>
+
       </div>
     </div>
   );

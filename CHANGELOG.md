@@ -1,5 +1,14 @@
 # Release Notes
 
+## v0.1.0
+_Jan 15, 2026_
+### New features and enhancements
+- Major update with focus on providing previews for completed jobs, gallery and UI improvements.
+- A new settings panel is available in **ComfyUI Menu → Settings → Queue Manager** where you can influence certain features of the extension (#11, #17).
+- From now on completed jobs will show total execution time (#3).
+
+
+
 ## v0.0.17
 _Dec 21, 2025_
 ### New features and enhancements
