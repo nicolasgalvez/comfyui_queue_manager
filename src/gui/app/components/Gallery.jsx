@@ -242,7 +242,7 @@ export default function Gallery({items, activeItem}) {
     }
     const queryArgs = `?id=${mediaItem.queueItem.dbID}&filename=${file.filename}&subfolder=${file.subfolder}`;
 
-    await apiCall(`${baseURL}queue_manager/open_location` + queryArgs, null, "GET");
+    await apiCall(`queue_manager/open_location` + queryArgs, null, "GET");
   });
 
   const keyboardNavigation = useEvent((event) => {
