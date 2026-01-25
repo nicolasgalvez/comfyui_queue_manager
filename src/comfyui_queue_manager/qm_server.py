@@ -181,7 +181,7 @@ class QM_Server:
             # Export the queue
             json_data = self.queue.get_full_queue(route, filters)
 
-            # Remove sensitive data from items. json_data is a list of lists, check each item if it 6 elements long and remove the 6th element
+            # Remove sensitive data from items. json_data is a list of lists, check each item if it is 6 elements long and remove the 6th element
             for i in range(len(json_data)):
                 if len(json_data[i]) >= 6:
                     del json_data[i][5]

@@ -109,7 +109,7 @@ export const Queue = memo(function Queue({ data, isLoading, error, progress }) {
             <tbody>
               {error && (
                 <tr>
-                  <td colSpan={3} className="text-red-500 text-center info-cell">
+                  <td colSpan={100} className="text-red-500 text-center info-cell">
                     Loading failed: {error}
                   </td>
                 </tr>
@@ -117,7 +117,7 @@ export const Queue = memo(function Queue({ data, isLoading, error, progress }) {
 
               {!isLoading && (!data || (!running.length && !pending.length)) && (
                 <tr>
-                  <td colSpan={3} className="italic text-center info-cell">
+                  <td colSpan={100} className="italic text-center info-cell">
                     No items.
                   </td>
                 </tr>
@@ -128,7 +128,7 @@ export const Queue = memo(function Queue({ data, isLoading, error, progress }) {
                   <td className="px-3 py-1 serial">
                     <LoaderSpinner />
                   </td>
-                  <td colSpan={2} className="italic text-center info-cell">
+                  <td colSpan={100} className="italic text-center info-cell">
                     Loading...
                   </td>
                 </tr>

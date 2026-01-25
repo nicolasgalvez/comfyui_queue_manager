@@ -870,7 +870,7 @@ class QM_Queue:
         # Get the query for the given route
         match route:
             case "queue":
-                return "status = 0" + (" OR status = 1" if include_running else "")  # pending
+                return "(status = 0" + (" OR status = 1)" if include_running else ")")  # pending
             case "archive":
                 return "status = 3"
             case "completed":

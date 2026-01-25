@@ -859,7 +859,7 @@ export default function Home() {
                         Archive All {isFilterOn() ? "*" : "Pending"}
                       </button>
                       <a className={"shiny-button"}
-                              href={baseURL + "queue_manager/export" + appendFilters("")}>
+                              href={baseURL + "queue_manager/export" + appendRoute(appendFilters(""))}>
                         <FileDownloadOutlinedIcon/>&nbsp;&nbsp;Export {isFilterOn() ? "*" : "Queue"}
                       </a>
                       <button color="error" onClick={isFilterOn() ? deleteFromQueue : clearPending}

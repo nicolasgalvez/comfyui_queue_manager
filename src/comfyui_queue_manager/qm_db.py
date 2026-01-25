@@ -15,6 +15,20 @@ def get_conn() -> sqlite3.Connection:
     return _local.conn
 
 
+# Produces a readable SQL string for debugging/logging.
+def _debug_sql(query: str, params) -> str:
+    conn = get_conn()
+
+    if params is None:
+        params = ()
+    if not isinstance(params, (tuple, list)):
+        params = (params,)
+    try:
+        return query % tuple(conn.execute("SELECT quote(?)", (p,)).fetchone()[0] for p in params)
+    except Exception:
+        return f"{query}  -- params={params!r}"
+
+
 def init_schema():
     conn = get_conn()
     conn.executescript("""
