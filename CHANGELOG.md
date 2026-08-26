@@ -1,7 +1,7 @@
 # Release Notes
 
 ## v0.1.0
-_Jan 25, 2026_
+_Feb 24, 2026_
 ### New features and enhancements
 - Major update with focus on providing previews for completed jobs, gallery and UI improvements.
 - A new settings panel is available in **ComfyUI Menu → Settings → Queue Manager** where you can influence certain features of the extension (#11, #17).
@@ -50,7 +50,8 @@ _Nov 25, 2025_
 _Nov 25, 2025_
 ### Bugfixes
 - Fixed error: `this.fetchApi is not a function`
-- Resolved issues #8, #18, and #20
+
+  _(Resolved issues #8, #18, and #20)_
 
 ---
 

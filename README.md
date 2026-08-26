@@ -48,7 +48,7 @@ An extension supporting more streamlined prompt queue management.
 
 ## Compatibility
 - This extension requires the new ComfyUI menu.
-- When this extension is enabled then the native queue will no longer display pending queue items. However, history will still be there.
+- When this extension is enabled then the **native queue will no longer display pending queue items**. However, history will still be there.
 - This extension hijacks several native queue processes from ComfyUI and front end and alters / disables some of them to provide a more streamlined experience.
 - This extension might be incompatible with other extensions that directly manipulate or read the native queue object.
 - Other than that an effort was made to retain compatibility as much as possible (internal events, messages, queue api endpoints still work as before).
@@ -62,13 +62,14 @@ An extension supporting more streamlined prompt queue management.
 
 ## Roadmap
 In no particular order, just some ideas I have for the future of this extension.
-- [ ] Options. Toggles, big red buttons, levers and valves to control Queue Manager's behavior. Now everything is hardcoded.
 - [ ] Queue Manager nodes. On top of Workflow Name node add some other queue related strings you could use to streamline your workflows i.e. custom file names.
 - [ ] Bin. Can't think of a use case for it yet but I feel like it should be there at some stage.
-- [ ] Cover images, thumbnails, previews of rendered images in the queue. In other words what we have in core queue History with some spices added.
 - [ ] More columns in the queue table. Suggest your favourites.
 - [ ] Better user and dev docs.
-- [ ] Better progress feedback for longer running actions (like import).
+- [ ] Ability to rename worklows in the queue.
+- [x] ~~Better progress feedback for longer running actions (like import).~~
+- [x] ~~Options. Toggles, big red buttons, levers and valves to control Queue Manager's behavior. Now everything is hardcoded.~~
+- [x] ~~Cover images, thumbnails, previews of rendered images in the queue. In other words what we have in core queue History with some spices added.~~
 
 and other things I forgot about.
 
@@ -105,7 +106,7 @@ When in the **Queue** tab you can archive individual items by clicking the **Arc
 Similarly, when in **Archive** tab you can play archived items by clicking the **Run** button in the actions column or you can play all archived items by clicking the **Run All** button on the bottom of the window.
 
 #### Run at front of the queue
-You can run an item, entire archive or filtered out list of jobs at the front of the pressing and holding the **Shift** while clicking the **Run** or **Run All** buttons.
+You can run an item, entire archive or filtered out list of jobs at the front of the queue by pressing and holding the **Shift** while clicking the **Run** or **Run All** buttons.
 
 When holding Shift pressed a small indicator message will appear on top of the window to confirm that the action will run at front of queue.
 
