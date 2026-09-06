@@ -18,9 +18,8 @@ function compareVersions(a, b) {
 
 export async function AddPlayPauseButton(actionsContainer) {
   const pauseButtonHTML = `
-    <button class="pause-button p-button p-component p-button-icon-only p-button-danger p-button-text outline-hidden rounded-lg cursor-pointer p-0 size-8 text-xs !rounded-md border-none relative ml-2 mr-2 transition-colors duration-200 ease-in-out bg-secondary-background hover:bg-secondary-background-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-background" type="button" aria-label="Pause queue" title="Pause queue" data-pc-name="button" data-pd-tooltip="true">
+    <button class="pause-button infline-flex justify-center items-center p-button p-component p-button-icon-only p-button-danger p-button-text outline-hidden rounded-lg cursor-pointer p-0 size-8 text-xs !rounded-md border-none relative ml-2 mr-2 transition-colors duration-200 ease-in-out bg-secondary-background hover:bg-secondary-background-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-background" type="button" aria-label="Pause queue" title="Pause queue" data-pc-name="button" data-pd-tooltip="true">
       <span class="p-button-icon pi pi-pause" data-pc-section="icon"></span>
-      <span class="p-button-label" data-pc-section="label">&nbsp;</span>
     </button>`;
 
   let pauseButton = null;
@@ -73,9 +72,8 @@ export async function AddPlayPauseButton(actionsContainer) {
  */
 async function AddStopButton(actionsContainer) {
   const stopButtonHTML = `
-    <button class="stop-button p-button p-component p-button-icon-only p-button-danger p-button-text outline-hidden rounded-lg cursor-pointer p-0 size-8 text-xs !rounded-md border-none relative ml-2 transition-colors duration-200 ease-in-out bg-secondary-background hover:bg-secondary-background-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-background p-button-disabled"  type="button" aria-label="Stop queue" title="Clear all pending" data-pc-name="button" data-pd-tooltip="true">
+    <button class="stop-button justify-center items-center p-button p-component p-button-icon-only p-button-danger p-button-text outline-hidden rounded-lg cursor-pointer p-0 size-8 text-xs !rounded-md border-none relative ml-2 transition-colors duration-200 ease-in-out bg-secondary-background hover:bg-secondary-background-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-background p-button-disabled"  type="button" aria-label="Stop queue" title="Clear all pending" data-pc-name="button" data-pd-tooltip="true">
       <span class="p-button-icon pi pi-stop" data-pc-section="icon"></span>
-      <span class="p-button-label" data-pc-section="label">&nbsp;</span>
     </button>`;
 
   // Add stop button if not already present
@@ -111,7 +109,11 @@ async function AddStopButton(actionsContainer) {
 
       const displayCount = queueRemaining > 999 ? '999+' : queueRemaining;
       // Add a badge to show number of pending jobs
-      const tabButton = document.querySelector('.comfyui-queue-manager-tab-button');
+      const tabButton = document.querySelector('.comfyui-queue-manager-tab-button') ||
+        document.querySelector('[data-testid="comfyui-queue-manager-tab-button"]');
+
+      console.log('tabButton', tabButton);
+
 
       const existingBadge = tabButton.querySelector('.counter-badge');
       if (existingBadge) {
