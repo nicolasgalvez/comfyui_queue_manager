@@ -53,6 +53,8 @@ export default function Home() {
   });
 
   const options = useOptionsStore((state) => state);
+  const pageSize = useOptionsStore((state) => state.Basic.PageSize);
+  const previousPageSizeRef = useRef(pageSize);
   const completedListOrder = useOptionsStore((state) => state.Completed.ListOrder);
   const setAllOptions = useOptionsStore((state) => state.setAllOptions);
   const setOption = useOptionsStore((state) => state.setOption);
@@ -185,6 +187,10 @@ export default function Home() {
 
     queryArgs = appendFilters(queryArgs, filters);
     queryArgs = appendRoute(queryArgs, route);
+    // Use the live value; ComfyUI may still be saving the setting on the server.
+    if (pageSize !== undefined) {
+      queryArgs += `${queryArgs ? '&' : '?'}page_size=${encodeURIComponent(pageSize)}`;
+    }
 
     setAppStatus((prev) => ({ ...prev, loading: true, error: null, reloading: reload }));
 
@@ -224,7 +230,15 @@ export default function Home() {
       }));
       console.error(`Error fetching ${route} items:`, error);
     }
-  }, [appendFilters, appendRoute, fetchOptions, setFilters, setRoute]);
+  }, [appendFilters, appendRoute, fetchOptions, setFilters, setRoute, pageSize]);
+
+  useEffect(() => {
+    if (pageSize === previousPageSizeRef.current) return;
+    previousPageSizeRef.current = pageSize;
+
+    // A different page size changes page boundaries, so start at the first page.
+    fetchQueueItems({page: 0, reload: true});
+  }, [pageSize, fetchQueueItems]);
 
   function getNodeIDs(nodes) {
     const nodeIDs = {};

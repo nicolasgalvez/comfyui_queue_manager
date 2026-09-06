@@ -31,6 +31,14 @@ class QM_Server:
             # Get page size from extension settings
             settings = self.user_manager.settings.get_settings(None)
             page_size = settings.get("QueueManager.Basic.PageSize", 100)
+            # The open frontend can supply a setting change before ComfyUI saves it.
+            if "page_size" in request.query:
+                try:
+                    page_size = int(request.query["page_size"])
+                except ValueError:
+                    return web.json_response({"error": "Invalid page size"}, status=400)
+                if not 1 <= page_size <= 200:
+                    return web.json_response({"error": "Page size must be between 1 and 200"}, status=400)
             if route == "completed":
                 order = settings.get("QueueManager.Completed.ListOrder", "Newest first")
                 if order == "Newest first":
