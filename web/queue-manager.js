@@ -16,7 +16,17 @@ function compareVersions(a, b) {
   return 0;
 }
 
+// Keep the same elements (and their state/listeners) when ComfyUI redraws the toolbar.
+let queuePauseButton = null;
+let queueStopButton = null;
+
 export async function AddPlayPauseButton(actionsContainer) {
+  if (actionsContainer.querySelector('.pause-button')) return;
+  if (queuePauseButton) {
+    actionsContainer.appendChild(queuePauseButton);
+    return;
+  }
+
   const pauseButtonHTML = `
     <button class="pause-button infline-flex justify-center items-center p-button p-component p-button-icon-only p-button-danger p-button-text outline-hidden rounded-lg cursor-pointer p-0 size-8 text-xs !rounded-md border-none relative ml-2 mr-2 transition-colors duration-200 ease-in-out bg-secondary-background hover:bg-secondary-background-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-background" type="button" aria-label="Pause queue" title="Pause queue" data-pc-name="button" data-pd-tooltip="true">
       <span class="p-button-icon pi pi-pause" data-pc-section="icon"></span>
@@ -28,6 +38,7 @@ export async function AddPlayPauseButton(actionsContainer) {
   if (!actionsContainer.querySelector('.pause-button')) {
     actionsContainer.insertAdjacentHTML('beforeend', pauseButtonHTML);
     pauseButton = actionsContainer.querySelector('.pause-button');
+    queuePauseButton = pauseButton;
     buttonIcon = actionsContainer.querySelector('.pause-button .p-button-icon');
     pauseButton.addEventListener('click', async function () {
       try {
@@ -71,6 +82,12 @@ export async function AddPlayPauseButton(actionsContainer) {
  * Adds legacy-like stop button and pending jobs counter to tab button
  */
 async function AddStopButton(actionsContainer) {
+  if (actionsContainer.querySelector('.stop-button')) return;
+  if (queueStopButton) {
+    actionsContainer.appendChild(queueStopButton);
+    return;
+  }
+
   const stopButtonHTML = `
     <button class="stop-button justify-center items-center p-button p-component p-button-icon-only p-button-danger p-button-text outline-hidden rounded-lg cursor-pointer p-0 size-8 text-xs !rounded-md border-none relative ml-2 transition-colors duration-200 ease-in-out bg-secondary-background hover:bg-secondary-background-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-background p-button-disabled"  type="button" aria-label="Stop queue" title="Clear all pending" data-pc-name="button" data-pd-tooltip="true">
       <span class="p-button-icon pi pi-stop" data-pc-section="icon"></span>
@@ -80,6 +97,7 @@ async function AddStopButton(actionsContainer) {
   if (!actionsContainer.querySelector('.stop-button')) {
     actionsContainer.insertAdjacentHTML('beforeend', stopButtonHTML);
     const stopButton = actionsContainer.querySelector('.stop-button');
+    queueStopButton = stopButton;
     stopButton.addEventListener('click', async function () {
       try {
         const response = await fetch(`/api/queue`, {
@@ -98,11 +116,11 @@ async function AddStopButton(actionsContainer) {
   // listen to status updates to enable/disable stop button
   // and at the same time create / update the counter badge for tab button
   app.api.addEventListener("status", function (event) {
-    const stopButton = actionsContainer.querySelector('.stop-button');
+    const stopButton = queueStopButton;
     if (!stopButton) return;
 
     //if event.detail.exec_info.queue_remaining is set and greater than 0 then enable stop button
-    const queueRemaining = event.detail.exec_info && event.detail.exec_info.queue_remaining;
+    const queueRemaining = event.detail?.exec_info?.queue_remaining;
     if (queueRemaining && queueRemaining > 0) {
       stopButton.disabled = false;
       stopButton.classList.remove('p-button-disabled');
@@ -112,9 +130,7 @@ async function AddStopButton(actionsContainer) {
       const tabButton = document.querySelector('.comfyui-queue-manager-tab-button') ||
         document.querySelector('[data-testid="comfyui-queue-manager-tab-button"]');
 
-      console.log('tabButton', tabButton);
-
-
+      if (!tabButton) return;
       const existingBadge = tabButton.querySelector('.counter-badge');
       if (existingBadge) {
         // Update existing badge
@@ -147,11 +163,14 @@ async function AddStopButton(actionsContainer) {
 }
 
 async function AddButtons(actionsContainer) {
-  if (compareVersions(__COMFYUI_FRONTEND_VERSION__, '1.33.1') >= 0) {
+  const current = typeof __COMFYUI_FRONTEND_VERSION__ !== 'undefined' ? __COMFYUI_FRONTEND_VERSION__ : '0.0.0';
+  const pending = [];
+  if (compareVersions(current, '1.33.1') >= 0) {
     // the new ui version has no stop button, and no counter, so we add our own
-    await AddStopButton(actionsContainer);
+    pending.push(AddStopButton(actionsContainer));
   }
-  await AddPlayPauseButton(actionsContainer);
+  pending.push(AddPlayPauseButton(actionsContainer));
+  await Promise.all(pending);
 }
 
 
@@ -163,7 +182,7 @@ app.registerExtension({
   // async init() {
   // },
   async setup() {
-    setTimeout(async function () {
+    setTimeout(function () {
       let nodeSelector = null;
 
       const current = typeof __COMFYUI_FRONTEND_VERSION__ !== 'undefined' ? __COMFYUI_FRONTEND_VERSION__  : '0.0.0';
@@ -174,36 +193,38 @@ app.registerExtension({
         nodeSelector = '.execution-actions';
       }
 
-      const actionsContainer = document.querySelector(nodeSelector);
+      const restoreButtons = () => {
+        // Look up the live container: the previous one may have been replaced.
+        const actionsContainer = document.querySelector(nodeSelector);
+        if (actionsContainer) {
+          AddButtons(actionsContainer);
+        }
+      };
 
-      if (actionsContainer) {
-        console.log("Actions container found", actionsContainer);
-        await AddButtons(actionsContainer);
-        return;
-      }
+      // Watch the canvas container for button removal and toolbar replacement.
+      let graphContainer = document.getElementById('graph-canvas-container');
+      let restoreScheduled = false;
+      const observer = new MutationObserver(() => {
+        if (restoreScheduled) return;
+        restoreScheduled = true;
 
-      const observer = new MutationObserver(mutations => {
-        for (const mutation of mutations) {
-          for (const node of mutation.addedNodes) {
-            if (node instanceof HTMLElement) {
-              if (node.matches(nodeSelector)) {
-                observer.disconnect();
-                AddButtons(node);
-                return;
-              }
-
-              const foundActionbar = node.querySelector(nodeSelector);
-              if (foundActionbar) {
-                observer.disconnect();
-                AddButtons(foundActionbar);
-                return;
-              }
+        // Merge DOM changes into one check per frame, including our own insertions.
+        requestAnimationFrame(() => {
+          restoreScheduled = false;
+          if (!graphContainer) {
+            graphContainer = document.getElementById('graph-canvas-container');
+            if (graphContainer) {
+              observer.disconnect();
+              observer.observe(graphContainer, { childList: true, subtree: true });
             }
           }
-        }
+          restoreButtons();
+        });
       });
 
-      observer.observe(document.body, { childList: true, subtree: true });
+      // Only watch the body while waiting for the canvas container to mount.
+      observer.observe(graphContainer || document.body, { childList: true, subtree: true });
+      restoreButtons();
     });
 
 
