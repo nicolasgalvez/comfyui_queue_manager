@@ -1,7 +1,7 @@
 # Release Notes
 
 ## v0.1.0
-_Feb 24, 2026_
+_Sep 06, 2026_
 ### New features and enhancements
 - Major update with focus on providing previews for completed jobs, gallery and UI improvements.
 - A new settings panel is available in **ComfyUI Menu → Settings → Queue Manager** where you can influence certain features of the extension (#11, #17).
@@ -11,6 +11,19 @@ _Feb 24, 2026_
 - Fixed: Export function did not respect the tab from which it was used.
 - Light theme color fixes;
 
+## v0.0.19
+_Sep 06, 2025_
+### New features and enhancements
+Fixed PLAY and STOP buttons disappearing when toggling side-bar [#28]
+
+---
+
+## v0.0.18
+_Sep 05, 2025_
+### New features and enhancements
+Fixed PLAY and STOP buttons for new versions of ComfyUI
+
+---
 
 ## v0.0.17
 _Dec 21, 2025_
