@@ -56,6 +56,7 @@ export default function Home() {
   const pageSize = useOptionsStore((state) => state.Basic.PageSize);
   const previousPageSizeRef = useRef(pageSize);
   const completedListOrder = useOptionsStore((state) => state.Completed.ListOrder);
+  const previousListOrderRef = useRef(completedListOrder);
   const setAllOptions = useOptionsStore((state) => state.setAllOptions);
   const setOption = useOptionsStore((state) => state.setOption);
   const setDirectOption = useOptionsStore((state) => state.setDirectOption);
@@ -178,7 +179,7 @@ export default function Home() {
     }
   }, [setAllOptions, updateCoverSize, updateThumbnailSize]);
 
-  const fetchQueueItems = useCallback(async ({page, route, filters, reload = false} = {}) => {
+  const fetchQueueItems = useCallback(async ({page, route: requestedRoute, filters, reload = false} = {}) => {
 
     const fetchId = ++fetchIdRef.current;
 
@@ -186,10 +187,14 @@ export default function Home() {
     if (page !== undefined && page !== null) queryArgs = `?page=${page}`;
 
     queryArgs = appendFilters(queryArgs, filters);
-    queryArgs = appendRoute(queryArgs, route);
+    queryArgs = appendRoute(queryArgs, requestedRoute);
     // Use the live value; ComfyUI may still be saving the setting on the server.
     if (pageSize !== undefined) {
       queryArgs += `${queryArgs ? '&' : '?'}page_size=${encodeURIComponent(pageSize)}`;
+    }
+    if ((requestedRoute || route) === "completed") {
+      const order = completedListOrder === "Oldest first" ? "asc" : "desc";
+      queryArgs += `${queryArgs ? '&' : '?'}order=${order}`;
     }
 
     setAppStatus((prev) => ({ ...prev, loading: true, error: null, reloading: reload }));
@@ -203,10 +208,10 @@ export default function Home() {
       // If a newer fetch started after this one, ignore this response
       if (fetchId !== fetchIdRef.current) return;
 
-      if (route) {
-        setRoute(route);
+      if (requestedRoute) {
+        setRoute(requestedRoute);
 
-        if (route === "completed") {
+        if (requestedRoute === "completed") {
           setTimeout(() => {
             fetchOptions();
           });
@@ -228,17 +233,21 @@ export default function Home() {
         error: error?.message ?? String(error),
         queue: null,
       }));
-      console.error(`Error fetching ${route} items:`, error);
+      console.error(`Error fetching ${requestedRoute || route} items:`, error);
     }
-  }, [appendFilters, appendRoute, fetchOptions, setFilters, setRoute, pageSize]);
+  }, [appendFilters, appendRoute, fetchOptions, setFilters, setRoute, pageSize, completedListOrder, route]);
 
   useEffect(() => {
-    if (pageSize === previousPageSizeRef.current) return;
+    const pageSizeChanged = pageSize !== previousPageSizeRef.current;
+    const listOrderChanged = completedListOrder !== previousListOrderRef.current;
     previousPageSizeRef.current = pageSize;
+    previousListOrderRef.current = completedListOrder;
 
-    // A different page size changes page boundaries, so start at the first page.
-    fetchQueueItems({page: 0, reload: true});
-  }, [pageSize, fetchQueueItems]);
+    // Both settings change which jobs belong on each page.
+    if (pageSizeChanged || (route === "completed" && listOrderChanged)) {
+      fetchQueueItems({page: 0, reload: true});
+    }
+  }, [pageSize, completedListOrder, route, fetchQueueItems]);
 
   function getNodeIDs(nodes) {
     const nodeIDs = {};

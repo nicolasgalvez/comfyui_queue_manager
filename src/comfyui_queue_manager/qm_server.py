@@ -40,11 +40,12 @@ class QM_Server:
                 if not 1 <= page_size <= 200:
                     return web.json_response({"error": "Page size must be between 1 and 200"}, status=400)
             if route == "completed":
-                order = settings.get("QueueManager.Completed.ListOrder", "Newest first")
-                if order == "Newest first":
-                    order = "desc"
-                else:
-                    order = "asc"
+                order = request.query.get("order")
+                if order is None:
+                    saved_order = settings.get("QueueManager.Completed.ListOrder", "Newest first")
+                    order = "desc" if saved_order == "Newest first" else "asc"
+                if order not in ("asc", "desc"):
+                    return web.json_response({"error": "Invalid completed jobs order"}, status=400)
             else:
                 order = None
 
