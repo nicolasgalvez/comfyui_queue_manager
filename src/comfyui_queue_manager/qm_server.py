@@ -2,17 +2,20 @@
 from aiohttp import web
 
 from server import PromptServer
-import logging, json
+import json
 from datetime import datetime, timezone
 
 from .helpers import sanitize_filename, requestJson
 from .inc.exceptions import BadRouteException
+from .qm_log import qm_log
 
 
 class QM_Server:
     def __init__(self, queue_manager, __version__):
         self.queue_manager = queue_manager
         self.queue = queue_manager.queue
+        self.gallery = queue_manager.gallery
+        self.user_manager = PromptServer.instance.user_manager
         self.__version__ = __version__
 
         # Get queue items
@@ -25,9 +28,31 @@ class QM_Server:
 
             route = self.get_the_route(request)
 
+            # Get page size from extension settings
+            settings = self.user_manager.settings.get_settings(None)
+            page_size = settings.get("QueueManager.Basic.PageSize", 100)
+            # The open frontend can supply a setting change before ComfyUI saves it.
+            if "page_size" in request.query:
+                try:
+                    page_size = int(request.query["page_size"])
+                except ValueError:
+                    return web.json_response({"error": "Invalid page size"}, status=400)
+                if not 1 <= page_size <= 200:
+                    return web.json_response({"error": "Page size must be between 1 and 200"}, status=400)
+            if route == "completed":
+                order = request.query.get("order")
+                if order is None:
+                    saved_order = settings.get("QueueManager.Completed.ListOrder", "Newest first")
+                    order = "desc" if saved_order == "Newest first" else "asc"
+                if order not in ("asc", "desc"):
+                    return web.json_response({"error": "Invalid completed jobs order"}, status=400)
+            else:
+                order = None
+
             # pending items
-            # SIML: Get page size from extension settings
-            running, pending, info = self.queue.get_current_queue(page, 100, route=route, filters=filters, return_meta=True)
+            running, pending, info = self.queue.get_current_queue(
+                page, page_size, route=route, filters=filters, return_meta=True, order=order
+            )
 
             # Remove sensitive data
             remove_sensitive = lambda queue: [x[:5] for x in queue]
@@ -51,7 +76,7 @@ class QM_Server:
         # Play entire archive
         @PromptServer.instance.routes.post("/queue_manager/play-archive")
         async def play_archive(request):
-            logging.info("[Queue Manager] Play archive")
+            qm_log.info("Play archive")
             json_data = await request.json()
             client_id = None
             filters = None
@@ -60,7 +85,9 @@ class QM_Server:
             if "filters" in json_data:
                 filters = json_data["filters"]
 
-            moved = self.queue.play_archive(client_id, filters)
+            front = json_data.get("front", False) == True
+
+            moved = self.queue.play_archive(client_id, filters, front)
             return web.json_response({"queued": moved})
 
         # Toggle Play/Pause of the queue
@@ -141,13 +168,14 @@ class QM_Server:
             if api_key_comfy_org is not None:
                 api_key_comfy_org = api_key_comfy_org.decode("ascii")
 
-            logging.info("[Queue Manager] Importing %s", "to archive." if is_archive else "to queue.")
+            qm_log.info("Importing %s", "to archive." if is_archive else "to queue.")
             imported, total = self.queue.import_queue(json_data, client_id, 3 if is_archive else 0, api_key_comfy_org)
-            logging.info(
-                "[Queue Manager] Imported %d of %d total submitted entries %s",
+            qm_log.info(
+                "Imported %d of %d total submitted entries %s %s",
                 imported,
                 total,
                 "to archive." if is_archive else "to queue.",
+                "Duplicate entries (items that already exist in Queue, Archive or Completed) were skipped." if imported < total else "",
             )
 
             return web.json_response({"imported": imported, "submitted": total})
@@ -162,7 +190,7 @@ class QM_Server:
             # Export the queue
             json_data = self.queue.get_full_queue(route, filters)
 
-            # Remove sensitive data from items. json_data is a list of lists, check each item if it 6 elements long and remove the 6th element
+            # Remove sensitive data from items. json_data is a list of lists, check each item if it is 6 elements long and remove the 6th element
             for i in range(len(json_data)):
                 if len(json_data[i]) >= 6:
                     del json_data[i][5]
@@ -196,7 +224,7 @@ class QM_Server:
             filters = self.get_filters(request)
             total = self.queue.delete_from_queue(route, filters)
 
-            logging.info("[Queue Manager] Deleted %d items from the archive", total)
+            qm_log.info("Deleted %d items from the archive", total)
 
             return web.json_response({"deleted": total})
 
@@ -218,9 +246,109 @@ class QM_Server:
             self.queue_manager.queue.takeover_client = takeover_client
             self.queue_manager.options.set("takeover_client", client_id)
 
-            logging.info(f"[Queue Manager] Client takeover requested by {client_id}")
+            qm_log.info(f"Client takeover requested by {client_id}")
 
             return web.json_response(takeover_client)
+
+        @PromptServer.instance.routes.get("/queue_manager/open_location")
+        async def open_location(request):
+            id = request.query.get("id", None)
+            filename = request.query.get("filename", None)
+            subfolder = request.query.get("subfolder", None)
+
+            # If any is None, return error
+            if id is None or filename is None:
+                return web.json_response({"error": "Missing parameters"}, status=400)
+
+            result = self.queue_manager.queue.open_file_location(id, filename, subfolder)
+
+            # Return result of the operation
+            if result is None:
+                return web.json_response({"error": "File not found"}, status=404)
+
+            return web.json_response("Location opened")
+
+        # Allowed options with their default values
+        self.allowed_options = {
+            "thumb_size": 150,
+            "cover_size": 50,
+            "thumb_mode": "cover",
+            "queue_paused": False,
+            "splash_screen": "0.0.0",  # last seen splash screen version
+            "show_gallery_ui": True,
+        }
+
+        # Get options
+        @PromptServer.instance.routes.get("/queue_manager/options")
+        async def get_options(request):
+            # Does option is allowed?
+            option = request.query.get("key", None)
+            if option is not None:
+                if option not in self.allowed_options:
+                    return web.json_response({"error": "Option not allowed"}, status=400)
+
+                # Get the specific option
+                value = self.queue_manager.options.get(option, None)
+                if value is None:
+                    return web.json_response({"error": "Option not found"}, status=404)
+
+                return web.json_response({option: value})
+            else:
+                # Get all options
+                options = self.queue_manager.options.get_all()
+
+                # Return only allowed options
+                options = {key: value for key, value in options.items() if key in self.allowed_options}
+
+                # Add default values for any missing allowed options
+                for key, default_value in self.allowed_options.items():
+                    if key not in options:
+                        options[key] = default_value
+
+                # append extension version
+                options["__version__"] = self.__version__
+
+                return web.json_response(options)
+
+        # Set options
+        @PromptServer.instance.routes.post("/queue_manager/options")
+        async def set_options(request):
+            # Does option is allowed?
+            json_data = await request.json()
+            if "key" not in json_data or "value" not in json_data:
+                return web.json_response({"error": "Missing parameters"}, status=400)
+
+            option = json_data["key"]
+            value = json_data["value"]
+
+            if option not in self.allowed_options:
+                return web.json_response({"error": "Option not allowed"}, status=400)
+
+            # Validate / sanitize value based on option
+            if option == "thumb_size":  # thumb size must be a positive integer between 50 and 500
+                if not isinstance(value, int) or value < 50 or value > 500:
+                    return web.json_response({"error": "Invalid thumb_size value"}, status=400)
+            elif option == "thumb_mode":  # thumb mode must be one of the allowed modes
+                allowed_modes = ["none", "cover", "grid"]
+                if value not in allowed_modes:
+                    return web.json_response({"error": "Invalid thumb_mode value"}, status=400)
+            elif option == "cover_size":  # cover size must be a positive integer between 50 and 500
+                if not isinstance(value, int) or value < 25 or value > 200:
+                    return web.json_response({"error": "Invalid cover_size value"}, status=400)
+            #     Boolean options
+            elif option == "queue_paused" or option == "show_gallery_ui":
+                if not isinstance(value, bool):
+                    return web.json_response({"error": "Invalid " + option + " value"}, status=400)
+            elif (
+                option == "splash_screen"
+            ):  # splash_screen we always set to current version (indication that user has seen the latest splash)
+                value = self.__version__
+
+            # Set the specific option
+            self.queue_manager.options.set(option, value)
+            # qm_log.info(f"Set option {option} to {value}")
+
+            return web.json_response({"success": True})
 
         @PromptServer.instance.routes.get("/queue_manager/poke_status")
         async def poke_status(request):
@@ -253,7 +381,7 @@ class QM_Server:
                         else:
                             # delete the currently running item
                             total = self.queue.delete_running()
-                        logging.info(f"[Queue Manager] Deleted {total} items from the queue")
+                            qm_log.info(f"[Queue Manager] Deleted {total} items from the queue")
 
             return await handler(request)
 
@@ -268,7 +396,7 @@ class QM_Server:
             try:
                 return await handler(request)
             except BadRouteException as ae:
-                logging.error("[Queue Manager] " + ae.message)
+                qm_log.error(ae.message)
                 return web.json_response(
                     {"error": ae.message},
                     status=422,

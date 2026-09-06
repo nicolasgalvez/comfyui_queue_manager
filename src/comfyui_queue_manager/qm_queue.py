@@ -3,20 +3,35 @@ from typing import Optional
 
 from execution import PromptQueue
 from server import PromptServer
-import logging
+
 import json
 import heapq
+import folder_paths
+import os
 
+from .helpers import reveal_file
 from .qm_db import get_conn, read_query, read_single, write_query, write_many
+from .qm_log import qm_log
 
 
 class QM_Queue:
     def __init__(self, queue_manager):
         self.queue_manager = queue_manager
+        self.user_manager = PromptServer.instance.user_manager
         self.restored = False
 
-        self.paused = queue_manager.options.get("queue_paused", False)
-        logging.info("[Queue Manager] Queue status: %s", "not paused" if not self.paused else "paused")
+        settings = self.user_manager.settings.get_settings(None)
+        start_mode = settings.get("QueueManager.Basic.StartMode", "Last state")
+        current_state = queue_manager.options.get("queue_paused", False)
+
+        if start_mode == "Last state":
+            self.paused = current_state
+        else:
+            self.paused = start_mode == "Pause"
+            if self.paused != current_state:
+                queue_manager.options.set("queue_paused", self.paused)
+
+        qm_log.info("Queue status: %s", "not paused" if not self.paused else "paused")
 
         client_id, timestamp = queue_manager.options.get("takeover_client", False, True)
         if client_id:
@@ -63,8 +78,8 @@ class QM_Queue:
     # NOTE: This hijack will make native queue API endpoint to not return pending items.
     # We do this to avoid bottleneck in the native queue when it goes massive
     # and to avoid duplicate bandwidth for requesting queue by execution store and queue manager.
-    def get_current_queue(self, page=0, page_size=0, route="queue", filters=None, return_meta=False):
-        # logging.info('get_current_queue: %d, %d', page, page_size)
+    def get_current_queue(self, page=0, page_size=0, route="queue", filters=None, return_meta=False, order=None):
+        # qm_log.info('get_current_queue: %d, %d', page, page_size)
         # Get the first page of the current queue
 
         with self.native_queue.mutex:
@@ -74,12 +89,23 @@ class QM_Queue:
             total_rows = 0
             last_page = 0
             order_string = "ORDER BY number"
+            join_string = ""
+            select_string = "SELECT queue.id as id, prompt, number"
 
             match route:
                 case "queue":
                     running.extend(self.native_queue.currently_running.values())
-                case "archive" | "completed":
-                    order_string = "ORDER BY updated_at"
+                case "archive":
+                    order_string = "ORDER BY queue.updated_at, number"
+                case "completed":
+                    order_string = "ORDER BY queue.updated_at ASC" if order == "asc" else "ORDER BY queue.updated_at DESC"
+                    order_string += (
+                        ", number ASC" if order == "asc" else ", number DESC"
+                    )  # just in case, normally there won't be two items completed at the same time
+
+                    join_string = "LEFT JOIN meta as outputs ON queue.id = outputs.item_id AND outputs.key = 'outputs'"
+                    join_string += " LEFT JOIN meta as exec_time ON queue.id = exec_time.item_id AND exec_time.key = 'execution_time'"
+                    select_string = f"{select_string}, outputs.value as outputs, exec_time.value as execution_time"
 
             where_clauses = [self.get_route_query(route)]
 
@@ -101,8 +127,9 @@ class QM_Queue:
 
                 rows = read_query(
                     f"""
-                    SELECT id, prompt, number
+                    {select_string}
                     FROM queue
+                    {join_string}
                     WHERE {where_string}
                     {order_string}
                     LIMIT ?, ?
@@ -112,12 +139,41 @@ class QM_Queue:
 
                 # array of prompts
                 for row in rows:
-                    item = json.loads(row[1])
+                    item = json.loads(row["prompt"])
                     # Add db_id to the item
-                    item[3]["db_id"] = row[0]
+                    item[3]["db_id"] = row["id"]
 
                     if route == "queue":
-                        item[0] = row[2]  # set the number to the one from the database
+                        item[0] = row["number"]  # set the number to the one from the database
+
+                    if route == "completed":
+                        if row["outputs"] is not None:
+                            # If we have outputs then add them to the item
+                            item[3]["outputs"] = json.loads(row["outputs"])
+                            # Count all files in outputs
+                            total_images = 0
+                            total_videos = 0
+                            for output in item[3]["outputs"].values():
+                                if "images" in output:
+                                    # if output contains "animated" key and it's true then count as video
+                                    if "animated" in output and output["animated"]:
+                                        total_videos += len(output["images"])
+                                    else:
+                                        total_images += len(output["images"])
+                                if "gifs" in output:
+                                    total_videos += len(output["gifs"])
+                            item[3]["total_files"] = total_images + total_videos
+                            item[3]["total_images"] = total_images
+                            item[3]["total_videos"] = total_videos
+                        else:
+                            item[3]["total_files"] = 0
+                            item[3]["total_images"] = 0
+                            item[3]["total_videos"] = 0
+
+                        if row["execution_time"] is not None:
+                            item[3]["execution_time"] = float(row["execution_time"])
+                        else:
+                            item[3]["execution_time"] = None
 
                     pending.append(tuple(item))
 
@@ -173,11 +229,18 @@ class QM_Queue:
 
     def task_done(self, item_id, history_result, status: Optional["PromptQueue.ExecutionStatus"], process_item=None):
         with self.native_queue.mutex:
+            # log debug arguments
+            # qm_log.info("Task done: item_id=%s, history_result=%s, status=%s", item_id, history_result, status)
+            # qm_log.info("Task done: history_result = %s", json.dumps(history_result))
+            # qm_log.info("Task done: status = %s", json.dumps(status))
+            # qm_log.info("Task done: item_id = %s", item_id)
+
             # Mark the task as finished in the database
 
             # Get the running item from the native queue dictionary
             item = self.native_queue.currently_running.get(item_id, None)
             if item is not None:
+                prompt_id = item[1]  # Get the prompt_id from the item
                 # Mark the item as finished in the database
                 write_query(
                     """
@@ -185,9 +248,77 @@ class QM_Queue:
                     SET status = 2
                     WHERE prompt_id = ?
                 """,
-                    (item[1],),
+                    (prompt_id,),
                 )
-                # logging.info("[Queue Manager] Workflow finished: %s at %s", item[1], item[0])
+
+                outputs = {}
+                if history_result is not None and "outputs" in history_result:
+                    # get id column from the prompt
+                    db_id = read_single(
+                        """
+                        SELECT id
+                        FROM queue
+                        WHERE prompt_id = ?
+                    """,
+                        (prompt_id,),
+                    )
+                    if db_id is None:
+                        # Most likely because the item execution was interrupted and the handler deleted the item already
+                        # Call the original task_done method so it clears the native queue
+                        self.original_task_done(item_id, history_result, status)
+                        return
+
+                    db_id = db_id[0]  # get the first element of the tuple
+
+                    # Save only persistent outputs
+                    for node_id, output in history_result["outputs"].items():
+                        images = None
+                        if "images" in output:
+                            images = output["images"]
+                        elif "gifs" in output:
+                            images = output["gifs"]
+
+                        if images is not None:
+                            if images[0]["type"] == "output":
+                                outputs[node_id] = output
+
+                    if len(outputs) > 0:
+                        # Save outputs to the meta table
+                        write_query(
+                            """
+                                INSERT INTO meta (item_id, key, value)
+                                VALUES (?, 'outputs', ?)
+                            """,
+                            (
+                                db_id,
+                                json.dumps(outputs),
+                            ),
+                        )
+
+                # If status provided and success then  save execution time to the meta table
+                if status is not None and len(status) >= 3 and status[0] == "success":
+                    exec_time = None
+                    for event in status[2]:
+                        if event[0] == "execution_start":
+                            start_time = event[1]["timestamp"]
+                        if event[0] == "execution_success":
+                            end_time = event[1]["timestamp"]
+
+                            # Convert milliseconds to seconds and round to 3 decimal places
+                            exec_time = round((end_time - start_time) / 1000, 3)
+                            break
+
+                    if exec_time is not None:
+                        write_query(
+                            """
+                                INSERT INTO meta (item_id, key, value)
+                                VALUES (?, 'execution_time', ?)
+                            """,
+                            (
+                                db_id,
+                                str(exec_time),
+                            ),
+                        )
 
                 # Call the original task_done method
                 if (process_item is None) or (not process_item):  # accommodate original method signature
@@ -224,7 +355,7 @@ class QM_Queue:
                 ),
             )
 
-            # logging.info("[Queue Manager] Workflow queued: %s at %s", item[1], item[0])
+            # qm_log.info("Workflow queued: %s at %s", item[1], item[0])
 
             # Is there's no pending item in the native heap nd we are not paused then add item with highest priority (could be this one)
             if len(self.native_queue.queue) == 0 and not self.paused:
@@ -305,11 +436,11 @@ class QM_Queue:
                 """,
                     (queue_item[0][1],),
                 )
-                # logging.info(
-                #     "[Queue Manager] Executing workflow: \033[33m%s\033[0m at %s",
-                #     queue_item[0][3]["extra_pnginfo"]["workflow"]["workflow_name"],
-                #     queue_item[0][0],
-                # )
+                qm_log.info(
+                    "Executing workflow: \033[33m%s\033[0m at %s",
+                    queue_item[0][3]["extra_pnginfo"]["workflow"]["workflow_name"],
+                    queue_item[0][0],
+                )
                 return queue_item  # (item, task_counter)
             else:
                 # No item in the queue
@@ -323,7 +454,7 @@ class QM_Queue:
         with self.pause_lock:
             # Toggle the playback of the queue
             self.paused = not self.paused
-            logging.info("[Queue Manager] Queue " + ("paused." if self.paused else "play."))
+            qm_log.info("Queue " + ("paused." if self.paused else "play."))
             PromptServer.instance.send_sync(
                 "queue-manager-toggle-queue",
                 {
@@ -351,7 +482,7 @@ class QM_Queue:
         Delete items from the database
         """
         with self.native_queue.mutex:
-            logging.info("[Queue Manager] Deleting items from queue: %s", items)
+            qm_log.info("Deleting items from queue: %s", items)
             # Delete the item from the database
 
             deleted = 0
@@ -400,17 +531,17 @@ class QM_Queue:
 
             # If affected any rows notify the frontend that the queue and archive have been archived
             if total > 0:
-                logging.info("[Queue Manager] Queue Archived: %d item(s)", total)
+                qm_log.info("Queue Archived: %d item(s)", total)
                 PromptServer.instance.queue_updated()
                 PromptServer.instance.send_sync("queue-manager-queue-updated", {"total_moved": total})
             else:
-                logging.info("[Queue Manager] No items to archive")
+                qm_log.info("No items to archive")
 
             return total
 
     def archive_items(self, items):
         """
-        Archive items from the database
+        Archive items to the database
         """
         with self.native_queue.mutex:
             # Archive the item from the database
@@ -430,7 +561,7 @@ class QM_Queue:
             get_conn().commit()
 
             if archived > 0:
-                logging.info("[Queue Manager] Queue Item Archived: %d item(s)", archived)
+                qm_log.info("Queue Item Archived: %d item(s)", archived)
                 PromptServer.instance.send_sync("queue-manager-queue-updated", {"total_moved": archived})
 
             return archived
@@ -457,8 +588,8 @@ class QM_Queue:
             for db_id in items:
                 PromptServer.instance.number += 1
 
-                logging.info(
-                    "[Queue Manager] Playing item: %s, priority: %d, front: %s",
+                qm_log.info(
+                    "Playing item: %s, priority: %d, front: %s",
                     db_id,
                     PromptServer.instance.number * (-1 if front else 1),
                     front,
@@ -509,17 +640,23 @@ class QM_Queue:
                 # Notify native queue lock so if it's waiting it can move on and go for next iteration
                 PromptServer.instance.prompt_queue.not_empty.notify()
 
-                logging.info("[Queue Manager] %d item(s) scheduled for generation.", moved)
+                qm_log.info("%d item(s) scheduled for generation.", moved)
                 PromptServer.instance.send_sync("queue-manager-queue-updated", {"total_moved": moved})
                 PromptServer.instance.queue_updated()
 
             return moved
 
     # Change status to 0 for all items with status 3, update the client_id and set correct priority for each item
-    def play_archive(self, client_id=None, filters=None):
+    def play_archive(self, client_id=None, filters=None, front=False):
         with self.native_queue.mutex:
             # Play the item from the database
             where_string, params = self.get_filters(filters, ["status = 3"])
+
+            # If front we queue from last to first to retain order after applying negative priority
+            if front:
+                order = "DESC"
+            else:
+                order = "ASC"
 
             # Get the archived items from the database
             rows = read_query(
@@ -527,7 +664,7 @@ class QM_Queue:
                 SELECT id, prompt
                 FROM queue
                 WHERE {where_string}
-                ORDER BY updated_at
+                ORDER BY updated_at {order}, `number` {order}
             """,
                 params,
             )
@@ -539,10 +676,10 @@ class QM_Queue:
 
                 item = json.loads(row[1])
                 item[3]["client_id"] = client_id
-                item[0] = PromptServer.instance.number
+                item[0] = PromptServer.instance.number * (-1 if front else 1)
                 parameters.append(
                     (
-                        PromptServer.instance.number,
+                        item[0],
                         json.dumps(item),
                         row[0],
                     )
@@ -562,7 +699,7 @@ class QM_Queue:
                 # Notify native queue lock so if it's waiting it can move on and go for next iteration
                 PromptServer.instance.prompt_queue.not_empty.notify()
 
-                logging.info("[Queue Manager] %d item(s) scheduled for generation.", moved)
+                qm_log.info("%d item(s) scheduled for generation.", moved)
                 PromptServer.instance.send_sync("queue-manager-queue-updated", {"total_moved": moved})
                 PromptServer.instance.queue_updated()
             return moved
@@ -651,7 +788,7 @@ class QM_Queue:
                 ORDER BY number
             """)
             if len(rows) > 0:
-                logging.info("[Queue Manager] Restoring unfinished jobs: %d item(s)", len(rows))
+                qm_log.info("Restoring unfinished jobs: %d item(s)", len(rows))
                 # Get current highest priority (lowest number for pending task) in the database
                 lowest = read_single("""
                     SELECT number
@@ -681,16 +818,19 @@ class QM_Queue:
                     )
                     min_number -= 1
 
-            # Get task counter (highest task number) from the database
+            # Get task counter (highest absolute task number) from the database
             rows = read_single("""
-                SELECT number
+                SELECT
+                    MIN(number) as min_number,
+                    MAX(number) as max_number
                 FROM queue
                 WHERE status = 1 OR status = 0 -- pending or running
-                ORDER BY number DESC
-                LIMIT 1
             """)
             if rows:
-                task_counter = rows[0] + 1
+                min_num = rows[0] if rows[0] is not None else 0
+                max_num = rows[1] if rows[1] is not None else 0
+
+                task_counter = max(abs(min_num), abs(max_num)) + 1
             else:
                 task_counter = 1
 
@@ -699,7 +839,7 @@ class QM_Queue:
             # Set the number in server
             PromptServer.instance.number = task_counter
 
-            logging.info("[Queue Manager] Task counter set to %d", task_counter)
+            qm_log.info("Task counter set to %d", task_counter)
 
             # Start queue processing
             # TODO: Add a setting to enable/disable auto-start
@@ -730,10 +870,56 @@ class QM_Queue:
         # Get the query for the given route
         match route:
             case "queue":
-                return "status = 0" + (" OR status = 1" if include_running else "")  # pending
+                return "(status = 0" + (" OR status = 1)" if include_running else ")")  # pending
             case "archive":
                 return "status = 3"
             case "completed":
                 return "status = 2"  # completed
 
         return ""
+
+    def open_file_location(self, db_id, filename="", subfolder=""):
+        if filename == "":
+            return None
+
+        # Get outputs metadata for the given item ID
+        row = read_single(
+            """
+            SELECT value
+            FROM meta
+            WHERE item_id = ? AND key = 'outputs'
+        """,
+            (db_id,),
+        )
+
+        if row is None:
+            return None
+
+        # Cycle through nodes, check if "images" and "gifs" have the filename and subfolder combination
+        row = json.loads(row[0])
+        found = False
+        for node_id, output in row.items():
+            files = []
+            if "images" in output:
+                files = output["images"]
+            elif "gifs" in output:
+                files = output["gifs"]
+
+            for file in files:
+                if (file["filename"] == filename) and file["subfolder"] == subfolder:
+                    filename = file["filename"]
+                    found = True
+                    break
+
+            if found:
+                break
+
+        if not found:
+            return None
+
+        # Get outputs folder path from settings
+        target_path = os.path.join(folder_paths.get_output_directory(), subfolder, filename)
+
+        reveal_file(target_path)
+
+        return target_path

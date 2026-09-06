@@ -19,6 +19,9 @@ An extension supporting more streamlined prompt queue management.
   - [Workflow Name node](#workflow-name-node)
   - [External jobs](#external-jobs)
   - [Comfy API / Partner Nodes](#comfy-api--partner-nodes)
+  - [Gallery / output previews](#gallery--output-previews)
+    - [Gallery view](#gallery-view)
+  - [Extension Settings](#extension-settings)
 - [Troubleshooting](#troubleshooting)
 - [Tips and words of wisdom](#tips-and-words-of-wisdom)
 - [Development](#development)
@@ -46,7 +49,7 @@ An extension supporting more streamlined prompt queue management.
 
 ## Compatibility
 - This extension requires the new ComfyUI menu.
-- When this extension is enabled then the native queue will no longer display pending queue items. However, history will still be there.
+- When this extension is enabled then the **native queue will no longer display pending queue items**. However, history will still be there.
 - This extension hijacks several native queue processes from ComfyUI and front end and alters / disables some of them to provide a more streamlined experience.
 - This extension might be incompatible with other extensions that directly manipulate or read the native queue object.
 - Other than that an effort was made to retain compatibility as much as possible (internal events, messages, queue api endpoints still work as before).
@@ -60,13 +63,14 @@ An extension supporting more streamlined prompt queue management.
 
 ## Roadmap
 In no particular order, just some ideas I have for the future of this extension.
-- [ ] Options. Toggles, big red buttons, levers and valves to control Queue Manager's behavior. Now everything is hardcoded.
 - [ ] Queue Manager nodes. On top of Workflow Name node add some other queue related strings you could use to streamline your workflows i.e. custom file names.
 - [ ] Bin. Can't think of a use case for it yet but I feel like it should be there at some stage.
-- [ ] Cover images, thumbnails, previews of rendered images in the queue. In other words what we have in core queue History with some spices added.
 - [ ] More columns in the queue table. Suggest your favourites.
 - [ ] Better user and dev docs.
-- [ ] Better progress feedback for longer running actions (like import).
+- [ ] Ability to rename worklows in the queue.
+- [x] ~~Better progress feedback for longer running actions (like import).~~
+- [x] ~~Options. Toggles, big red buttons, levers and valves to control Queue Manager's behavior. Now everything is hardcoded.~~
+- [x] ~~Cover images, thumbnails, previews of rendered images in the queue. In other words what we have in core queue History with some spices added.~~
 
 and other things I forgot about.
 
@@ -104,6 +108,13 @@ When button on the bottom has a asterisk `*` next to it, it means that the actio
 When in the **Queue** tab you can archive individual items by clicking the **Archive** button in the actions columns or you can archive all items in the queue by clicking the **Archive All** button on the bottom of the window.
 
 Similarly, when in **Archive** tab you can play archived items by clicking the **Run** button in the actions column or you can play all archived items by clicking the **Run All** button on the bottom of the window.
+
+#### Run at front of the queue
+You can run an item, entire archive or filtered out list of jobs at the front of the queue by pressing and holding the **Shift** while clicking the **Run** or **Run All** buttons.
+
+When holding Shift pressed a small indicator message will appear on top of the window to confirm that the action will run at front of queue.
+
+![shift-pressed.png](readme-img/shift-pressed.png)
 
 ### Export and Import
 
@@ -148,6 +159,36 @@ Typical use case is to connect the `workflow_name` output to a node that accepts
 4. **IMPORTANT!** When you queue jobs while logged in with Comfy API key then those jobs will get through (and use your credits if you used Partner nodes) even if you log out from ComfyUI or Comfy.org.
 5. Conversely, if you queue jobs with Partner nodes while NOT logged in with Comfy API key then those jobs will NOT be able to use Partner nodes even if you log in later before running them. (See point 3. above for export-import workaround).
 
+### Gallery / output previews
+- In the **Completed** tab you can view outputs (images and videos) of finished jobs.
+- **Completed** tab can display results in 3 different modes: List, Cover, Grid.
+- In **List** no media previews are shown, only job details. In **Cover** mode a first image is shown in the table. In **Grid** mode all media outputs (depending on settings) are shown in a grid layout.
+![modes.png](readme-img/modes.png)
+- In every mode a small indicator next to the workflow name shows how many media outputs were produced by the job.
+- Clicking on a thumbnail or outputs indicator opens the Gallery view.
+- In Cover and Grid modes you can adjust size of the thumbnails using the slider on the bottom right of the window.
+![mediaitem.png](readme-img/mediaitem.png)
+#### Gallery view
+- In the **Gallery** view you can see all media outputs from the currently displayed **Completed** page. This is important to note: only outputs from jobs on current page will show in the gallery i.e. if there are 100 jobs per page then only outputs from those 100 jobs will be displayed in the gallery.
+- You can cycle through media items individually or skip through entire jobs to quickly navigate through results.
+- In the **Gallery** view several keyboard shortcuts are available:
+  - **Arrow Left / Right**: go to previous / next media item
+  - **Arrow Up / Down**: go to previous / next job
+  - **Home**: go to first media item
+  - **End**: go to last media item
+  - **Escape**: close Gallery view
+  - **T**: toggle thumbnails on / off
+- On the bottom of the Gallery is a progress bar showing your current position in the list of media items. You can also use it to quickly skip to a specific media item by clicking on it.
+![gallery-view.png](readme-img/gallery-view.png)
+- By default videos are played automatically. You can change that in extension settings (see below).
+- When workflow produces both images and video outputs then images are hidden by default to reduce clutter (since most of the time these will be individual frames of the video). You can toggle visibility of these images in extension settings (see below).
+
+### Extension Settings
+- Several aspects of the Queue Manager extension can be configured in the ComfyUI Settings window.
+  - **ComfyUI Menu -&gt; Settings -&gt;  Queue Manager**
+  ![settings.png](readme-img/settings.png)
+
+
 ## Troubleshooting
 #### I updated custom nodes and can no longer load items from queue or play from Archive or items imported from file.
 
@@ -176,12 +217,15 @@ Don't lol. Things will change and move around a lot.
 Nevertheless, here are some pointers if you have some PR ideas for critical fixes or features:
 - `/web` is the front end part of the extension.
   - Inside is `.gui` folder which is hidden from default ComfyUI UI, but it's where the build version of the Queue Manager is.
-- The core front end functionality of the Queue Manager is a Next.js app loaded in an iframe (from  `.gui` folder). It communicates with loading part of the extension by postMessage API.
+- The core front end functionality of the Queue Manager is a React web app loaded in an iframe (from  `.gui` folder). It communicates with loading part of the extension by postMessage API.
 - Server side (python) part of the extension is in `/src/comfyui_queue_manager`
-- Source code for the Next.js app is in `/src/gui`
-- database is in `/data/` (sqlite files are created automatically on first run)
+- Source code for the React app is in `/src/gui`. I use bun to build it but you can as well use npm.
+- database is in `/data/` (sqlite files are created automatically on first run after installation)
 
 Better docs will come later.
 
 ## Have fun!
 Queue all the way to the moon.
+
+## Release Notes
+For detailed release notes please see [CHANGELOG.md](CHANGELOG.md).

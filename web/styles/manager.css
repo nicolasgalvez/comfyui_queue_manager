@@ -5,17 +5,63 @@
   flex-wrap: wrap;
   min-height: 2.875rem;
   height: 2.875rem;
-  border-bottom: 1px solid var(--p-toolbar-border-color);
   width: calc(100% - 2.875rem);
   position: relative;
   z-index: 1;
   background: var(--p-toolbar-background);
+  padding-inline: calc(var(--spacing) * 4);
 }
 .comfyui-queue-manager .app-iframe {
-  margin-top: -2.875rem;
   position: relative;
   background: var(--p-toolbar-background);
 }
 .comfyui-queue-manager .app-iframe iframe {
   background-color: transparent;
+}
+.comfyui-gallery-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1100;
+  display: none;
+}
+.comfyui-gallery-overlay.open {
+  display: block;
+}
+.comfyui-gallery-overlay .qm-gallery-content {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+}
+.comfyui-gallery-overlay .qm-gallery-content iframe {
+  width: 100%;
+  height: 100%;
+  border: none;
+  background-color: transparent;
+}
+body.show-qm-fullscreen {
+  .comfyui-queue-manager {
+    position: fixed;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 100000;
+
+    .header {
+      display: none;
+    }
+  }
+
+  .comfyui-body-top {
+    display: none;
+  }
+
+  .app-iframe {
+    margin-top: 0;
+  }
 }

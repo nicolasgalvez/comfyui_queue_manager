@@ -1,9 +1,10 @@
 from datetime import datetime
 
-from .qm_db import write_query, read_single
+from .qm_db import write_query, read_single, read_query
 import json
 
 
+# Options manager with caching
 class QM_Options:
     def __init__(self):
         # cache for options
@@ -49,3 +50,19 @@ class QM_Options:
             return return_value, timestamp
         else:
             return return_value
+
+    def get_all(self):
+        options = read_query(
+            """
+                SELECT key, value, updated_at FROM options
+            """
+        )
+
+        if options is None:
+            return {}
+
+        for key, value, updated_at in options:
+            self.__options[key] = (json.loads(value), updated_at)
+
+        # return without timestamps
+        return {k: v[0] for k, v in self.__options.items()}

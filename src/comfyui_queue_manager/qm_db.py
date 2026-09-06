@@ -10,8 +10,23 @@ def get_conn() -> sqlite3.Connection:
         _local.conn = sqlite3.connect(DB_PATH, check_same_thread=False)
         _local.conn.execute("PRAGMA journal_mode=WAL")
         _local.conn.execute("PRAGMA synchronous=NORMAL")
+        _local.conn.execute("PRAGMA foreign_keys=ON")
         _local.conn.row_factory = sqlite3.Row
     return _local.conn
+
+
+# Produces a readable SQL string for debugging/logging.
+def _debug_sql(query: str, params) -> str:
+    conn = get_conn()
+
+    if params is None:
+        params = ()
+    if not isinstance(params, (tuple, list)):
+        params = (params,)
+    try:
+        return query % tuple(conn.execute("SELECT quote(?)", (p,)).fetchone()[0] for p in params)
+    except Exception:
+        return f"{query}  -- params={params!r}"
 
 
 def init_schema():
@@ -36,8 +51,23 @@ def init_schema():
             updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
         );
 
+        -- Meta table
+        CREATE TABLE IF NOT EXISTS meta (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            item_id INTEGER NOT  NULL,  -- Foreign key to queue
+            key VARCHAR(255) NOT NULL,
+            value TEXT,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (item_id)
+                REFERENCES queue(id)
+                ON DELETE CASCADE
+        );
+
         CREATE INDEX IF NOT EXISTS idx_queue_status_number
             ON queue(status, number);
+
+        CREATE INDEX IF NOT EXISTS idx_meta_queue_id ON meta(item_id);
+
 
         -- Create a trigger to update the updated_at column
         CREATE TRIGGER IF NOT EXISTS queue_set_updated_at
@@ -56,6 +86,16 @@ def init_schema():
         WHEN NEW.updated_at = OLD.updated_at         -- only if caller didn't change it
         BEGIN
           UPDATE options
+          SET    updated_at = CURRENT_TIMESTAMP
+          WHERE  rowid = NEW.rowid;
+        END;
+
+        CREATE TRIGGER IF NOT EXISTS meta_set_updated_at
+        AFTER UPDATE ON meta
+        FOR EACH ROW
+        WHEN NEW.updated_at = OLD.updated_at         -- only if caller didn't change it
+        BEGIN
+          UPDATE meta
           SET    updated_at = CURRENT_TIMESTAMP
           WHERE  rowid = NEW.rowid;
         END;

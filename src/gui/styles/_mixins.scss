@@ -1,0 +1,91 @@
+@use "sass:color";
+
+@mixin shiny-button($name, $color, $backgroundColor, $glowColor, $lightFactor: 15%) {
+  $hover-top: $backgroundColor;
+  $hover-bottom: color.adjust($backgroundColor, $lightness: -18%);
+
+  $active-top: color.adjust($hover-bottom, $lightness: -8%);
+  $active-bottom: color.adjust($hover-top, $lightness: -8%);
+
+  $hover-border-from: color.adjust($hover-bottom, $lightness: -6%);
+  $hover-border-to: color.adjust($hover-top, $lightness: -2%);
+
+  color: $color;
+
+  @media (prefers-color-scheme: light) {
+    color: color.adjust($color, $lightness: -35%);
+  }
+
+  &:hover {
+    z-index: 1;
+    animation: glow-#{$name} 800ms ease-out infinite alternate;
+
+    box-shadow:
+      0 0 5px rgba($glowColor, 0.2),
+      inset 0 0 5px rgba($glowColor, 0.1),
+      0 2px 0 #000;
+
+    background: linear-gradient($hover-top, $hover-bottom);
+    color: black;
+    text-shadow: none;
+
+    @media (prefers-color-scheme: light) {
+      // make background slightly lighter on light mode
+      background: linear-gradient(
+        color.adjust($hover-top, $lightness: $lightFactor),
+        color.adjust($hover-bottom, $lightness: $lightFactor)
+      );
+    }
+  }
+
+  &:active {
+    background: linear-gradient($active-top, $active-bottom);
+    box-shadow: 0 1px 0 #000, inset 1px 0 1px #222;
+    top: 1px;
+
+    @media (prefers-color-scheme: light) {
+      background: linear-gradient(
+        color.adjust($active-top, $lightness: $lightFactor),
+        color.adjust($active-bottom, $lightness: $lightFactor)
+      );
+    }
+  }
+
+  @keyframes glow-#{$name} {
+    0% {
+      border-color: $hover-border-from;
+      box-shadow:
+        0 0 5px rgba($glowColor, 0.2),
+        inset 0 0 5px rgba($glowColor, 0.1),
+        0 2px 0 #000;
+    }
+
+    100% {
+      border-color: $hover-border-to;
+      box-shadow:
+        0 0 20px rgba($glowColor, 0.6),
+        inset 0 0 10px rgba($glowColor, 0.4),
+        0 2px 0 #000;
+    }
+  }
+
+  @media (prefers-color-scheme: light) {
+    @keyframes glow-#{$name} {
+    0% {
+      border-color: $hover-border-from;
+      box-shadow:
+        0 0 5px rgba($glowColor, 0.2),
+        inset 0 0 5px rgba($glowColor, 0.1),
+        0 2px 0 #2220;
+    }
+
+    100% {
+      border-color: $hover-border-to;
+      box-shadow:
+        0 0 20px rgba($glowColor, 0.6),
+        inset 0 0 10px rgba($glowColor, 0.4),
+        0 2px 0 #fff0;
+    }
+  }
+  }
+}

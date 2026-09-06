@@ -1,0 +1,124 @@
+@use './mixins' as *;
+
+.media-item {
+  &.video.play-button {
+    position: relative;
+
+    &:after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cdefs%3E%3Cfilter id='shadow' x='-20%25' y='-20%25' width='140%25' height='140%25'%3E%3CfeDropShadow dx='2' dy='2' stdDeviation='6' flood-color='%23000' flood-opacity='0.5'/%3E%3C/filter%3E%3C/defs%3E%3Cpolygon points='16,12 52,32 16,52' fill='%23ffffff' filter='url(%23shadow)'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: center;
+      background-size: clamp(15px, 25%, 50px);
+
+      transform: scale(1);
+      transform-origin: center;
+      will-change: transform;
+      backface-visibility: hidden;
+
+      transition: transform 0.2s ease-in;
+    }
+
+    &:hover:after {
+      transform: scale(1.2);
+    }
+
+    &.large-play-button {
+      &:after {
+        background-size: clamp(30px, 40%, 80px);
+      }
+
+      &:hover:after {
+        transform: scale(1.25);
+      }
+    }
+  }
+}
+
+.shiny-button {
+	background: #222;
+	background: linear-gradient(#333, #222);
+	display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+
+  background: #222;
+	background: linear-gradient(#333, #222);
+	box-sizing: border-box;
+	border: 1px solid #444;
+	border-radius: 5px;
+	box-shadow: 0 2px 0 #000;
+	color: #ccc;
+	font-family: 'Cabin', helvetica, arial, sans-serif;
+	font-size: 13px;
+	font-weight: 400;
+	line-height: 1.8;
+
+	margin: 0;
+  padding: 0 1em;
+	position: relative;
+  z-index: 2;
+  outline: none;
+  transition: background-color 300ms ease, color 300ms ease;
+  text-shadow: 0 0 3px black;
+
+  &.ml-auto {
+    margin-left: auto;
+  }
+
+  &:hover {
+    background: #222922;
+    z-index: 1;
+    color: black;
+    text-shadow: none;
+  }
+
+  &:active {
+    top: 1px;
+  }
+
+  // light theme
+  @media (prefers-color-scheme: light) {
+    background: #eee;
+    background: linear-gradient(#fff, #eee);
+    border: 1px solid #ccc;
+    box-shadow: 0 2px 1px #eee4;
+    color: #333;
+    text-shadow: none;
+
+    &:hover {
+      background: #ddd;
+    }
+
+    &:active {
+      background: #ccc;
+    }
+  }
+
+  @include shiny-button("white", #ccc, #eee, #fff, 5%);
+
+  &.green-button {
+     @include shiny-button("green", #9c9, #39aa39, rgb(0 255 0));
+  }
+
+  &.red-button {
+    @include shiny-button("red", #f96, #c99, #c33);
+  }
+
+  &.yellow-button {
+    @include shiny-button("yellow", #dd6, #bbbb33, #ff6);
+  }
+
+  &.blue-button {
+    @include shiny-button("blue", #acf, #6af, #9cf);
+  }
+
+  &.violet-button {
+    @include shiny-button("violet", #caf, #a36aff, #d69fff);
+  }
+}
