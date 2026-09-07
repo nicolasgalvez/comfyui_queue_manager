@@ -147,16 +147,18 @@ async function AddStopButton(actionsContainer) {
 
     //if event.detail.exec_info.queue_remaining is set and greater than 0 then enable stop button
     const queueRemaining = event.detail?.exec_info?.queue_remaining;
+    // Badge container
+    const tabButton = document.querySelector('.comfyui-queue-manager-tab-button') ||
+      document.querySelector('[data-testid="comfyui-queue-manager-tab-button"]');
+    if (!tabButton) return;
+
     if (queueRemaining && queueRemaining > 0) {
       stopButton.disabled = false;
       stopButton.classList.remove('p-button-disabled');
 
       const displayCount = queueRemaining > 999 ? '999+' : queueRemaining;
       // Add a badge to show number of pending jobs
-      const tabButton = document.querySelector('.comfyui-queue-manager-tab-button') ||
-        document.querySelector('[data-testid="comfyui-queue-manager-tab-button"]');
 
-      if (!tabButton) return;
 
       const existingBadge = tabButton.querySelector('.counter-badge');
       if (existingBadge) {
@@ -164,7 +166,7 @@ async function AddStopButton(actionsContainer) {
         existingBadge.textContent = displayCount;
         existingBadge.title = `${queueRemaining} jobs`;
       } else {
-        const badgeHtml = `<span class="counter-badge absolute pl-1 pr-2 text-black text-xxs font-bold rounded-full px-1.5" style="color: var(--p-button-primary-color); background: var(--p-button-primary-background); top:-2px; right:-3px" title="${queueRemaining} jobs">${displayCount}</span>`;
+        const badgeHtml = `<span class="counter-badge absolute pl-1 pr-1.5 text-black text-xxs font-bold rounded-full" style="color: var(--bg-color); background: var(--fg-color); top:-2px; right:-3px" title="${queueRemaining} jobs">${displayCount}</span>`;
 
         tabButton.insertAdjacentHTML('beforeend', badgeHtml);
       }
@@ -173,7 +175,7 @@ async function AddStopButton(actionsContainer) {
       stopButton.classList.add('p-button-disabled');
 
       // Remove badge if present
-      const badge = document.querySelector('.comfyui-queue-manager-tab-button .counter-badge');
+      const badge = tabButton?.querySelector('.counter-badge');
       if (badge) {
         badge.remove();
       }
