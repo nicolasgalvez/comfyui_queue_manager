@@ -37,6 +37,11 @@ export const QueueItemRow = memo(
     }, [item, route, galleryOptions]);
 
     const cancelQueueItem = useCallback(async () => {
+      const message = mode === "running" || mode === "external"
+        ? "Stop the running job and delete it from the queue?"
+        : "Delete this workflow from Queue Manager? This cannot be undone.";
+      if (!window.confirm(message)) return;
+
       const cancelRoute = mode === "running" || mode === "external" ? "interrupt" : "queue";
       await apiCall(`api/${cancelRoute}`, { delete: [item[1]] });
     }, [mode, item]);

@@ -19552,6 +19552,8 @@ const QueueItemRow = reactExports.memo(
       return null;
     }, [item, route, galleryOptions]);
     const cancelQueueItem = reactExports.useCallback(async () => {
+      const message = mode === "running" || mode === "external" ? "Stop the running job and delete it from the queue?" : "Delete this workflow from Queue Manager? This cannot be undone.";
+      if (!window.confirm(message)) return;
       const cancelRoute = mode === "running" || mode === "external" ? "interrupt" : "queue";
       await apiCall(`api/${cancelRoute}`, { delete: [item[1]] });
     }, [mode, item]);
@@ -29090,6 +29092,7 @@ function Gallery({ items, activeItem }) {
     }, "*");
   });
   const deleteWorkflow = useEvent(async (event) => {
+    if (!window.confirm("Delete this workflow from Queue Manager? This cannot be undone.")) return;
     try {
       await apiCall(`api/queue`, {
         delete: [mediaItem.queueItem.promptID]
@@ -29672,6 +29675,9 @@ function Home() {
     });
   }
   async function deleteFromQueue() {
+    const scope = route === "archive" ? "archived workflows" : route === "completed" ? "completed jobs" : "pending workflows";
+    const selection = isFilterOn() ? `all ${scope} matching the current filters` : `all ${scope}`;
+    if (!window.confirm(`Delete ${selection} across all pages? This cannot be undone.`)) return;
     let queryArgs = appendFilters("?route=" + route);
     try {
       const response = await fetch(`${baseURL}queue_manager/queue${queryArgs}`, {
@@ -29682,6 +29688,7 @@ function Home() {
     }
   }
   async function clearPending() {
+    if (!window.confirm("Delete all pending workflows across all pages? This cannot be undone.")) return;
     try {
       const response = await fetch(`${baseURL}api/queue`, {
         method: "POST",

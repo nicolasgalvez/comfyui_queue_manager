@@ -301,6 +301,11 @@ export default function Home() {
   }
 
   async function deleteFromQueue() {
+    const scope = route === "archive" ? "archived workflows"
+      : route === "completed" ? "completed jobs" : "pending workflows";
+    const selection = isFilterOn() ? `all ${scope} matching the current filters` : `all ${scope}`;
+    if (!window.confirm(`Delete ${selection} across all pages? This cannot be undone.`)) return;
+
     let queryArgs = appendFilters("?route=" + route);
 
     try {
@@ -313,6 +318,8 @@ export default function Home() {
   }
 
   async function clearPending() {
+    if (!window.confirm("Delete all pending workflows across all pages? This cannot be undone.")) return;
+
     try {
         // POST {"clear":true} to /api/queue
         const response = await fetch(`${baseURL}api/queue`, {
