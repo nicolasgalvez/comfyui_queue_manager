@@ -83,6 +83,7 @@ export default function Home() {
   const [galleryData, setGallery] = useState(null);
 
   const [showSplash, setShowSplash] = useState(false);
+  const [showFooterActions, setShowFooterActions] = useState(false);
 
   const latestThumbSizePxRef = useRef(150);
 
@@ -875,7 +876,23 @@ export default function Home() {
           }
 
           {/* Footer Actions */}
-          <div className="p-2 flex actions">
+          <div className="footer-actions-toggle-row">
+            <button
+              type="button"
+              className="footer-actions-toggle"
+              aria-label={showFooterActions ? "Close footer actions" : "Open footer actions"}
+              title={showFooterActions ? "Close footer actions" : "Open footer actions"}
+              aria-expanded={showFooterActions}
+              aria-controls="footer-actions"
+              onClick={() => setShowFooterActions(shown => !shown)}
+            >
+              <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true" focusable="false">
+                <path d={showFooterActions ? "M2 2L8 8M8 2L2 8" : "M1 7L5 3L9 7"}
+                      fill="none" stroke="currentColor" strokeWidth="1.5"/>
+              </svg>
+            </button>
+          </div>
+          <div id="footer-actions" className="p-2 flex actions" hidden={!showFooterActions}>
             <Stack direction="row" spacing={1} className={'min-w-full buttons'}>
               {appStatus.queue && (appStatus.queue.running.length > 0 || appStatus.queue.pending.length > 0) &&
                 <>
