@@ -29536,6 +29536,7 @@ function Home() {
   });
   const [galleryData, setGallery] = reactExports.useState(null);
   const [showSplash, setShowSplash] = reactExports.useState(false);
+  const [showFooterActions, setShowFooterActions] = reactExports.useState(false);
   const latestThumbSizePxRef = reactExports.useRef(150);
   const fetchIdRef = reactExports.useRef(0);
   reactExports.useMemo(() => {
@@ -30192,7 +30193,28 @@ function Home() {
             }
           ) })
         ] }) }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "p-2 flex actions", children: /* @__PURE__ */ jsxRuntimeExports.jsxs(Stack, { direction: "row", spacing: 1, className: "min-w-full buttons", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "footer-actions-toggle-row", children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "button",
+          {
+            type: "button",
+            className: "footer-actions-toggle",
+            "aria-label": showFooterActions ? "Close footer actions" : "Open footer actions",
+            title: showFooterActions ? "Close footer actions" : "Open footer actions",
+            "aria-expanded": showFooterActions,
+            "aria-controls": "footer-actions",
+            onClick: () => setShowFooterActions((shown) => !shown),
+            children: /* @__PURE__ */ jsxRuntimeExports.jsx("svg", { width: "10", height: "10", viewBox: "0 0 10 10", "aria-hidden": "true", focusable: "false", children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+              "path",
+              {
+                d: showFooterActions ? "M2 2L8 8M8 2L2 8" : "M1 7L5 3L9 7",
+                fill: "none",
+                stroke: "currentColor",
+                strokeWidth: "1.5"
+              }
+            ) })
+          }
+        ) }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { id: "footer-actions", className: "p-2 flex actions", hidden: !showFooterActions, children: /* @__PURE__ */ jsxRuntimeExports.jsxs(Stack, { direction: "row", spacing: 1, className: "min-w-full buttons", children: [
           appStatus.queue && (appStatus.queue.running.length > 0 || appStatus.queue.pending.length > 0) && /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
             route === "queue" && /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
               /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { onClick: archiveAll, className: "shiny-button yellow-button", children: [
