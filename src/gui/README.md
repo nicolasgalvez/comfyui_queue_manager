@@ -3,3 +3,16 @@
 The GUI is a React app built with Vite. It runs inside ComfyUI and can be developed with npm or Bun.
 
 See the [development guide](../../DEVELOPMENT.md) for setup, building, automatic reload and checks.
+
+## Browser regression tests
+
+```sh
+npm ci
+npx playwright install chromium
+npm test
+```
+
+`npm test` builds the frontend, serves it on a temporary localhost port and
+intercepts every backend request, so nothing contacts ComfyUI. The delete
+confirmation test checks Cancel and Confirm for individual, running, gallery,
+bulk, and filtered deletions.
