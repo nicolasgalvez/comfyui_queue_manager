@@ -4,6 +4,38 @@ footer.footer {
   border-top: 1px solid var(--color-neutral-700);
   background-color: var(--background);
 
+  .footer-actions-toggle-row {
+    display: flex;
+    justify-content: flex-end;
+  }
+
+  .footer-actions-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    padding: 0;
+    color: inherit;
+    background: transparent;
+    border: 0;
+    cursor: pointer;
+
+    svg {
+      width: 10px;
+      height: 10px;
+    }
+
+    &:focus-visible {
+      outline: 2px solid currentColor;
+      outline-offset: -2px;
+    }
+  }
+
+  .actions[hidden] {
+    display: none;
+  }
+
   @media (prefers-color-scheme: light) {
     background-color: var(--background-light);
   }

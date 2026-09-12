@@ -42,6 +42,28 @@ test('delete controls require consent before sending any mutation', { timeout: 6
       });
       await page.goto(`http://127.0.0.1:${server.address().port}/`);
       await page.getByRole('button', { name: 'Delete', exact: true }).waitFor();
+      const actions = page.locator('#footer-actions');
+      const toggle = page.getByRole('button', { name: 'Open footer actions', exact: true });
+      assert.equal(await actions.isVisible(), false, scenario);
+      assert.equal(await page.locator('.pagination').isVisible(), true, scenario);
+      assert.equal(await toggle.getAttribute('aria-expanded'), 'false');
+      assert.deepEqual(await toggle.locator('svg').evaluate(icon => {
+        const { width, height } = icon.getBoundingClientRect();
+        return { width, height };
+      }), { width: 10, height: 10 });
+      await toggle.focus();
+      await page.keyboard.press('Enter');
+      const closeToggle = page.getByRole('button', { name: 'Close footer actions', exact: true });
+      assert.equal(await actions.isVisible(), true, scenario);
+      assert.equal(await closeToggle.getAttribute('aria-expanded'), 'true');
+      assert.deepEqual(await closeToggle.locator('svg').evaluate(icon => {
+        const { width, height } = icon.getBoundingClientRect();
+        return { width, height };
+      }), { width: 10, height: 10 });
+      await page.keyboard.press('Enter');
+      assert.equal(await actions.isVisible(), false, scenario);
+      assert.equal(await toggle.evaluate(button => button === button.ownerDocument.activeElement), true);
+      assert.equal(mutations.length, 0);
       let button = page.getByRole('button', { name: 'Delete', exact: true });
       let message = /Delete this workflow/;
       let expectedPath = '/api/queue';
@@ -68,6 +90,9 @@ test('delete controls require consent before sending any mutation', { timeout: 6
         button = page.getByRole('button', { name: 'Delete workflow', exact: true });
         message = /Delete this workflow/;
         expectedPath = '/api/queue';
+      }
+      if (['clear', 'archive', 'completed', 'filtered'].includes(scenario)) {
+        await page.getByRole('button', { name: 'Open footer actions', exact: true }).click();
       }
       const before = mutations.length;
       for (const consent of [false, true]) {
