@@ -196,6 +196,8 @@ export default function Gallery({items, activeItem}) {
   });
 
   const deleteWorkflow = useEvent(async (event) => {
+    if (!window.confirm("Delete this workflow from Queue Manager? This cannot be undone.")) return;
+
     try {
       await apiCall(`api/queue`, {
         delete: [mediaItem.queueItem.promptID],
