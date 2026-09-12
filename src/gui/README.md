@@ -16,3 +16,10 @@ npm test
 intercepts every backend request, so nothing contacts ComfyUI. The delete
 confirmation test checks Cancel and Confirm for individual, running, gallery,
 bulk, and filtered deletions.
+
+## Lint changed files
+
+`npm run lint` checks JavaScript files changed since the merge base with
+`origin/main`, including staged, unstaged, and untracked files. Deleted files
+and files outside this frontend are excluded. Fetch `origin/main` first.
+Use `npm run lint -- <ref>` to choose another comparison base.
