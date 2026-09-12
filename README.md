@@ -237,13 +237,3 @@ Queue all the way to the moon.
 
 ## Release Notes
 For detailed release notes please see [CHANGELOG.md](CHANGELOG.md).
-
-## Persistent failed-node notices
-
-While the browser is connected, failed jobs leave a compact notice in ComfyUI's
-right Workflow Overview sidebar with the node type, node ID, job ID, and error.
-Starting another job does not erase it. Dismiss each notice when resolved; the
-section disappears when empty. Notices survive sidebar remounts and refreshes in
-the same browser tab, without changing the current workflow's error highlights.
-Jobs that failed while the browser was disconnected remain in Queue Manager's
-Completed history; this sidebar does not backfill those jobs.
