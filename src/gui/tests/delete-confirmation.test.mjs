@@ -2,26 +2,11 @@
 // and fail this test. Every backend request is intercepted; no live stack is used.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { createServer } from 'node:http';
-import { readFile } from 'node:fs/promises';
+import { serveFrontend } from './frontend-server.mjs';
 import { chromium } from '@playwright/test';
 
-const root = new URL('../../../web/.gui/', import.meta.url);
-
 test('delete controls require consent before sending any mutation', { timeout: 60000 }, async () => {
-  const server = createServer(async (req, res) => {
-    try {
-      const pathname = new URL(req.url, 'http://localhost').pathname
-        .replace('/extensions/comfyui_queue_manager/.gui/', '/');
-      const file = pathname === '/' ? 'index.html' : pathname.slice(1);
-      res.setHeader('Content-Type', file.endsWith('.js') ? 'text/javascript'
-        : file.endsWith('.css') ? 'text/css' : 'text/html');
-      res.end(await readFile(new URL(file, root)));
-    } catch {
-      res.writeHead(404).end();
-    }
-  });
-  await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+  const server = await serveFrontend();
   let browser;
   try {
     browser = await chromium.launch();

@@ -44,3 +44,7 @@ running, gallery, bulk, and filtered deletions without contacting ComfyUI.
 `origin/main`, including staged, unstaged, and untracked files. Deleted files
 and files outside this frontend are excluded. Fetch `origin/main` first.
 Use `npm run lint -- <ref>` to choose another comparison base.
+
+The failed-job browser regression also checks persistent error details after
+reload. Run the backend persistence tests from the repository root with
+`python tests/test_execution_errors.py`; they use a temporary SQLite database.
