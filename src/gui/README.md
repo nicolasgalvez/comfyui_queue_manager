@@ -37,3 +37,10 @@ npm test
 The browser test runs the built frontend on a temporary localhost port and
 intercepts every backend request. It checks Cancel and Confirm for individual,
 running, gallery, bulk, and filtered deletions without contacting ComfyUI.
+
+## Lint changed files
+
+`npm run lint` checks JavaScript files changed since the merge base with
+`origin/main`, including staged, unstaged, and untracked files. Deleted files
+and files outside this frontend are excluded. Fetch `origin/main` first.
+Use `npm run lint -- <ref>` to choose another comparison base.
