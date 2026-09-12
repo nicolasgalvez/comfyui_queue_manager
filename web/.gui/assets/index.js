@@ -19545,6 +19545,9 @@ const QueueItemRow = reactExports.memo(
     const { onMediaItemClick, fetchQueueItems } = reactExports.useContext(AppContext);
     const dbId = item?.[3]?.db_id;
     const workflow = item?.[3]?.extra_pnginfo?.workflow;
+    const executionStatus = item?.[3]?.execution_status;
+    const failed = executionStatus?.status_str === "error";
+    const executionError = executionStatus?.error;
     const mediaOutputs = reactExports.useMemo(() => {
       if (item?.[3]?.outputs && route === "completed") {
         return new MediaOutputs(item[3], galleryOptions);
@@ -19622,18 +19625,37 @@ const QueueItemRow = reactExports.memo(
             title: "Open gallery"
           }
         ) : null }) : null,
-        /* @__PURE__ */ jsxRuntimeExports.jsx("td", { className: "px-3 py-1 text-left name", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "name-cell", children: [
-          mediaOutputs && item[3].total_files > 0 ? /* @__PURE__ */ jsxRuntimeExports.jsx(
-            "span",
-            {
-              className: "total shiny-button",
-              title: `Total file outputs: ${mediaOutputs.total}`,
-              onClick: () => onMediaItemClick({ dbID: dbId, fileIndex: 0 }),
-              children: mediaOutputs.total
-            }
-          ) : null,
-          /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "plain", onClick: filterByWorkflow, title: "Filter view by the workflow", children: mode === "external" ? "External job" : workflow?.workflow_name ? workflow.workflow_name : "" })
-        ] }) }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("td", { className: "px-3 py-1 text-left name", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "name-cell", children: [
+            mediaOutputs && item[3].total_files > 0 ? /* @__PURE__ */ jsxRuntimeExports.jsx(
+              "span",
+              {
+                className: "total shiny-button",
+                title: `Total file outputs: ${mediaOutputs.total}`,
+                onClick: () => onMediaItemClick({ dbID: dbId, fileIndex: 0 }),
+                children: mediaOutputs.total
+              }
+            ) : null,
+            /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "plain", onClick: filterByWorkflow, title: "Filter view by the workflow", children: mode === "external" ? "External job" : workflow?.workflow_name ? workflow.workflow_name : "" })
+          ] }),
+          route === "completed" && failed && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "execution-error", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: "Failed" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+              executionError?.exception_type ? `${executionError.exception_type}: ` : "",
+              executionError?.exception_message || "The job failed without error details."
+            ] }),
+            executionError?.node_id != null && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+              "Node ",
+              executionError.node_id,
+              executionError.node_type ? ` · ${executionError.node_type}` : ""
+            ] }),
+            executionError?.traceback?.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs("details", { children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx("summary", { children: "Show traceback" }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("pre", { children: Array.isArray(executionError.traceback) ? executionError.traceback.join("") : executionError.traceback })
+            ] })
+          ] }),
+          route === "completed" && executionStatus?.status_str === "interrupted" && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "execution-interrupted", children: "Interrupted" })
+        ] }),
         route === "completed" && /* @__PURE__ */ jsxRuntimeExports.jsx("td", { className: "meta-info", children: executionTimeLabel ? /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "execution-time", title: "Execution time", children: executionTimeLabel }) : null }),
         /* @__PURE__ */ jsxRuntimeExports.jsx("td", { className: "px-3 py-1 text-right actions", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { justifyContent: "flex-end" }, className: "buttons", children: [
           /* @__PURE__ */ jsxRuntimeExports.jsx(
