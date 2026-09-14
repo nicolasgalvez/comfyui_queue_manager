@@ -34,6 +34,14 @@ An extension supporting more streamlined prompt queue management.
 3. Look up this extension in ComfyUI-Manager (ComfyUI Queue Manager). If you are installing manually, clone this repository under `ComfyUI/custom_nodes`.
 4. Restart ComfyUI.
 
+## Failed jobs
+
+The Completed tab keeps failed jobs visible with a **Failed** label, the error
+reason, the node that failed, and an expandable traceback. Details remain after
+refreshing or restarting ComfyUI. A successful rerun replaces the previous error.
+This applies to jobs completed after installing this version; errors discarded
+by older versions are unavailable. Interrupted jobs are labelled separately.
+
 ## Important
 
 - EARLY ACCESS RELEASE, PROOF OF CONCEPT, PROTOTYPE. This is an early access release of the ComfyUI Queue Manager. While fully functional, things will change, a lot.

@@ -24,3 +24,27 @@ To fix this run ComfyUI with the `--enable-cors-header http://localhost:3000` (o
 ```
 python main.py --listen 0.0.0.0 --port 8188 --enable-cors-header http://localhost:3000
 ```
+
+## Delete confirmation regression test
+
+```sh
+npm ci
+npx playwright install chromium
+npm run build
+npm test
+```
+
+The browser test runs the built frontend on a temporary localhost port and
+intercepts every backend request. It checks Cancel and Confirm for individual,
+running, gallery, bulk, and filtered deletions without contacting ComfyUI.
+
+## Lint changed files
+
+`npm run lint` checks JavaScript files changed since the merge base with
+`origin/main`, including staged, unstaged, and untracked files. Deleted files
+and files outside this frontend are excluded. Fetch `origin/main` first.
+Use `npm run lint -- <ref>` to choose another comparison base.
+
+The failed-job browser regression also checks persistent error details after
+reload. Run the backend persistence tests from the repository root with
+`python tests/test_execution_errors.py`; they use a temporary SQLite database.
