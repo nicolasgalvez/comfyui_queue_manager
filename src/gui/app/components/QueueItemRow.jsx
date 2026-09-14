@@ -14,6 +14,8 @@ import {useAppStore} from "@/app/stores/appStore";
 import { QueueItemName } from "./QueueItemName";
 import {withWorkflowFilter} from "../internals/workflowFilters.mjs";
 import {queueWorkflow} from "../internals/queueMetadata.mjs";
+import {useOptionsStore} from "@/app/stores/optionsStore";
+import {baseURL} from "@/app/internals/config";
 
 export const QueueItemRow = memo(
   function QueueItemRow({
@@ -36,6 +38,7 @@ export const QueueItemRow = memo(
     reorderAnchor,
   }) {
     const { onMediaItemClick, fetchQueueItems, refreshQueueItems } = useContext(AppContext);
+    const openInGallery = useOptionsStore((state) => state.open_in_gallery);
 
     const renaming = useSelectionStore((state) => !!state.rename);
     const dbId = item?.[3]?.db_id;
@@ -52,6 +55,21 @@ export const QueueItemRow = memo(
       }
       return null;
     }, [item, route, galleryOptions]);
+
+    // Open an output the way the current option says to: the built-in gallery,
+    // or - the ComfyUI way - its /api/view URL in a new tab.
+    const openOutput = useCallback((fileIndex) => {
+      if (!openInGallery) {
+        const file = mediaOutputs?.files?.[fileIndex];
+        if (file) {
+          const src = `${baseURL}api/view?filename=${file.filename}` +
+                      `&type=output&subfolder=${file.subfolder}`;
+          window.open(src, "_blank", "noopener");
+          return;
+        }
+      }
+      onMediaItemClick({ dbID: dbId, fileIndex });
+    }, [openInGallery, mediaOutputs, onMediaItemClick, dbId]);
 
     const cancelQueueItem = useCallback(async () => {
       const message = mode === "running"
@@ -160,7 +178,7 @@ const executionTimeLabel = useMemo(() => {
                   file={mediaOutputs.cover}
                   controls={false}
                   autoplay={false}
-                  onClick={() => onMediaItemClick({ dbID: dbId, fileIndex: 0 })}
+                  onClick={() => openOutput(0)}
                   className="play-button"
                   title="Open gallery"
                 />
@@ -175,7 +193,7 @@ const executionTimeLabel = useMemo(() => {
                 <span
                   className="total shiny-button"
                   title={`Total file outputs: ${mediaOutputs.total}`}
-                  onClick={() => onMediaItemClick({ dbID: dbId, fileIndex: 0 })}
+                  onClick={() => openOutput(0)}
                 >
                   {mediaOutputs.total}
                 </span>
@@ -273,7 +291,7 @@ const executionTimeLabel = useMemo(() => {
                 <button
 
                   className="view violet-button shiny-button"
-                  onClick={() => onMediaItemClick({ dbID: dbId, fileIndex: 0 })}
+                  onClick={() => openOutput(0)}
                   title="View outputs in gallery"
                   data-selection-ignore
                 >
@@ -313,7 +331,7 @@ const executionTimeLabel = useMemo(() => {
                         key={`${file.filename}-${file.subfolder}`}
                         file={file}
                         autoplay={false}
-                        onClick={() => onMediaItemClick({ dbID: dbId, fileIndex })}
+                        onClick={() => openOutput(fileIndex)}
                         title="Open gallery"
                       />
                     ))
