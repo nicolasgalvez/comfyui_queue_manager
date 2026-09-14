@@ -307,8 +307,11 @@ export function handleIframeMessages() {
 
       // When workflow is received from iframe then load it into ComfyUI
       if (type === "QM_LoadWorkflow" && workflow) {
+        // API-submitted prompts (comfyui-mcp, bare curl) carry a workflow without
+        // workflow_name. Matches WORKFLOW_NAME_PLACEHOLDER in qm_queue.py.
+        const workflowName = workflow.workflow_name || "(unnamed)";
         // e.g. forward into ComfyUI’s API
-        app.loadGraphData(workflow, true, true, workflow.workflow_name + ' ' + number);
+        app.loadGraphData(workflow, true, true, workflowName + ' ' + number);
       }
 
       // Handshake message from iframe
