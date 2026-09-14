@@ -51,6 +51,10 @@ export const msgLoadWorkflow = (workflow, number) => {
   );
 }
 
+// API-submitted prompts (comfyui-mcp, bare curl) carry an extra_pnginfo.workflow
+// without workflow_name. Matches WORKFLOW_NAME_PLACEHOLDER in qm_queue.py.
+export const workflowLabel = (workflow) => workflow?.workflow_name || "(unnamed)";
+
 export function mediaType (outputs) {
   return {
     isImage : (!outputs.animated || outputs.animated[0] !== true),

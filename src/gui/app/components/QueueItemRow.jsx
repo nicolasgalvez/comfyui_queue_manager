@@ -2,7 +2,7 @@
 "use client";
 
 import React, { memo, useCallback, useContext, useMemo } from "react";
-import { apiCall, msgLoadWorkflow } from "../internals/functions";
+import { apiCall, msgLoadWorkflow, workflowLabel } from "../internals/functions";
 import { AppContext } from "../internals/app-context";
 import { MediaItem } from "../components/MediaItem";
 import PlayArrowOutlinedIcon from "@mui/icons-material/PlayArrowOutlined";
@@ -183,9 +183,7 @@ const executionTimeLabel = useMemo(() => {
               <button className="plain" onClick={filterByWorkflow} title="Filter view by the workflow">
                 {mode === "external"
                   ? "External job"
-                  : workflow?.workflow_name
-                    ? workflow.workflow_name
-                    : ""}
+                  : workflowLabel(workflow)}
               </button>
 
 
