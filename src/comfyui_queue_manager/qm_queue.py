@@ -14,6 +14,30 @@ from .qm_db import get_conn, read_query, read_single, write_query, write_many
 from .qm_log import qm_log
 
 
+# Placeholders used when a prompt's extra_data carries no workflow metadata at all,
+# or a workflow dict without a workflow_name/id (e.g. API clients such as comfyui-mcp
+# that attach extra_pnginfo.workflow without the fields the ComfyUI UI always sets).
+WORKFLOW_NAME_PLACEHOLDER = "(unnamed)"
+WORKFLOW_ID_PLACEHOLDER = ""
+
+
+def workflow_meta(extra_data):
+    """Return (workflow_name, workflow_id) from a prompt's extra_data.
+
+    extra_data is item[3] of a native queue item / prompt tuple. It may be
+    missing extra_pnginfo entirely, extra_pnginfo may be missing "workflow",
+    or "workflow" may be missing "workflow_name" / "id" - all observed from
+    API clients that submit prompts without ComfyUI's own UI metadata. In
+    every such case this returns placeholders instead of raising KeyError,
+    so the prompt can still be queued, executed and logged.
+    """
+    workflow = (extra_data or {}).get("extra_pnginfo", {}).get("workflow", {})
+    return (
+        workflow.get("workflow_name", WORKFLOW_NAME_PLACEHOLDER),
+        workflow.get("id", WORKFLOW_ID_PLACEHOLDER),
+    )
+
+
 class QM_Queue:
     def __init__(self, queue_manager):
         self.queue_manager = queue_manager
@@ -357,6 +381,7 @@ class QM_Queue:
                 return
 
             # Add the item to the database
+            name, workflow_id = workflow_meta(item[3])
             write_query(
                 """
                 INSERT OR REPLACE INTO queue (prompt_id, number, name, workflow_id, prompt)
@@ -365,8 +390,8 @@ class QM_Queue:
                 (
                     item[1],
                     item[0],
-                    item[3]["extra_pnginfo"]["workflow"]["workflow_name"],
-                    item[3]["extra_pnginfo"]["workflow"]["id"],
+                    name,
+                    workflow_id,
                     json.dumps(item),
                 ),
             )
@@ -452,9 +477,10 @@ class QM_Queue:
                 """,
                     (queue_item[0][1],),
                 )
+                name, _ = workflow_meta(queue_item[0][3])
                 qm_log.info(
                     "Executing workflow: \033[33m%s\033[0m at %s",
-                    queue_item[0][3]["extra_pnginfo"]["workflow"]["workflow_name"],
+                    name,
                     queue_item[0][0],
                 )
                 return queue_item  # (item, task_counter)
@@ -761,12 +787,13 @@ class QM_Queue:
                     item[5] = {"api_key_comfy_org": api_key_comfy_org} if api_key_comfy_org is not None else {}
 
                 PromptServer.instance.number += 1
+                name, workflow_id = workflow_meta(item[3])
                 query_params.append(
                     (
                         item[1],
                         PromptServer.instance.number,
-                        item[3]["extra_pnginfo"]["workflow"]["workflow_name"],
-                        item[3]["extra_pnginfo"]["workflow"]["id"],
+                        name,
+                        workflow_id,
                         json.dumps(item),
                         status,
                     )
