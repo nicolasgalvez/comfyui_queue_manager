@@ -276,6 +276,7 @@ class QM_Server:
             "queue_paused": False,
             "splash_screen": "0.0.0",  # last seen splash screen version
             "show_gallery_ui": True,
+            "open_in_gallery": True,
         }
 
         # Get options
@@ -336,7 +337,7 @@ class QM_Server:
                 if not isinstance(value, int) or value < 25 or value > 200:
                     return web.json_response({"error": "Invalid cover_size value"}, status=400)
             #     Boolean options
-            elif option == "queue_paused" or option == "show_gallery_ui":
+            elif option == "queue_paused" or option == "show_gallery_ui" or option == "open_in_gallery":
                 if not isinstance(value, bool):
                     return web.json_response({"error": "Invalid " + option + " value"}, status=400)
             elif (

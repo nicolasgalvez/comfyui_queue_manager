@@ -7,6 +7,8 @@ import DriveFolderUploadOutlinedIcon from "@mui/icons-material/DriveFolderUpload
 import ImageNotSupportedSharpIcon from '@mui/icons-material/ImageNotSupportedSharp';
 import WallpaperSharpIcon from '@mui/icons-material/WallpaperSharp';
 import ViewModuleSharpIcon from '@mui/icons-material/ViewModuleSharp';
+import CollectionsSharpIcon from '@mui/icons-material/CollectionsSharp';
+import OpenInNewSharpIcon from '@mui/icons-material/OpenInNewSharp';
 import UploadSharpIcon from '@mui/icons-material/UploadSharp';
 import Inventory2SharpIcon from '@mui/icons-material/Inventory2Sharp';
 import { styled } from '@mui/material/styles';
@@ -580,6 +582,12 @@ export default function Home() {
     apiCall('queue_manager/options', {key:"thumb_mode", value: mode}, 'POST');
   });
 
+  const setOpenInGallery = useEvent((value) => {
+    // update options on the server
+    setDirectOption("open_in_gallery", value);
+    apiCall('queue_manager/options', {key:"open_in_gallery", value: value}, 'POST');
+  });
+
   const openSplash = useEvent(() => {
     setShowSplash(true);
   });
@@ -813,6 +821,17 @@ export default function Home() {
                 <div title="Show all outputs">
                   <ViewModuleSharpIcon className={options.thumb_mode === "grid" ? 'active' : ''}
                                        onClick={() => setThumbMode("grid")}/>
+                </div>
+              </Stack>
+              <Stack spacing={1} className={"open-in-gallery-mode"} direction="row"
+                     sx={{alignItems: 'center', justifyContent: 'start'}} p={1}>
+                <div title="Click outputs to open them in the built-in gallery">
+                  <CollectionsSharpIcon className={options.open_in_gallery ? 'active' : ''}
+                                        onClick={() => setOpenInGallery(true)}/>
+                </div>
+                <div title="Click outputs to open them the ComfyUI way, in a new tab">
+                  <OpenInNewSharpIcon className={!options.open_in_gallery ? 'active' : ''}
+                                      onClick={() => setOpenInGallery(false)}/>
                 </div>
               </Stack>
               {options.thumb_mode === "grid" &&
