@@ -28,6 +28,9 @@ export const QueueItemRow = memo(
 
     const dbId = item?.[3]?.db_id;
     const workflow = item?.[3]?.extra_pnginfo?.workflow;
+    const executionStatus = item?.[3]?.execution_status;
+    const failed = executionStatus?.status_str === "error";
+    const executionError = executionStatus?.error;
 
     const mediaOutputs = useMemo(() => {
       if (item?.[3]?.outputs && route === "completed") {
@@ -37,6 +40,11 @@ export const QueueItemRow = memo(
     }, [item, route, galleryOptions]);
 
     const cancelQueueItem = useCallback(async () => {
+      const message = mode === "running" || mode === "external"
+        ? "Stop the running job and delete it from the queue?"
+        : "Delete this workflow from Queue Manager? This cannot be undone.";
+      if (!window.confirm(message)) return;
+
       const cancelRoute = mode === "running" || mode === "external" ? "interrupt" : "queue";
       await apiCall(`api/${cancelRoute}`, { delete: [item[1]] });
     }, [mode, item]);
@@ -164,6 +172,26 @@ const executionTimeLabel = useMemo(() => {
 
 
             </div>
+            {route === "completed" && failed && (
+              <div className="execution-error">
+                <strong>Failed</strong>
+                <div>{executionError?.exception_type ? `${executionError.exception_type}: ` : ""}
+                  {executionError?.exception_message || "The job failed without error details."}
+                </div>
+                {executionError?.node_id != null && (
+                  <div>Node {executionError.node_id}{executionError.node_type ? ` · ${executionError.node_type}` : ""}</div>
+                )}
+                {executionError?.traceback?.length > 0 && (
+                  <details>
+                    <summary>Show traceback</summary>
+                    <pre>{Array.isArray(executionError.traceback) ? executionError.traceback.join("") : executionError.traceback}</pre>
+                  </details>
+                )}
+              </div>
+            )}
+            {route === "completed" && executionStatus?.status_str === "interrupted" && (
+              <div className="execution-interrupted">Interrupted</div>
+            )}
           </td>
 
           {route === "completed" &&

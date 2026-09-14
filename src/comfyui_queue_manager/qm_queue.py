@@ -105,7 +105,8 @@ class QM_Queue:
 
                     join_string = "LEFT JOIN meta as outputs ON queue.id = outputs.item_id AND outputs.key = 'outputs'"
                     join_string += " LEFT JOIN meta as exec_time ON queue.id = exec_time.item_id AND exec_time.key = 'execution_time'"
-                    select_string = f"{select_string}, outputs.value as outputs, exec_time.value as execution_time"
+                    join_string += " LEFT JOIN meta as execution ON queue.id = execution.item_id AND execution.key = 'execution_status'"
+                    select_string = f"{select_string}, outputs.value as outputs, exec_time.value as execution_time, execution.value as execution_status"
 
             where_clauses = [self.get_route_query(route)]
 
@@ -147,6 +148,7 @@ class QM_Queue:
                         item[0] = row["number"]  # set the number to the one from the database
 
                     if route == "completed":
+                        item[3]["execution_status"] = json.loads(row["execution_status"]) if row["execution_status"] else None
                         if row["outputs"] is not None:
                             # If we have outputs then add them to the item
                             item[3]["outputs"] = json.loads(row["outputs"])
@@ -251,25 +253,39 @@ class QM_Queue:
                     (prompt_id,),
                 )
 
+                db_row = read_single("SELECT id FROM queue WHERE prompt_id = ?", (prompt_id,))
+                if db_row is None:
+                    # An interrupted/deleted job must still leave the native queue.
+                    if process_item:
+                        self.original_task_done(item_id, history_result, status, process_item)
+                    else:
+                        self.original_task_done(item_id, history_result, status)
+                    return
+                db_id = db_row[0]
+
+                # A rerun replaces the previous attempt's completion metadata.
+                write_query(
+                    "DELETE FROM meta WHERE item_id = ? AND key IN ('outputs', 'execution_time', 'execution_status')",
+                    (db_id,),
+                )
+                if status is not None and len(status) >= 3:
+                    execution_status = {"status_str": status[0], "error": None}
+                    for event, detail in status[2]:
+                        if event == "execution_error":
+                            execution_status["error"] = {
+                                key: detail[key] for key in
+                                ("node_id", "node_type", "exception_type", "exception_message", "traceback")
+                                if key in detail
+                            }
+                        elif event == "execution_interrupted":
+                            execution_status["status_str"] = "interrupted"
+                    write_query(
+                        "INSERT INTO meta (item_id, key, value) VALUES (?, 'execution_status', ?)",
+                        (db_id, json.dumps(execution_status)),
+                    )
+
                 outputs = {}
                 if history_result is not None and "outputs" in history_result:
-                    # get id column from the prompt
-                    db_id = read_single(
-                        """
-                        SELECT id
-                        FROM queue
-                        WHERE prompt_id = ?
-                    """,
-                        (prompt_id,),
-                    )
-                    if db_id is None:
-                        # Most likely because the item execution was interrupted and the handler deleted the item already
-                        # Call the original task_done method so it clears the native queue
-                        self.original_task_done(item_id, history_result, status)
-                        return
-
-                    db_id = db_id[0]  # get the first element of the tuple
-
                     # Save only persistent outputs
                     for node_id, output in history_result["outputs"].items():
                         images = None

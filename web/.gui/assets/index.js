@@ -19545,6 +19545,9 @@ const QueueItemRow = reactExports.memo(
     const { onMediaItemClick, fetchQueueItems } = reactExports.useContext(AppContext);
     const dbId = item?.[3]?.db_id;
     const workflow = item?.[3]?.extra_pnginfo?.workflow;
+    const executionStatus = item?.[3]?.execution_status;
+    const failed = executionStatus?.status_str === "error";
+    const executionError = executionStatus?.error;
     const mediaOutputs = reactExports.useMemo(() => {
       if (item?.[3]?.outputs && route === "completed") {
         return new MediaOutputs(item[3], galleryOptions);
@@ -19552,6 +19555,8 @@ const QueueItemRow = reactExports.memo(
       return null;
     }, [item, route, galleryOptions]);
     const cancelQueueItem = reactExports.useCallback(async () => {
+      const message = mode === "running" || mode === "external" ? "Stop the running job and delete it from the queue?" : "Delete this workflow from Queue Manager? This cannot be undone.";
+      if (!window.confirm(message)) return;
       const cancelRoute = mode === "running" || mode === "external" ? "interrupt" : "queue";
       await apiCall(`api/${cancelRoute}`, { delete: [item[1]] });
     }, [mode, item]);
@@ -19620,18 +19625,37 @@ const QueueItemRow = reactExports.memo(
             title: "Open gallery"
           }
         ) : null }) : null,
-        /* @__PURE__ */ jsxRuntimeExports.jsx("td", { className: "px-3 py-1 text-left name", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "name-cell", children: [
-          mediaOutputs && item[3].total_files > 0 ? /* @__PURE__ */ jsxRuntimeExports.jsx(
-            "span",
-            {
-              className: "total shiny-button",
-              title: `Total file outputs: ${mediaOutputs.total}`,
-              onClick: () => onMediaItemClick({ dbID: dbId, fileIndex: 0 }),
-              children: mediaOutputs.total
-            }
-          ) : null,
-          /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "plain", onClick: filterByWorkflow, title: "Filter view by the workflow", children: mode === "external" ? "External job" : workflow?.workflow_name ? workflow.workflow_name : "" })
-        ] }) }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("td", { className: "px-3 py-1 text-left name", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "name-cell", children: [
+            mediaOutputs && item[3].total_files > 0 ? /* @__PURE__ */ jsxRuntimeExports.jsx(
+              "span",
+              {
+                className: "total shiny-button",
+                title: `Total file outputs: ${mediaOutputs.total}`,
+                onClick: () => onMediaItemClick({ dbID: dbId, fileIndex: 0 }),
+                children: mediaOutputs.total
+              }
+            ) : null,
+            /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "plain", onClick: filterByWorkflow, title: "Filter view by the workflow", children: mode === "external" ? "External job" : workflow?.workflow_name ? workflow.workflow_name : "" })
+          ] }),
+          route === "completed" && failed && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "execution-error", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: "Failed" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+              executionError?.exception_type ? `${executionError.exception_type}: ` : "",
+              executionError?.exception_message || "The job failed without error details."
+            ] }),
+            executionError?.node_id != null && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+              "Node ",
+              executionError.node_id,
+              executionError.node_type ? ` · ${executionError.node_type}` : ""
+            ] }),
+            executionError?.traceback?.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs("details", { children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx("summary", { children: "Show traceback" }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("pre", { children: Array.isArray(executionError.traceback) ? executionError.traceback.join("") : executionError.traceback })
+            ] })
+          ] }),
+          route === "completed" && executionStatus?.status_str === "interrupted" && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "execution-interrupted", children: "Interrupted" })
+        ] }),
         route === "completed" && /* @__PURE__ */ jsxRuntimeExports.jsx("td", { className: "meta-info", children: executionTimeLabel ? /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "execution-time", title: "Execution time", children: executionTimeLabel }) : null }),
         /* @__PURE__ */ jsxRuntimeExports.jsx("td", { className: "px-3 py-1 text-right actions", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { justifyContent: "flex-end" }, className: "buttons", children: [
           /* @__PURE__ */ jsxRuntimeExports.jsx(
@@ -29090,6 +29114,7 @@ function Gallery({ items, activeItem }) {
     }, "*");
   });
   const deleteWorkflow = useEvent(async (event) => {
+    if (!window.confirm("Delete this workflow from Queue Manager? This cannot be undone.")) return;
     try {
       await apiCall(`api/queue`, {
         delete: [mediaItem.queueItem.promptID]
@@ -29511,6 +29536,7 @@ function Home() {
   });
   const [galleryData, setGallery] = reactExports.useState(null);
   const [showSplash, setShowSplash] = reactExports.useState(false);
+  const [showFooterActions, setShowFooterActions] = reactExports.useState(false);
   const latestThumbSizePxRef = reactExports.useRef(150);
   const fetchIdRef = reactExports.useRef(0);
   reactExports.useMemo(() => {
@@ -29672,6 +29698,9 @@ function Home() {
     });
   }
   async function deleteFromQueue() {
+    const scope = route === "archive" ? "archived workflows" : route === "completed" ? "completed jobs" : "pending workflows";
+    const selection = isFilterOn() ? `all ${scope} matching the current filters` : `all ${scope}`;
+    if (!window.confirm(`Delete ${selection} across all pages? This cannot be undone.`)) return;
     let queryArgs = appendFilters("?route=" + route);
     try {
       const response = await fetch(`${baseURL}queue_manager/queue${queryArgs}`, {
@@ -29682,6 +29711,7 @@ function Home() {
     }
   }
   async function clearPending() {
+    if (!window.confirm("Delete all pending workflows across all pages? This cannot be undone.")) return;
     try {
       const response = await fetch(`${baseURL}api/queue`, {
         method: "POST",
@@ -30163,7 +30193,28 @@ function Home() {
             }
           ) })
         ] }) }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "p-2 flex actions", children: /* @__PURE__ */ jsxRuntimeExports.jsxs(Stack, { direction: "row", spacing: 1, className: "min-w-full buttons", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "footer-actions-toggle-row", children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "button",
+          {
+            type: "button",
+            className: "footer-actions-toggle",
+            "aria-label": showFooterActions ? "Close footer actions" : "Open footer actions",
+            title: showFooterActions ? "Close footer actions" : "Open footer actions",
+            "aria-expanded": showFooterActions,
+            "aria-controls": "footer-actions",
+            onClick: () => setShowFooterActions((shown) => !shown),
+            children: /* @__PURE__ */ jsxRuntimeExports.jsx("svg", { width: "10", height: "10", viewBox: "0 0 10 10", "aria-hidden": "true", focusable: "false", children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+              "path",
+              {
+                d: showFooterActions ? "M2 2L8 8M8 2L2 8" : "M1 7L5 3L9 7",
+                fill: "none",
+                stroke: "currentColor",
+                strokeWidth: "1.5"
+              }
+            ) })
+          }
+        ) }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { id: "footer-actions", className: "p-2 flex actions", hidden: !showFooterActions, children: /* @__PURE__ */ jsxRuntimeExports.jsxs(Stack, { direction: "row", spacing: 1, className: "min-w-full buttons", children: [
           appStatus.queue && (appStatus.queue.running.length > 0 || appStatus.queue.pending.length > 0) && /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
             route === "queue" && /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
               /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { onClick: archiveAll, className: "shiny-button yellow-button", children: [
