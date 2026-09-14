@@ -19260,6 +19260,7 @@ const msgLoadWorkflow = (workflow, number) => {
     "*"
   );
 };
+const workflowLabel = (workflow) => workflow?.workflow_name || "(unnamed)";
 function mediaType(outputs) {
   return {
     isImage: !outputs.animated || outputs.animated[0] !== true,
@@ -19698,7 +19699,7 @@ const QueueItemRow = reactExports.memo(
                 children: mediaOutputs.total
               }
             ) : null,
-            /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "plain", onClick: filterByWorkflow, title: "Filter view by the workflow", children: mode === "external" ? "External job" : workflow?.workflow_name ? workflow.workflow_name : "" })
+            /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "plain", onClick: filterByWorkflow, title: "Filter view by the workflow", children: mode === "external" ? "External job" : workflowLabel(workflow) })
           ] }),
           route === "completed" && failed && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "execution-error", children: [
             /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: "Failed" }),
@@ -29335,7 +29336,7 @@ function Gallery({ items, activeItem }) {
     ] }),
     galleryItems && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "image-box", children: [
       /* @__PURE__ */ jsxRuntimeExports.jsxs("header", { children: [
-        mediaItem.queueItem.workflow.workflow_name,
+        workflowLabel(mediaItem.queueItem.workflow),
         " ",
         /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { children: [
           "(",
