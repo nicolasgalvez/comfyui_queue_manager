@@ -19052,6 +19052,12 @@ const WallpaperSharpIcon = createSvgIcon(/* @__PURE__ */ jsxRuntimeExports.jsx("
 const ViewModuleSharpIcon = createSvgIcon(/* @__PURE__ */ jsxRuntimeExports.jsx("path", {
   d: "M14.67 5v6.5H9.33V5zm1 6.5H21V5h-5.33zm-1 7.5v-6.5H9.33V19zm1-6.5V19H21v-6.5zm-7.34 0H3V19h5.33zm0-1V5H3v6.5z"
 }));
+const CollectionsSharpIcon = createSvgIcon(/* @__PURE__ */ jsxRuntimeExports.jsx("path", {
+  d: "M22 18V2H6v16zm-11-6 2.03 2.71L16 11l4 5H8zM2 6v16h16v-2H4V6z"
+}));
+const OpenInNewSharpIcon = createSvgIcon(/* @__PURE__ */ jsxRuntimeExports.jsx("path", {
+  d: "M19 19H5V5h7V3H3v18h18v-9h-2zM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3z"
+}));
 const UploadSharpIcon = createSvgIcon(/* @__PURE__ */ jsxRuntimeExports.jsx("path", {
   d: "M9 16h6v-6h4l-7-7-7 7h4zm-4 2h14v2H5z"
 }));
@@ -19529,6 +19535,50 @@ class MediaOutputs {
     }
   }
 }
+const useOptionsStore = create((set) => ({
+  Basic: {},
+  Completed: {
+    CoverThumbMode: "Cropped",
+    GridThumbMode: "Square Fit",
+    ListOrder: "Newest first"
+  },
+  Gallery: {},
+  thumb_mode: "cover",
+  thumb_size: 150,
+  cover_size: 50,
+  show_gallery_ui: true,
+  open_in_gallery: true,
+  /**
+   * Set a single option within a category
+   */
+  setOption: (category, key, value) => set((state) => ({
+    ...state,
+    [category]: {
+      ...state[category],
+      [key]: value
+    }
+  })),
+  /**
+   * Set all options within a category
+   */
+  setOptionsCategory: (category, options) => set((state) => ({
+    ...state,
+    [category]: options
+  })),
+  /**
+   * Set all options
+   */
+  setAllOptions: (allOptions) => set(() => ({
+    ...allOptions
+  })),
+  /**
+   * Set a single option directly on the root state
+   */
+  setDirectOption: (key, value) => set((state) => ({
+    ...state,
+    [key]: value
+  }))
+}));
 const QueueItemRow = reactExports.memo(
   function QueueItemRow2({
     item,
@@ -19543,6 +19593,7 @@ const QueueItemRow = reactExports.memo(
     filters
   }) {
     const { onMediaItemClick, fetchQueueItems } = reactExports.useContext(AppContext);
+    const openInGallery = useOptionsStore((state) => state.open_in_gallery);
     const dbId = item?.[3]?.db_id;
     const workflow = item?.[3]?.extra_pnginfo?.workflow;
     const executionStatus = item?.[3]?.execution_status;
@@ -19554,6 +19605,17 @@ const QueueItemRow = reactExports.memo(
       }
       return null;
     }, [item, route, galleryOptions]);
+    const openOutput = reactExports.useCallback((fileIndex) => {
+      if (!openInGallery) {
+        const file = mediaOutputs?.files?.[fileIndex];
+        if (file) {
+          const src = `${baseURL}api/view?filename=${file.filename}&type=output&subfolder=${file.subfolder}`;
+          window.open(src, "_blank", "noopener");
+          return;
+        }
+      }
+      onMediaItemClick({ dbID: dbId, fileIndex });
+    }, [openInGallery, mediaOutputs, onMediaItemClick, dbId]);
     const cancelQueueItem = reactExports.useCallback(async () => {
       const message = mode === "running" || mode === "external" ? "Stop the running job and delete it from the queue?" : "Delete this workflow from Queue Manager? This cannot be undone.";
       if (!window.confirm(message)) return;
@@ -19620,7 +19682,7 @@ const QueueItemRow = reactExports.memo(
             file: mediaOutputs.cover,
             controls: false,
             autoplay: false,
-            onClick: () => onMediaItemClick({ dbID: dbId, fileIndex: 0 }),
+            onClick: () => openOutput(0),
             className: "play-button",
             title: "Open gallery"
           }
@@ -19632,7 +19694,7 @@ const QueueItemRow = reactExports.memo(
               {
                 className: "total shiny-button",
                 title: `Total file outputs: ${mediaOutputs.total}`,
-                onClick: () => onMediaItemClick({ dbID: dbId, fileIndex: 0 }),
+                onClick: () => openOutput(0),
                 children: mediaOutputs.total
               }
             ) : null,
@@ -19701,7 +19763,7 @@ const QueueItemRow = reactExports.memo(
             "button",
             {
               className: "view violet-button shiny-button",
-              onClick: () => onMediaItemClick({ dbID: dbId, fileIndex: 0 }),
+              onClick: () => openOutput(0),
               title: "View outputs in gallery",
               children: "View"
             }
@@ -19713,7 +19775,7 @@ const QueueItemRow = reactExports.memo(
         {
           file,
           autoplay: false,
-          onClick: () => onMediaItemClick({ dbID: dbId, fileIndex }),
+          onClick: () => openOutput(fileIndex),
           title: "Open gallery"
         },
         `${file.filename}-${file.subfolder}`
@@ -19727,49 +19789,6 @@ const QueueItemRow = reactExports.memo(
     return prev2.loader === next2.loader && prev2.index === next2.index && prev2.mode === next2.mode && prev2.route === next2.route && prev2.thumbMode === next2.thumbMode && prev2.galleryOptions === next2.galleryOptions && prev2.filters === next2.filters && prev2.info?.page === next2.info?.page && prev2.info?.page_size === next2.info?.page_size;
   }
 );
-const useOptionsStore = create((set) => ({
-  Basic: {},
-  Completed: {
-    CoverThumbMode: "Cropped",
-    GridThumbMode: "Square Fit",
-    ListOrder: "Newest first"
-  },
-  Gallery: {},
-  thumb_mode: "cover",
-  thumb_size: 150,
-  cover_size: 50,
-  show_gallery_ui: true,
-  /**
-   * Set a single option within a category
-   */
-  setOption: (category, key, value) => set((state) => ({
-    ...state,
-    [category]: {
-      ...state[category],
-      [key]: value
-    }
-  })),
-  /**
-   * Set all options within a category
-   */
-  setOptionsCategory: (category, options) => set((state) => ({
-    ...state,
-    [category]: options
-  })),
-  /**
-   * Set all options
-   */
-  setAllOptions: (allOptions) => set(() => ({
-    ...allOptions
-  })),
-  /**
-   * Set a single option directly on the root state
-   */
-  setDirectOption: (key, value) => set((state) => ({
-    ...state,
-    [key]: value
-  }))
-}));
 const QueueItems = reactExports.memo(function QueueItems2({ running, pending, info }) {
   const route = useAppStore((state) => state.route);
   const filters = useAppStore((state) => state.filters);
@@ -29913,6 +29932,10 @@ function Home() {
     setDirectOption("thumb_mode", mode2);
     apiCall("queue_manager/options", { key: "thumb_mode", value: mode2 }, "POST");
   });
+  const setOpenInGallery = useEvent((value) => {
+    setDirectOption("open_in_gallery", value);
+    apiCall("queue_manager/options", { key: "open_in_gallery", value }, "POST");
+  });
   const openSplash = useEvent(() => {
     setShowSplash(true);
   });
@@ -30132,6 +30155,32 @@ function Home() {
                   {
                     className: options.thumb_mode === "grid" ? "active" : "",
                     onClick: () => setThumbMode("grid")
+                  }
+                ) })
+              ]
+            }
+          ),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs(
+            Stack,
+            {
+              spacing: 1,
+              className: "open-in-gallery-mode",
+              direction: "row",
+              sx: { alignItems: "center", justifyContent: "start" },
+              p: 1,
+              children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx("div", { title: "Click outputs to open them in the built-in gallery", children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+                  CollectionsSharpIcon,
+                  {
+                    className: options.open_in_gallery ? "active" : "",
+                    onClick: () => setOpenInGallery(true)
+                  }
+                ) }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("div", { title: "Click outputs to open them the ComfyUI way, in a new tab", children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+                  OpenInNewSharpIcon,
+                  {
+                    className: !options.open_in_gallery ? "active" : "",
+                    onClick: () => setOpenInGallery(false)
                   }
                 ) })
               ]

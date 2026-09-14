@@ -190,6 +190,7 @@ Typical use case is to connect the `workflow_name` output to a node that accepts
 ![gallery-view.png](readme-img/gallery-view.png)
 - By default videos are played automatically. You can change that in extension settings (see below).
 - When workflow produces both images and video outputs then images are hidden by default to reduce clutter (since most of the time these will be individual frames of the video). You can toggle visibility of these images in extension settings (see below).
+- By default, clicking a thumbnail or outputs indicator in the **Completed** tab opens the Gallery view described above. If you'd rather open outputs the same way ComfyUI's own "Open Image" does - each file in its own new browser tab, no overlay - toggle the gallery/new-tab icons next to the thumbnail mode controls in the **Completed** tab footer. This applies to both images and videos and, like the other display options, is remembered between sessions.
 
 ### Extension Settings
 - Several aspects of the Queue Manager extension can be configured in the ComfyUI Settings window.
