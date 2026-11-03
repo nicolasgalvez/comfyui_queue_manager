@@ -29522,6 +29522,20 @@ const VisuallyHiddenInput = styled("input")({
   whiteSpace: "nowrap",
   width: 1
 });
+function FooterToggle({ pressed, label, onClick, children }) {
+  return /* @__PURE__ */ jsxRuntimeExports.jsx(
+    "button",
+    {
+      type: "button",
+      "aria-pressed": pressed,
+      "aria-label": label,
+      title: label,
+      onClick,
+      className: "inline-flex cursor-pointer rounded-md p-[5px] transition-colors\n                       hover:bg-neutral-500 hover:text-white dark:hover:bg-black\n                       aria-pressed:bg-white aria-pressed:text-black\n                       dark:aria-pressed:bg-neutral-700 dark:aria-pressed:text-white",
+      children
+    }
+  );
+}
 function Home() {
   const [appStatus, setAppStatus] = reactExports.useState({
     loading: true,
@@ -30128,65 +30142,31 @@ function Home() {
       ) }),
       /* @__PURE__ */ jsxRuntimeExports.jsxs("footer", { className: "footer", children: [
         route === "completed" && (options.Gallery.ShowImages || options.Gallery.ShowVideos) && /* @__PURE__ */ jsxRuntimeExports.jsxs(Stack, { spacing: 1, direction: "row", sx: { alignItems: "center" }, children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsxs(
-            Stack,
-            {
-              spacing: 1,
-              className: "thumb-mode",
-              direction: "row",
-              sx: { alignItems: "center", justifyContent: "start", flex: 1 },
-              p: 1,
-              children: [
-                /* @__PURE__ */ jsxRuntimeExports.jsx("div", { title: "No thumbnails", children: /* @__PURE__ */ jsxRuntimeExports.jsx(
-                  ImageNotSupportedSharpIcon,
-                  {
-                    className: options.thumb_mode === "none" ? "active" : "",
-                    onClick: () => setThumbMode("none")
-                  }
-                ) }),
-                /* @__PURE__ */ jsxRuntimeExports.jsx("div", { title: "Cover image only", children: /* @__PURE__ */ jsxRuntimeExports.jsx(
-                  WallpaperSharpIcon,
-                  {
-                    className: options.thumb_mode === "cover" ? "active" : "",
-                    onClick: () => setThumbMode("cover")
-                  }
-                ) }),
-                /* @__PURE__ */ jsxRuntimeExports.jsx("div", { title: "Show all outputs", children: /* @__PURE__ */ jsxRuntimeExports.jsx(
-                  ViewModuleSharpIcon,
-                  {
-                    className: options.thumb_mode === "grid" ? "active" : "",
-                    onClick: () => setThumbMode("grid")
-                  }
-                ) })
-              ]
-            }
-          ),
-          /* @__PURE__ */ jsxRuntimeExports.jsxs(
-            Stack,
-            {
-              spacing: 1,
-              className: "open-in-gallery-mode",
-              direction: "row",
-              sx: { alignItems: "center", justifyContent: "start" },
-              p: 1,
-              children: [
-                /* @__PURE__ */ jsxRuntimeExports.jsx("div", { title: "Click outputs to open them in the built-in gallery", children: /* @__PURE__ */ jsxRuntimeExports.jsx(
-                  CollectionsSharpIcon,
-                  {
-                    className: options.open_in_gallery ? "active" : "",
-                    onClick: () => setOpenInGallery(true)
-                  }
-                ) }),
-                /* @__PURE__ */ jsxRuntimeExports.jsx("div", { title: "Click outputs to open them the ComfyUI way, in a new tab", children: /* @__PURE__ */ jsxRuntimeExports.jsx(
-                  OpenInNewSharpIcon,
-                  {
-                    className: !options.open_in_gallery ? "active" : "",
-                    onClick: () => setOpenInGallery(false)
-                  }
-                ) })
-              ]
-            }
-          ),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { role: "group", "aria-label": "Thumbnails", className: "thumb-mode flex flex-1 items-center gap-2 p-2", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx(FooterToggle, { pressed: options.thumb_mode === "none", label: "No thumbnails", onClick: () => setThumbMode("none"), children: /* @__PURE__ */ jsxRuntimeExports.jsx(ImageNotSupportedSharpIcon, {}) }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx(FooterToggle, { pressed: options.thumb_mode === "cover", label: "Cover image only", onClick: () => setThumbMode("cover"), children: /* @__PURE__ */ jsxRuntimeExports.jsx(WallpaperSharpIcon, {}) }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx(FooterToggle, { pressed: options.thumb_mode === "grid", label: "Show all outputs", onClick: () => setThumbMode("grid"), children: /* @__PURE__ */ jsxRuntimeExports.jsx(ViewModuleSharpIcon, {}) })
+          ] }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { role: "group", "aria-label": "Where outputs open", className: "open-in-gallery-mode flex items-center gap-2 p-2", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx(
+              FooterToggle,
+              {
+                pressed: !!options.open_in_gallery,
+                label: "Open outputs in the built-in gallery",
+                onClick: () => setOpenInGallery(true),
+                children: /* @__PURE__ */ jsxRuntimeExports.jsx(CollectionsSharpIcon, {})
+              }
+            ),
+            /* @__PURE__ */ jsxRuntimeExports.jsx(
+              FooterToggle,
+              {
+                pressed: !options.open_in_gallery,
+                label: "Open outputs in a new tab",
+                onClick: () => setOpenInGallery(false),
+                children: /* @__PURE__ */ jsxRuntimeExports.jsx(OpenInNewSharpIcon, {})
+              }
+            )
+          ] }),
           options.thumb_mode === "grid" && /* @__PURE__ */ jsxRuntimeExports.jsx(
             ThumbSlider,
             {
