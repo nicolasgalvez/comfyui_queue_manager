@@ -29914,6 +29914,19 @@ function Gallery({ items, activeItem }) {
     const itemIndex = items2.indexOf(activeItem.dbID);
     if (itemIndex === -1) {
       console.error("Item with dbID not found in gallery data:", activeItem);
+      if (!items2 || items2.length === 0) {
+        closeGallery();
+        return;
+      }
+      const nearestIndex = Math.min(mediaItem ? mediaItem.itemIndex : 0, items2.length - 1);
+      const nearestItem = items2.at(nearestIndex);
+      setMediaItem({
+        itemIndex: nearestIndex,
+        queueItem: nearestItem,
+        fileIndex: 0,
+        file: nearestItem.outputs.files[0],
+        totalFiles: nearestItem.outputs.total
+      });
       return;
     }
     const queueItem = items2.get(activeItem.dbID);
@@ -30213,7 +30226,7 @@ function Gallery({ items, activeItem }) {
       /* @__PURE__ */ jsxRuntimeExports.jsx(IconButton, { size: "large", variant: "contained", className: "hide-ui", onClick: toggleUI, title: (showUI ? "Hide" : "Show") + " thumbnails (T)", children: showUI ? /* @__PURE__ */ jsxRuntimeExports.jsx(WebAssetOffSharpIcon, { fontSize: "large" }) : /* @__PURE__ */ jsxRuntimeExports.jsx(BurstModeSharpIcon, { fontSize: "large" }) }),
       /* @__PURE__ */ jsxRuntimeExports.jsx(IconButton, { size: "large", variant: "contained", className: "close-button", onClick: closeGallery, title: "Close (Esc)", children: /* @__PURE__ */ jsxRuntimeExports.jsx(DisabledByDefaultIcon, { fontSize: "large" }) })
     ] }),
-    galleryItems && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "image-box", children: [
+    galleryItems && mediaItem && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "image-box", children: [
       /* @__PURE__ */ jsxRuntimeExports.jsxs("header", { children: [
         mediaItem.queueItem.workflow.workflow_name,
         " ",
@@ -30326,7 +30339,7 @@ function Gallery({ items, activeItem }) {
           ] })
         ] })
       ] }),
-      galleryItems && galleryItems.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsx(GalleryProgressBar, { galleryItems: Array.from(galleryItems.values()), mediaItem, onItemClick })
+      galleryItems && mediaItem && galleryItems.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsx(GalleryProgressBar, { galleryItems: Array.from(galleryItems.values()), mediaItem, onItemClick })
     ] })
   ] });
 }
