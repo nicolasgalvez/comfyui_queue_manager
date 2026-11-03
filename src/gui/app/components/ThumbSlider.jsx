@@ -33,7 +33,10 @@ export default function ThumbSlider({onChange, onChangeCommitted, value, min, ma
 
   return (
     <Stack spacing={1} direction="row" sx={{ alignItems: 'center', mb: 1 }} p={1} className={"thumb-size-slider"}>
-      <PhotoOutlinedIcon fontSize="small" onClick={stepDown} className={"thumb-size-icon"} />
+      <button type="button" aria-label="Smaller thumbnails" title="Smaller thumbnails" onClick={stepDown}
+              className="inline-flex cursor-pointer m-0! p-0!">
+        <PhotoOutlinedIcon fontSize="small" className={"thumb-size-icon"} />
+      </button>
       <Slider aria-label="Size" size="small"
         onChange={onValueChange}
         onChangeCommitted={onCommitment}
@@ -41,7 +44,10 @@ export default function ThumbSlider({onChange, onChangeCommitted, value, min, ma
         max={max}
         value={val}
       />
-      <PhotoOutlinedIcon fontSize="large" onClick={stepUp} className={"thumb-size-icon"} />
+      <button type="button" aria-label="Larger thumbnails" title="Larger thumbnails" onClick={stepUp}
+              className="inline-flex cursor-pointer m-0! p-0!">
+        <PhotoOutlinedIcon fontSize="large" className={"thumb-size-icon"} />
+      </button>
     </Stack>
   )
 }
