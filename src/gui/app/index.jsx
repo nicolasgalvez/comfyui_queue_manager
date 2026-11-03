@@ -46,6 +46,22 @@ const VisuallyHiddenInput = styled('input')({
   width: 1,
 });
 
+/**
+ * A footer toggle: a real button carrying its state in aria-pressed, styled by that
+ * attribute (no hand-toggled "active" class), clickable over its whole box.
+ */
+function FooterToggle({ pressed, label, onClick, children }) {
+  return (
+    <button type="button" aria-pressed={pressed} aria-label={label} title={label} onClick={onClick}
+            className="inline-flex cursor-pointer rounded-md p-[5px] transition-colors
+                       hover:bg-neutral-500 hover:text-white dark:hover:bg-black
+                       aria-pressed:bg-white aria-pressed:text-black
+                       dark:aria-pressed:bg-neutral-700 dark:aria-pressed:text-white">
+      {children}
+    </button>
+  );
+}
+
 export default function Home() {
   const [appStatus, setAppStatus] = useState({
     loading: true,
@@ -808,32 +824,27 @@ export default function Home() {
           {/* On Complete route show thumbnail mode and size controls */}
           {route === 'completed' && (options.Gallery.ShowImages || options.Gallery.ShowVideos) &&
             <Stack spacing={1} direction="row" sx={{alignItems: 'center'}}>
-              <Stack spacing={1} className={"thumb-mode"} direction="row"
-                     sx={{alignItems: 'center', justifyContent: 'start', flex: 1}} p={1}>
-                <div title="No thumbnails">
-                  <ImageNotSupportedSharpIcon className={options.thumb_mode === "none" ? 'active' : ''}
-                                              onClick={() => setThumbMode("none")}/>
-                </div>
-                <div title="Cover image only">
-                  <WallpaperSharpIcon className={options.thumb_mode === "cover" ? 'active' : ''}
-                                      onClick={() => setThumbMode("cover")}/>
-                </div>
-                <div title="Show all outputs">
-                  <ViewModuleSharpIcon className={options.thumb_mode === "grid" ? 'active' : ''}
-                                       onClick={() => setThumbMode("grid")}/>
-                </div>
-              </Stack>
-              <Stack spacing={1} className={"open-in-gallery-mode"} direction="row"
-                     sx={{alignItems: 'center', justifyContent: 'start'}} p={1}>
-                <div title="Click outputs to open them in the built-in gallery">
-                  <CollectionsSharpIcon className={options.open_in_gallery ? 'active' : ''}
-                                        onClick={() => setOpenInGallery(true)}/>
-                </div>
-                <div title="Click outputs to open them the ComfyUI way, in a new tab">
-                  <OpenInNewSharpIcon className={!options.open_in_gallery ? 'active' : ''}
-                                      onClick={() => setOpenInGallery(false)}/>
-                </div>
-              </Stack>
+              <div role="group" aria-label="Thumbnails" className="thumb-mode flex flex-1 items-center gap-2 p-2">
+                <FooterToggle pressed={options.thumb_mode === "none"} label="No thumbnails" onClick={() => setThumbMode("none")}>
+                  <ImageNotSupportedSharpIcon/>
+                </FooterToggle>
+                <FooterToggle pressed={options.thumb_mode === "cover"} label="Cover image only" onClick={() => setThumbMode("cover")}>
+                  <WallpaperSharpIcon/>
+                </FooterToggle>
+                <FooterToggle pressed={options.thumb_mode === "grid"} label="Show all outputs" onClick={() => setThumbMode("grid")}>
+                  <ViewModuleSharpIcon/>
+                </FooterToggle>
+              </div>
+              <div role="group" aria-label="Where outputs open" className="open-in-gallery-mode flex items-center gap-2 p-2">
+                <FooterToggle pressed={!!options.open_in_gallery} label="Open outputs in the built-in gallery"
+                              onClick={() => setOpenInGallery(true)}>
+                  <CollectionsSharpIcon/>
+                </FooterToggle>
+                <FooterToggle pressed={!options.open_in_gallery} label="Open outputs in a new tab"
+                              onClick={() => setOpenInGallery(false)}>
+                  <OpenInNewSharpIcon/>
+                </FooterToggle>
+              </div>
               {options.thumb_mode === "grid" &&
                 <ThumbSlider min={50} max={500} value={options.thumb_size ? options.thumb_size : 150}
                              onChange={updateThumbnailSize}

@@ -68,3 +68,33 @@ test('open_in_gallery off opens the output the ComfyUI way, in a new tab', { tim
     await new Promise(resolve => server.close(resolve));
   }
 });
+
+// The footer switch itself must be two real buttons (toggle semantics via aria-pressed),
+// clickable anywhere on their box, not an onClick hung on a 24px <svg>. Fails while the
+// icons are bare <svg onClick> inside title divs: getByRole('button') finds nothing.
+test('the open-mode switch is a pair of aria-pressed buttons and pressing one persists it', { timeout: 30000 }, async () => {
+  const server = await serveFrontend();
+  let browser;
+  const posts = [];
+  try {
+    const result = await openCompletedTab(server, true);
+    browser = result.browser;
+    const page = result.page;
+    await page.route('**/queue_manager/options', async route => {
+      if (route.request().method() === 'POST') { posts.push(route.request().postDataJSON()); return route.fulfill({ json: { success: true } }); }
+      return route.fallback();
+    });
+    const gallery = page.getByRole('button', { name: 'Open outputs in the built-in gallery' });
+    const newTab = page.getByRole('button', { name: 'Open outputs in a new tab' });
+    await expect(gallery).toHaveAttribute('aria-pressed', 'true');
+    await expect(newTab).toHaveAttribute('aria-pressed', 'false');
+    // click the button's edge, well outside the glyph
+    await newTab.click({ position: { x: 2, y: 2 } });
+    await expect(newTab).toHaveAttribute('aria-pressed', 'true');
+    await expect(gallery).toHaveAttribute('aria-pressed', 'false');
+    assert.deepEqual(posts, [{ key: 'open_in_gallery', value: false }]);
+  } finally {
+    await browser?.close();
+    await new Promise(resolve => server.close(resolve));
+  }
+});
