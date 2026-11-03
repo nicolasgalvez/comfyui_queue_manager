@@ -28867,7 +28867,17 @@ function ThumbSlider({ onChange, onChangeCommitted, value, min, max, step = 10 }
     onCommitment(null, newValue);
   }
   return /* @__PURE__ */ jsxRuntimeExports.jsxs(Stack, { spacing: 1, direction: "row", sx: { alignItems: "center", mb: 1 }, p: 1, className: "thumb-size-slider", children: [
-    /* @__PURE__ */ jsxRuntimeExports.jsx(PhotoOutlinedIcon, { fontSize: "small", onClick: stepDown, className: "thumb-size-icon" }),
+    /* @__PURE__ */ jsxRuntimeExports.jsx(
+      "button",
+      {
+        type: "button",
+        "aria-label": "Smaller thumbnails",
+        title: "Smaller thumbnails",
+        onClick: stepDown,
+        className: "inline-flex cursor-pointer m-0! p-0!",
+        children: /* @__PURE__ */ jsxRuntimeExports.jsx(PhotoOutlinedIcon, { fontSize: "small", className: "thumb-size-icon" })
+      }
+    ),
     /* @__PURE__ */ jsxRuntimeExports.jsx(
       Slider,
       {
@@ -28880,7 +28890,17 @@ function ThumbSlider({ onChange, onChangeCommitted, value, min, max, step = 10 }
         value: val
       }
     ),
-    /* @__PURE__ */ jsxRuntimeExports.jsx(PhotoOutlinedIcon, { fontSize: "large", onClick: stepUp, className: "thumb-size-icon" })
+    /* @__PURE__ */ jsxRuntimeExports.jsx(
+      "button",
+      {
+        type: "button",
+        "aria-label": "Larger thumbnails",
+        title: "Larger thumbnails",
+        onClick: stepUp,
+        className: "inline-flex cursor-pointer m-0! p-0!",
+        children: /* @__PURE__ */ jsxRuntimeExports.jsx(PhotoOutlinedIcon, { fontSize: "large", className: "thumb-size-icon" })
+      }
+    )
   ] });
 }
 const DisabledByDefaultIcon = createSvgIcon(/* @__PURE__ */ jsxRuntimeExports.jsx("path", {
@@ -29531,7 +29551,7 @@ function FooterToggle({ pressed, label, onClick, children }) {
       "aria-label": label,
       title: label,
       onClick,
-      className: "inline-flex cursor-pointer rounded-md p-[5px] transition-colors\n                       hover:bg-neutral-500 hover:text-white dark:hover:bg-black\n                       aria-pressed:bg-white aria-pressed:text-black\n                       dark:aria-pressed:bg-neutral-700 dark:aria-pressed:text-white",
+      className: "inline-flex cursor-pointer m-0! rounded-[5px]! p-[5px]! transition-all duration-200\n                       hover:bg-neutral-500 hover:text-white dark:hover:bg-black dark:hover:text-inherit\n                       aria-pressed:bg-white aria-pressed:text-black\n                       dark:aria-pressed:bg-neutral-700 dark:aria-pressed:text-white",
       children
     }
   );

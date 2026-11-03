@@ -48,13 +48,14 @@ const VisuallyHiddenInput = styled('input')({
 
 /**
  * A footer toggle: a real button carrying its state in aria-pressed, styled by that
- * attribute (no hand-toggled "active" class), clickable over its whole box.
+ * attribute (no hand-toggled "active" class), clickable over its whole box. The `!`
+ * utilities beat the unlayered global `button { padding }` rule in the stylesheet.
  */
 function FooterToggle({ pressed, label, onClick, children }) {
   return (
     <button type="button" aria-pressed={pressed} aria-label={label} title={label} onClick={onClick}
-            className="inline-flex cursor-pointer rounded-md p-[5px] transition-colors
-                       hover:bg-neutral-500 hover:text-white dark:hover:bg-black
+            className="inline-flex cursor-pointer m-0! rounded-[5px]! p-[5px]! transition-all duration-200
+                       hover:bg-neutral-500 hover:text-white dark:hover:bg-black dark:hover:text-inherit
                        aria-pressed:bg-white aria-pressed:text-black
                        dark:aria-pressed:bg-neutral-700 dark:aria-pressed:text-white">
       {children}
