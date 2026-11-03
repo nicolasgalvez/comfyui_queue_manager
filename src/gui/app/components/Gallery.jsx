@@ -64,7 +64,22 @@ export default function Gallery({items, activeItem}) {
   function updateMediaItem(items) {
     const itemIndex = items.indexOf(activeItem.dbID);
     if (itemIndex === -1) {
+      // The active item is not in the gallery data: show the nearest remaining item,
+      // or close the gallery when nothing is left.
       console.error('Item with dbID not found in gallery data:', activeItem);
+      if (!items || items.length === 0) {
+        closeGallery();
+        return;
+      }
+      const nearestIndex = Math.min(mediaItem ? mediaItem.itemIndex : 0, items.length - 1);
+      const nearestItem = items.at(nearestIndex);
+      setMediaItem({
+        itemIndex: nearestIndex,
+        queueItem: nearestItem,
+        fileIndex: 0,
+        file: nearestItem.outputs.files[0],
+        totalFiles: nearestItem.outputs.total
+      });
       return;
     }
 
@@ -494,7 +509,7 @@ export default function Gallery({items, activeItem}) {
       </div>
 
 
-      {galleryItems &&
+      {galleryItems && mediaItem &&
       <div className="image-box">
         <header>{workflowLabel(mediaItem.queueItem.workflow)} <span>({mediaItem.fileIndex+1} / {mediaItem.totalFiles})</span></header>
 
@@ -612,7 +627,7 @@ export default function Gallery({items, activeItem}) {
 
         </nav>
 
-        {galleryItems && galleryItems.length > 0 &&
+        {galleryItems && mediaItem && galleryItems.length > 0 &&
           <GalleryProgressBar galleryItems={Array.from(galleryItems.values())} mediaItem={mediaItem} onItemClick={onItemClick} />
         }
       </div>
