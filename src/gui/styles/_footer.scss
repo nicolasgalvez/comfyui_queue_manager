@@ -152,36 +152,6 @@ footer.footer {
     }
   }
 
-  .thumb-mode, .open-in-gallery-mode {
-    svg {
-      box-sizing: content-box;
-      padding: 5px;
-      border-radius: 5px;
-      cursor: pointer;
-      transition: all 0.2s ease;
-
-      &:hover {
-        background-color: black;
-
-        @media (prefers-color-scheme: light) {
-          background-color: var(--color-neutral-500);
-          color: white;
-        }
-      }
-
-
-      &.active {
-        background-color: var(--color-neutral-700);
-        color: white;
-
-        @media (prefers-color-scheme: light) {
-          background-color: white;
-          color: black;
-        }
-      }
-    }
-  }
-
   .MuiPaginationItem-page {
     @media (prefers-color-scheme: light) {
       color: black;
