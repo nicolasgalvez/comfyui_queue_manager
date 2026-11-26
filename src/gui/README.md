@@ -1,42 +1,25 @@
-The frontend is a React project built with Vite and run by bun (can use npm too).
+# Queue Manager GUI
 
-## Getting Started
+The GUI is a React app built with Vite. It runs inside ComfyUI and can be developed with npm or Bun.
 
-First, run the development server:
+See the [development guide](../../DEVELOPMENT.md) for setup, building, automatic reload and checks.
 
-```bash
-npm run dev
-```
-
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
-
-## Gotchas
-### Frontend in development mode vs production mode
-Coding front end in development mode (with `npm run dev`) is faster thanks to fast reloads.
-In queue-manager.js set variable QM_ENVIRONMENT to `development` to enable dev mode source of the react app iframe.
-
-
-#### Cross-Origin issues
-When running the front end in development mode, you will run into CORS issues when trying to access the ComfyUI APIs.
-Since dev mode frontend and comfyui are running on different URLs, you will run into CORS issues.
-To fix this run ComfyUI with the `--enable-cors-header http://localhost:3000` (or whatever post URL / port you gonna use) param (allowing dev mode front end to request comfyui apis) i.e.:
-
-```
-python main.py --listen 0.0.0.0 --port 8188 --enable-cors-header http://localhost:3000
-```
-
-## Delete confirmation regression test
+## Browser regression tests
 
 ```sh
 npm ci
 npx playwright install chromium
-npm run build
 npm test
 ```
 
-The browser test runs the built frontend on a temporary localhost port and
-intercepts every backend request. It checks Cancel and Confirm for individual,
-running, gallery, bulk, and filtered deletions without contacting ComfyUI.
+`npm test` builds the frontend, serves it on a temporary localhost port and
+intercepts every backend request, so nothing contacts ComfyUI. The delete
+confirmation test checks Cancel and Confirm for individual, running, gallery,
+bulk, and filtered deletions.
+
+The failed-job test also checks that error details persist after a reload. The
+backend side of that is covered by `tests/test_execution_errors.py`, run with
+the other Python tests (`python -m pytest -q tests/` from the repository root).
 
 ## Lint changed files
 
@@ -44,7 +27,3 @@ running, gallery, bulk, and filtered deletions without contacting ComfyUI.
 `origin/main`, including staged, unstaged, and untracked files. Deleted files
 and files outside this frontend are excluded. Fetch `origin/main` first.
 Use `npm run lint -- <ref>` to choose another comparison base.
-
-The failed-job browser regression also checks persistent error details after
-reload. Run the backend persistence tests from the repository root with
-`python tests/test_execution_errors.py`; they use a temporary SQLite database.

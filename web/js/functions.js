@@ -1,7 +1,10 @@
 import {QueueManagerGalleryURL, QueueManagerOrigin, QueueManagerURL} from './config.js';
 import {settings} from './settings.js';
+import {installWorkflowNameInjection} from './workflow-name.js';
+import {installQueueControls, needsStopButton} from './toolbar.js';
 
 import { app } from '../../../scripts/app.js';
+import { ComfyButton } from '../../../scripts/ui/components/button.js';
 
 function theIframe() {
   return document.querySelector(".comfyui-queue-manager iframe");
@@ -28,223 +31,19 @@ function postMessageToIframe(message, type) {
   }
 }
 
-export function compareVersions(a, b) {
-  const pa = String(a).split('.').map(x => parseInt(x, 10) || 0);
-  const pb = String(b).split('.').map(x => parseInt(x, 10) || 0);
-  const len = Math.max(pa.length, pb.length);
-  for (let i = 0; i < len; i++) {
-    const na = pa[i] || 0;
-    const nb = pb[i] || 0;
-    if (na > nb) return 1;
-    if (na < nb) return -1;
-  }
-  return 0;
-}
-
-// Keep the same elements (and their state/listeners) when ComfyUI redraws the toolbar.
-let queuePauseButton = null;
-let queueStopButton = null;
-
-
-export async function AddPlayPauseButton(actionsContainer) {
-  if (actionsContainer.querySelector('.pause-button')) return;
-  if (queuePauseButton) {
-    actionsContainer.appendChild(queuePauseButton);
-    return;
-  }
-
-  const pauseButtonHTML = `
-    <button class="pause-button infline-flex justify-center items-center p-button p-component p-button-icon-only p-button-danger p-button-text outline-hidden rounded-lg cursor-pointer p-0 size-8 text-xs !rounded-md border-none relative ml-2 mr-2 transition-colors duration-200 ease-in-out bg-secondary-background hover:bg-secondary-background-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-background" type="button" aria-label="Pause queue" title="Pause queue" data-pc-name="button" data-pd-tooltip="true">
-      <span class="p-button-icon pi pi-pause" data-pc-section="icon"></span>
-    </button>`;
-
-  let pauseButton = null;
-  let buttonIcon = null;
-  // Add pause button if not already present
-  if (!actionsContainer.querySelector('.pause-button')) {
-    actionsContainer.insertAdjacentHTML('beforeend', pauseButtonHTML);
-    pauseButton = actionsContainer.querySelector('.pause-button');
-    queuePauseButton = pauseButton;
-    buttonIcon = actionsContainer.querySelector('.pause-button .p-button-icon');
-    pauseButton.addEventListener('click', async function () {
-      try {
-        // POST item[1] as json
-        const response = await fetch(`/queue_manager/toggle`);
-      } catch (error) {
-        console.error("Error fetching queue items:", error);
-      }
-    });
-  }
-
-  app.api.addEventListener("queue-manager-toggle-queue", function (event) {
-    if (!pauseButton || !buttonIcon) return;
-
-    const paused = !!event.detail.paused;
-
-    if (paused) {
-      // show "play" icon and set labels to "Resume"
-      buttonIcon.classList.remove('pi-pause');
-      buttonIcon.classList.add('pi-caret-right');
-      pauseButton.title = 'Resume queue';
-      pauseButton.setAttribute('aria-label', 'Resume queue');
-    } else {
-      // show "pause" icon and set labels to "Pause"
-      buttonIcon.classList.remove('pi-caret-right');
-      buttonIcon.classList.add('pi-pause');
-      pauseButton.title = 'Pause queue';
-      pauseButton.setAttribute('aria-label', 'Pause queue');
-    }
-  });
-
-  // Check if queue is paused (will trigger the event to update the button icon)
-  try {
-    const response = await fetch(`/queue_manager/playback`);
-  } catch (error) {
-    console.error("Error fetching playback status:", error);
-  }
-}
-
-/**
- * Adds legacy-like stop button and pending jobs counter to tab button
- */
-async function AddStopButton(actionsContainer) {
-  if (actionsContainer.querySelector('.stop-button')) return;
-  if (queueStopButton) {
-    actionsContainer.appendChild(queueStopButton);
-    return;
-  }
-
-  const stopButtonHTML = `
-    <button class="stop-button justify-center items-center p-button p-component p-button-icon-only p-button-danger p-button-text outline-hidden rounded-lg cursor-pointer p-0 size-8 text-xs !rounded-md border-none relative ml-2 transition-colors duration-200 ease-in-out bg-secondary-background hover:bg-secondary-background-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-background p-button-disabled"  type="button" aria-label="Stop queue" title="Clear all pending" data-pc-name="button" data-pd-tooltip="true">
-      <span class="p-button-icon pi pi-stop" data-pc-section="icon"></span>
-    </button>`;
-
-  // Add stop button if not already present
-  if (!actionsContainer.querySelector('.stop-button')) {
-    actionsContainer.insertAdjacentHTML('beforeend', stopButtonHTML);
-    const stopButton = actionsContainer.querySelector('.stop-button');
-    queueStopButton = stopButton;
-    stopButton.addEventListener('click', async function () {
-      try {
-        const response = await fetch(`/api/queue`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({clear: true})
-        });
-      } catch (error) {
-        console.error("Error fetching queue items:", error);
-      }
-    });
-  }
-
-  // listen to status updates to enable/disable stop button
-  // and at the same time create / update the counter badge for tab button
-  app.api.addEventListener("status", function (event) {
-    const stopButton = queueStopButton;
-    if (!stopButton) return;
-
-    //if event.detail.exec_info.queue_remaining is set and greater than 0 then enable stop button
-    const queueRemaining = event.detail?.exec_info?.queue_remaining;
-    // Badge container
-    const tabButton = document.querySelector('.comfyui-queue-manager-tab-button') ||
-      document.querySelector('[data-testid="comfyui-queue-manager-tab-button"]');
-    if (!tabButton) return;
-
-    if (queueRemaining && queueRemaining > 0) {
-      stopButton.disabled = false;
-      stopButton.classList.remove('p-button-disabled');
-
-      const displayCount = queueRemaining > 999 ? '999+' : queueRemaining;
-      // Add a badge to show number of pending jobs
-
-
-      const existingBadge = tabButton.querySelector('.counter-badge');
-      if (existingBadge) {
-        // Update existing badge
-        existingBadge.textContent = displayCount;
-        existingBadge.title = `${queueRemaining} jobs`;
-      } else {
-        const badgeHtml = `<span class="counter-badge absolute pl-1 pr-1.5 text-black text-xxs font-bold rounded-full" style="color: var(--bg-color); background: var(--fg-color); top:-2px; right:-3px" title="${queueRemaining} jobs">${displayCount}</span>`;
-
-        tabButton.insertAdjacentHTML('beforeend', badgeHtml);
-      }
-    } else {
-      stopButton.disabled = true;
-      stopButton.classList.add('p-button-disabled');
-
-      // Remove badge if present
-      const badge = tabButton?.querySelector('.counter-badge');
-      if (badge) {
-        badge.remove();
-      }
-    }
-  });
-
-  // Check current status to set initial state of stop button
-  try {
-    const response = await fetch(`/queue_manager/poke_status`);
-  } catch (error) {
-    console.error("Error fetching status:", error);
-  }
-
-}
-
-async function AddButtons(actionsContainer) {
-  const current = typeof __COMFYUI_FRONTEND_VERSION__ !== 'undefined' ? __COMFYUI_FRONTEND_VERSION__ : '0.0.0';
-  const pending = [];
-  if (compareVersions(current, '1.33.1') >= 0) {
-    // the new ui version has no stop button, and no counter, so we add our own
-    pending.push(AddStopButton(actionsContainer));
-  }
-  pending.push(AddPlayPauseButton(actionsContainer));
-  await Promise.all(pending);
-}
-
 export async function uiSetup () {
-  let nodeSelector = null;
+  loadManagerStyles();
+  const current = typeof __COMFYUI_FRONTEND_VERSION__ !== 'undefined' ? __COMFYUI_FRONTEND_VERSION__ : undefined;
+  await installQueueControls(app, ComfyButton, needsStopButton(current));
+}
 
-  const current = typeof __COMFYUI_FRONTEND_VERSION__ !== 'undefined' ? __COMFYUI_FRONTEND_VERSION__  : '0.0.0';
-
-  if (compareVersions(current, '1.33.1') >= 0) {
-    nodeSelector = '.actionbar > .p-panel-content-container > .p-panel-content > div';
-  } else {
-    nodeSelector = '.execution-actions';
-  }
-
-  const restoreButtons = () => {
-      // Look up the live container: the previous one may have been replaced.
-      const actionsContainer = document.querySelector(nodeSelector);
-      if (actionsContainer) {
-        AddButtons(actionsContainer);
-      }
-    };
-
-    // Watch the canvas container for button removal and toolbar replacement.
-    let graphContainer = document.getElementById('graph-canvas-container');
-    let restoreScheduled = false;
-    const observer = new MutationObserver(() => {
-      if (restoreScheduled) return;
-      restoreScheduled = true;
-
-      // Merge DOM changes into one check per frame, including our own insertions.
-      requestAnimationFrame(() => {
-        restoreScheduled = false;
-        if (!graphContainer) {
-          graphContainer = document.getElementById('graph-canvas-container');
-          if (graphContainer) {
-            observer.disconnect();
-            observer.observe(graphContainer, { childList: true, subtree: true });
-          }
-        }
-        restoreButtons();
-      });
-    });
-
-    // Only watch the body while waiting for the canvas container to mount.
-    observer.observe(graphContainer || document.body, { childList: true, subtree: true });
-    restoreButtons();
+function loadManagerStyles() {
+  if (document.getElementById('comfyui-queue-manager-stylesheet')) return;
+  const style = document.createElement('link');
+  style.rel = 'stylesheet';
+  style.href = new URL('../styles/manager.css', import.meta.url).href;
+  style.id = 'comfyui-queue-manager-stylesheet';
+  document.head.appendChild(style);
 }
 
 /**
@@ -305,13 +104,30 @@ export function handleIframeMessages() {
       if (event.origin !== QueueManagerOrigin) return;
       const { type, workflow, number } = event.data;
 
+      if (type === "QM_DismissSelectionHints" && event.source === theIframe()?.contentWindow) {
+        try {
+          await app.extensionManager.setting.set('QueueManager.Basic.ShowSelectionHints', false);
+        } catch (error) {
+          console.error("Error saving selection hints preference:", error);
+          // ComfyUI updates its local value before saving; restore it so a retry works.
+          try {
+            await app.extensionManager.setting.set('QueueManager.Basic.ShowSelectionHints', true);
+          } catch {
+            // The local value is restored even if persistence is still unavailable.
+          }
+          event.source.postMessage({type: "QM_SelectionHintsSaveFailed"}, event.origin);
+        }
+      }
+
       // When workflow is received from iframe then load it into ComfyUI
       if (type === "QM_LoadWorkflow" && workflow) {
-        // API-submitted prompts (comfyui-mcp, bare curl) carry a workflow without
-        // workflow_name. Matches WORKFLOW_NAME_PLACEHOLDER in qm_queue.py.
-        const workflowName = workflow.workflow_name || "(unnamed)";
         // e.g. forward into ComfyUI’s API
-        app.loadGraphData(workflow, true, true, workflowName + ' ' + number);
+        const filename = workflow.workflow_name + ' ' + number;
+        if (workflow.api_prompt) {
+          await app.loadApiJson(workflow.api_prompt, filename);
+        } else {
+          await app.loadGraphData(workflow, true, true, filename);
+        }
       }
 
       // Handshake message from iframe
@@ -374,18 +190,7 @@ export function registerSidebar() {
         </div>
       `;
 
-      // append stylesheet to this document
-      if (!document.getElementById("comfyui-queue-manager-stylesheet")) {
-        const style = document.createElement("link");
-        style.rel = "stylesheet";
-        style.href = `/extensions/comfyui_queue_manager/styles/manager.css`;
-        style.type = "text/css";
-        style.id = "comfyui-queue-manager-stylesheet";
-        style.onload = function() {
-
-        };
-        document.head.appendChild(style);
-      }
+      loadManagerStyles();
 
       // resize container
       el.style.height = '100%';
@@ -395,16 +200,7 @@ export function registerSidebar() {
 }
 
 export function injectWorkflowName() {
-  const _apiQueuePrompt = app.api.queuePrompt;
-
-  app.api.queuePrompt = async function(n, data, ...args) {
-    // Inject workflow name
-    // SIML: Perhaps add a setting to enable/disable this behaviour (privacy concern? the workflow name will travel all the way to the generated PNG)
-    data.workflow.workflow_name = app.extensionManager.workflow.activeWorkflow.filename;
-
-
-    return await _apiQueuePrompt.call(app.api, n, data, ...args);
-  };
+  installWorkflowNameInjection(app);
 }
 
 function postSettingToIframe(setting, newVal, oldVal) {

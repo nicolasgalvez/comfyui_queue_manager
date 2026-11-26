@@ -10,7 +10,7 @@ test('delete controls require consent before sending any mutation', { timeout: 6
   let browser;
   try {
     browser = await chromium.launch();
-    for (const scenario of ['pending', 'running', 'external', 'clear', 'archive', 'completed', 'filtered', 'gallery']) {
+    for (const scenario of ['pending', 'running', 'running-api', 'clear', 'archive', 'completed', 'filtered', 'gallery']) {
       const page = await browser.newPage();
       const mutations = [];
       const errors = [];
@@ -21,7 +21,7 @@ test('delete controls require consent before sending any mutation', { timeout: 6
         total_files: 1,
         outputs: { '1': { images: [{ filename: 'test.png', subfolder: '', type: 'output' }] } },
       }];
-      if (scenario === 'external') delete item[3].extra_pnginfo;
+      if (scenario === 'running-api') delete item[3].extra_pnginfo;
       await page.route('**/*', async route => {
         const request = route.request();
         const path = new URL(request.url()).pathname;
@@ -34,8 +34,8 @@ test('delete controls require consent before sending any mutation', { timeout: 6
           splash_screen: '1.0.0', __version__: '1.0.0', Gallery: { ShowImages: true },
         } });
         if (path === '/queue_manager/queue') return route.fulfill({ json: {
-          running: ['running', 'external'].includes(scenario) ? [item] : [],
-          pending: ['running', 'external'].includes(scenario) ? [] : [item],
+          running: ['running', 'running-api'].includes(scenario) ? [item] : [],
+          pending: ['running', 'running-api'].includes(scenario) ? [] : [item],
           info: { page: 0, page_size: 20, last_page: 1, total: 21 },
         } });
         return route.fulfill({ body: '' });
@@ -67,7 +67,7 @@ test('delete controls require consent before sending any mutation', { timeout: 6
       let button = page.getByRole('button', { name: 'Delete', exact: true });
       let message = /Delete this workflow/;
       let expectedPath = '/api/queue';
-      if (['running', 'external'].includes(scenario)) {
+      if (['running', 'running-api'].includes(scenario)) {
         message = /Stop the running job/;
         expectedPath = '/api/interrupt';
       } else if (['archive', 'completed', 'gallery'].includes(scenario)) {

@@ -15,7 +15,6 @@ import WebAssetOffSharpIcon from '@mui/icons-material/WebAssetOffSharp';
 import BurstModeSharpIcon from '@mui/icons-material/BurstModeSharp';
 
 import {baseURL} from "../internals/config";
-import {workflowLabel} from "../internals/functions";
 import useEvent from "react-use-event-hook";
 import Button from "@mui/material/Button";
 import DeleteOutlineSharpIcon from "@mui/icons-material/DeleteOutlineSharp";
@@ -511,7 +510,7 @@ export default function Gallery({items, activeItem}) {
 
       {galleryItems && mediaItem &&
       <div className="image-box">
-        <header>{workflowLabel(mediaItem.queueItem.workflow)} <span>({mediaItem.fileIndex+1} / {mediaItem.totalFiles})</span></header>
+        <header>{mediaItem.queueItem.workflow.workflow_name} <span>({mediaItem.fileIndex+1} / {mediaItem.totalFiles})</span></header>
 
         <figure>
           <MediaItem
