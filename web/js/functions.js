@@ -1,7 +1,7 @@
 import {QueueManagerGalleryURL, QueueManagerOrigin, QueueManagerURL} from './config.js';
 import {settings} from './settings.js';
 import {installWorkflowNameInjection} from './workflow-name.js';
-import {installQueueControls} from './toolbar.js';
+import {installQueueControls, needsStopButton} from './toolbar.js';
 
 import { app } from '../../../scripts/app.js';
 import { ComfyButton } from '../../../scripts/ui/components/button.js';
@@ -46,8 +46,8 @@ export function compareVersions(a, b) {
 
 export async function uiSetup () {
   loadManagerStyles();
-  const current = typeof __COMFYUI_FRONTEND_VERSION__ !== 'undefined' ? __COMFYUI_FRONTEND_VERSION__ : '0.0.0';
-  await installQueueControls(app, ComfyButton, compareVersions(current, '1.33.1') >= 0);
+  const current = typeof __COMFYUI_FRONTEND_VERSION__ !== 'undefined' ? __COMFYUI_FRONTEND_VERSION__ : undefined;
+  await installQueueControls(app, ComfyButton, needsStopButton(current));
 }
 
 function loadManagerStyles() {

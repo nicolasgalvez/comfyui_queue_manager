@@ -1,5 +1,16 @@
 const installedApps = new WeakSet();
 
+/**
+ * Frontends from 1.33.1 on have no stop control of their own, so we add one.
+ * A frontend built from source reports no version at all; it is treated as
+ * current, because reading it as "0.0.0" left the toolbar without a stop button.
+ */
+export function needsStopButton(version) {
+  if (!version) return true;
+  const [major = 0, minor = 0, patch = 0] = String(version).split('.').map(part => parseInt(part, 10) || 0);
+  return major > 1 || (major === 1 && (minor > 33 || (minor === 33 && patch >= 1)));
+}
+
 /** Let ComfyUI mount and restore the controls through its compatibility menu API. */
 export async function installQueueControls(app, ComfyButton, includeStopButton) {
   if (installedApps.has(app)) return;

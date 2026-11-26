@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import {installQueueControls} from '../web/js/toolbar.js';
+import {installQueueControls, needsStopButton} from '../web/js/toolbar.js';
 
 function environment(t) {
   const buttons = [];
@@ -124,4 +124,20 @@ test('failed actions are reported without losing subsequent queue state updates'
   assert.equal(errors.mock.callCount(), 2);
   env.emit('queue-manager-toggle-queue', {paused: true});
   assert.equal(env.buttons[1].icon, 'play');
+});
+
+// A frontend built from source (as comfyui-tunnel's image does) leaves
+// window.__COMFYUI_FRONTEND_VERSION__ undefined. Reading that as an old frontend
+// drops the stop button from a toolbar that has no stop control of its own.
+test('a frontend that reports no version gets the stop button', () => {
+  assert.equal(needsStopButton(undefined), true);
+  assert.equal(needsStopButton(''), true);
+});
+
+test('the stop button follows the frontend version when one is reported', () => {
+  assert.equal(needsStopButton('1.33.0'), false);
+  assert.equal(needsStopButton('1.9.99'), false);
+  assert.equal(needsStopButton('1.33.1'), true);
+  assert.equal(needsStopButton('1.59.6'), true);
+  assert.equal(needsStopButton('2.0.0'), true);
 });
