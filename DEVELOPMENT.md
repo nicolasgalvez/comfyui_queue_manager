@@ -121,6 +121,8 @@ ruff check .
 node --test tests/*.test.mjs
 ```
 
+This fork also has browser tests of the built GUI under `src/gui/tests/`; see [src/gui/README.md](src/gui/README.md). Run them from `src/gui` with `npm test`.
+
 These are the checks run for pull requests. For GUI changes, also run `npm run build` from `src/gui` and try the affected behavior in ComfyUI. Automated tests do not replace that browser check.
 
 Add a focused regression test for a bug fix. Existing queue tests show how to replace ComfyUI services and use a temporary database; You can follow those patterns so tests do not touch a real queue. Importing the extension's root `__init__.py` starts Queue Manager and requires ComfyUI.
