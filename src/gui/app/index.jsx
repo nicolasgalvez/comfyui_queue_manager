@@ -1059,7 +1059,8 @@ export default function Home() {
               </svg>
             </button>
           </div>
-          <div id="footer-actions" className="p-2 flex actions" hidden={!showFooterActions}>
+          {/* Selection mode acts only through these buttons, so it shows them while the footer is collapsed. */}
+          <div id="footer-actions" className="p-2 flex actions" hidden={!showFooterActions && !selecting}>
             <Stack direction="row" spacing={1} className={'min-w-full buttons'}>
               {selecting && <>
                 {route === "queue" && <button className="shiny-button yellow-button"
