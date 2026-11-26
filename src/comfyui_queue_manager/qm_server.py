@@ -62,13 +62,66 @@ class QM_Server:
             # Return the archive object as JSON
             return web.json_response({"running": running, "pending": pending, "info": info})
 
+        @PromptServer.instance.routes.post("/queue_manager/reorder")
+        async def reorder_items(request):
+            data = await requestJson(request)
+            if not isinstance(data, dict):
+                return web.json_response({"error": "Expected a JSON object"}, status=400)
+            try:
+                result = self.queue.reorder_items(
+                    data.get("ids"), data.get("target_id"), data.get("position"), data.get("route", "queue"), data.get("destination")
+                )
+            except ValueError as error:
+                return web.json_response({"error": str(error)}, status=400)
+            except RuntimeError as error:
+                return web.json_response({"error": str(error)}, status=409)
+            return web.json_response(result)
+
+        @PromptServer.instance.routes.post("/queue_manager/rename")
+        async def rename_item(request):
+            json_data = await requestJson(request)
+            if not isinstance(json_data, dict):
+                return web.json_response({"error": "Expected a JSON object"}, status=400)
+            try:
+                if "ids" in json_data:
+                    result = self.queue.rename_items(json_data["ids"], json_data.get("name"), json_data.get("route"))
+                else:
+                    name = self.queue.rename_item(json_data.get("id"), json_data.get("name"))
+                    result = {"id": json_data["id"], "name": name}
+            except ValueError as error:
+                return web.json_response({"error": str(error)}, status=400)
+            except LookupError as error:
+                return web.json_response({"error": str(error)}, status=404)
+            except RuntimeError as error:
+                return web.json_response({"error": str(error)}, status=409)
+            return web.json_response(result)
+
+        @PromptServer.instance.routes.post("/queue_manager/selection")
+        async def selection_action(request):
+            data = await requestJson(request)
+            if not isinstance(data, dict):
+                return web.json_response({"error": "Expected a JSON object"}, status=400)
+            try:
+                result = self.queue.selection_action(
+                    data.get("action"),
+                    data.get("route"),
+                    data.get("ids"),
+                    data.get("client_id"),
+                    data.get("front") is True,
+                )
+            except ValueError as error:
+                return web.json_response({"error": str(error)}, status=400)
+            if data["action"] == "export":
+                return web.json_response(result)
+            return web.json_response({"affected": result})
+
         # Archive POSTed items
         @PromptServer.instance.routes.post("/queue_manager/archive")
         async def post_archive(request):
             # Get the archived items
             json_data = await request.json()
             if "archive" in json_data:
-                archived = self.queue.archive_items(json_data["archive"])
+                archived = self.queue.archive_items(json_data["archive"], front=json_data.get("front") is True)
                 return web.json_response({"archived": archived})
             else:
                 return web.json_response({"error": "No items to archive"}, status=400)
@@ -93,8 +146,16 @@ class QM_Server:
         # Toggle Play/Pause of the queue
         @PromptServer.instance.routes.get("/queue_manager/toggle")
         async def toggle_queue(request):
-            # Toggle the status of the queue
-            self.queue.toggle_playback()
+            # Prefer the live browser value; older clients use their saved setting.
+            clean_caches = request.query.get("clean_caches")
+            if clean_caches is None:
+                settings = self.user_manager.settings.get_settings(request)
+                clean_caches = settings.get("QueueManager.Basic.CleanCachesOnPause", False) is True
+            elif clean_caches in ("true", "false"):
+                clean_caches = clean_caches == "true"
+            else:
+                return web.json_response({"error": "Invalid clean_caches value"}, status=400)
+            self.queue.toggle_playback(clean_caches=clean_caches)
             return web.json_response({"paused": self.queue.paused})
 
         # Return the status of the queue's playback
@@ -111,7 +172,7 @@ class QM_Server:
         @PromptServer.instance.routes.get("/queue_manager/archive-queue")
         async def archive_queue(request):
             filters = self.get_filters(request)
-            total = self.queue.archive_queue(filters)
+            total = self.queue.archive_queue(filters, front=request.query.get("front") == "true")
             return web.json_response({"archived": total})
 
         # Play item from archive

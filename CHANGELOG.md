@@ -1,5 +1,48 @@
 # Release Notes
 
+## v0.2.1
+
+_Oct 18, 2026_
+
+### Bugfixes
+
+- Fixed empty `images` or `gifs` output lists crashing job completion and stopping further prompt execution.
+- Restored Pause/Resume and Clear pending buttons on ComfyUI 0.41+.
+
+## v0.2.0
+
+_Oct 10, 2026_
+### Enhancements
+
+- Reorder pending and archived jobs.
+- Rename pending and archived jobs directly in the Workflow column. In selection mode, rename the selected group all at once.
+- Select queue items and apply actions to selected group (incl. running, archiving, deleting, exporting reordering and renaming).
+- Switch filtered views between workflow identity and an exact workflow name.
+- Hold Shift while archiving pending jobs to place them at the start of the Archive.
+- Added an option **Clean caches on Pause** to Settings. Off by default. When enabled it unloads models and clears execution caches after queue is Paused.
+- Added support to manage API-submitted jobs
+- Updated docs, added docs for API and custom development / contributing.
+
+## v0.1.2
+
+_Sep 27, 2026_
+
+### Bugfixes
+
+- Fixed job history errors after cancelling a running job on recent ComfyUI versions [#31].
+
+---
+
+## v0.1.1
+
+_Sep 14, 2026_
+
+### Enhancements
+
+- Enhanced **Workflow Name** node with a single `text` input that accepts a typed value or a connected string. As such **Queue Manager** can now use the first active **Workflow Name** node to name queued jobs.
+
+---
+
 ## v0.1.0
 _Sep 06, 2026_
 ### New features and enhancements

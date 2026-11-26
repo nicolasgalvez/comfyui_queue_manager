@@ -22,7 +22,10 @@ export async function apiCall(endpoint, data, method = "POST") {
 
     const response = await fetch(url, request);
     if (!response.ok) {
-      throw new Error("Network response was not ok");
+      const result = response.headers.get("content-type")?.includes("application/json")
+        ? await response.json()
+        : null;
+      throw new Error(result?.error || `Request failed (${response.status})`);
     }
     // is response body non empty and json?
     const contentType = response.headers.get("content-type");
@@ -50,10 +53,6 @@ export const msgLoadWorkflow = (workflow, number) => {
     "*"
   );
 }
-
-// API-submitted prompts (comfyui-mcp, bare curl) carry an extra_pnginfo.workflow
-// without workflow_name. Matches WORKFLOW_NAME_PLACEHOLDER in qm_queue.py.
-export const workflowLabel = (workflow) => workflow?.workflow_name || "(unnamed)";
 
 export function mediaType (outputs) {
   return {

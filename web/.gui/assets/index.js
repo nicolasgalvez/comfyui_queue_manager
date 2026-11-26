@@ -19064,6 +19064,12 @@ const UploadSharpIcon = createSvgIcon(/* @__PURE__ */ jsxRuntimeExports.jsx("pat
 const Inventory2SharpIcon = createSvgIcon(/* @__PURE__ */ jsxRuntimeExports.jsx("path", {
   d: "M2 2v6.7h1V22h18V8.7h1V2zm13 12H9v-2h6zm5-7H4V4h16z"
 }));
+const CheckBoxOutlinedIcon = createSvgIcon(/* @__PURE__ */ jsxRuntimeExports.jsx("path", {
+  d: "M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2m0 16H5V5h14zM17.99 9l-1.41-1.42-6.59 6.59-2.58-2.57-1.42 1.41 4 3.99z"
+}));
+const CloseIcon = createSvgIcon(/* @__PURE__ */ jsxRuntimeExports.jsx("path", {
+  d: "M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"
+}));
 function ThemeProviderNoVars({
   theme: themeInput,
   ...props
@@ -19237,7 +19243,8 @@ async function apiCall(endpoint, data, method = "POST") {
     }
     const response = await fetch(url, request);
     if (!response.ok) {
-      throw new Error("Network response was not ok");
+      const result = response.headers.get("content-type")?.includes("application/json") ? await response.json() : null;
+      throw new Error(result?.error || `Request failed (${response.status})`);
     }
     const contentType = response.headers.get("content-type");
     const contentLength = parseInt(response.headers.get("content-length"));
@@ -19260,7 +19267,6 @@ const msgLoadWorkflow = (workflow, number) => {
     "*"
   );
 };
-const workflowLabel = (workflow) => workflow?.workflow_name || "(unnamed)";
 function mediaType(outputs) {
   return {
     isImage: !outputs.animated || outputs.animated[0] !== true,
@@ -19344,13 +19350,63 @@ const createImpl = (createState) => {
   return useBoundStore;
 };
 const create = ((createState) => createState ? createImpl(createState) : createImpl);
+const WORKFLOW_FILTER_MODE_KEY = "queue-manager.workflow-filter-mode";
+function readWorkflowFilterMode(storage) {
+  try {
+    const mode = (storage ?? globalThis.localStorage)?.getItem(WORKFLOW_FILTER_MODE_KEY);
+    return mode === "workflow_name" ? mode : "workflow";
+  } catch {
+    return "workflow";
+  }
+}
+function saveWorkflowFilterMode(mode, storage) {
+  if (!["workflow", "workflow_name"].includes(mode)) return;
+  try {
+    (storage ?? globalThis.localStorage)?.setItem(WORKFLOW_FILTER_MODE_KEY, mode);
+  } catch {
+  }
+}
+function getWorkflowFilter(filters) {
+  if (filters?.workflow_name) {
+    const filter = filters.workflow_name;
+    return { mode: "workflow_name", id: filter.workflowId, name: filter.value };
+  }
+  if (filters?.workflow) {
+    const filter = filters.workflow;
+    return { mode: "workflow", id: filter.value, name: filter.valueLabel ?? "" };
+  }
+  return null;
+}
+function withWorkflowFilter(filters, selection, mode = getWorkflowFilter(filters)?.mode ?? "workflow") {
+  if (!selection || !["workflow", "workflow_name"].includes(mode)) return filters;
+  if (mode === "workflow" && !selection.id) return filters;
+  if (typeof selection.name !== "string") return filters;
+  const next2 = { ...filters };
+  delete next2.workflow;
+  delete next2.workflow_name;
+  next2[mode] = {
+    type: mode,
+    value: mode === "workflow" ? selection.id : selection.name,
+    valueLabel: selection.name,
+    // Retain the clicked workflow so switching back does not need another row.
+    ...mode === "workflow_name" ? { workflowId: selection.id } : {}
+  };
+  return next2;
+}
 const useAppStore = create((set) => ({
   filters: null,
+  workflowFilterMode: readWorkflowFilterMode(),
   route: "queue",
   mode: "queue",
   clientId: null,
   shiftDown: false,
-  setFilters: (filters) => set((state) => ({ ...state, filters })),
+  setFilters: (filters) => set((state) => {
+    const workflowFilterMode = getWorkflowFilter(filters)?.mode ?? state.workflowFilterMode;
+    if (workflowFilterMode !== state.workflowFilterMode) {
+      saveWorkflowFilterMode(workflowFilterMode);
+    }
+    return { ...state, filters, workflowFilterMode };
+  }),
   setRoute: (route) => set((state) => ({ ...state, route })),
   setMode: (mode) => set((state) => ({ ...state, mode })),
   setClientId: (clientId) => set((state) => ({ ...state, clientId })),
@@ -19492,6 +19548,82 @@ const MediaItem = reactExports.memo(function MediaItem2({ file, onClick, autopla
     }
   ) }) });
 });
+const DragIndicatorIcon = createSvgIcon(/* @__PURE__ */ jsxRuntimeExports.jsx("path", {
+  d: "M11 18c0 1.1-.9 2-2 2s-2-.9-2-2 .9-2 2-2 2 .9 2 2m-2-8c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2m0-6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2m6 4c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2m0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2m0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2"
+}));
+function reconcileSelection(state, ids) {
+  if (!state.active) return state;
+  const visible = new Set(ids);
+  return {
+    selected: new Set([...state.selected].filter((id) => visible.has(id))),
+    anchor: visible.has(state.anchor) ? state.anchor : null,
+    rename: state.rename && visible.has(state.rename.sourceId) ? { ...state.rename, ids: state.rename.ids.filter((id) => visible.has(id)) } : null
+  };
+}
+function selectRow(selected, anchor, ids, id, { shiftKey = false, altKey = false } = {}) {
+  const end = ids.indexOf(id);
+  if (end < 0) return { selected, anchor };
+  const start = shiftKey ? ids.indexOf(anchor) : -1;
+  const affected = start < 0 ? [id] : ids.slice(Math.min(start, end), Math.max(start, end) + 1);
+  const next2 = new Set(selected);
+  const remove = altKey || !shiftKey && next2.has(id);
+  for (const value of affected) {
+    if (remove) next2.delete(value);
+    else next2.add(value);
+  }
+  return { selected: next2, anchor: start < 0 ? id : anchor };
+}
+function selectRectangle(selected, rows, rectangle, deselect = false) {
+  const next2 = new Set(selected);
+  for (const { id, left, right, top, bottom } of rows) {
+    if (left <= rectangle.right && right >= rectangle.left && top <= rectangle.bottom && bottom >= rectangle.top) {
+      if (deselect) next2.delete(id);
+      else next2.add(id);
+    }
+  }
+  return next2;
+}
+function beginGroupRename(state, sourceId, name, route, sessionId) {
+  if (!state.active || state.rename) return state;
+  const selected = new Set(state.selected).add(sourceId);
+  return { selected, rename: {
+    sessionId,
+    sourceId,
+    ids: [...selected],
+    route,
+    initialName: name,
+    draftName: name,
+    saving: false,
+    error: ""
+  } };
+}
+function updateGroupRename(state, sessionId, patch) {
+  return state.rename?.sessionId === sessionId ? { rename: { ...state.rename, ...patch } } : state;
+}
+function finishGroupRename(state, sessionId) {
+  return state.rename?.sessionId === sessionId ? { rename: null } : state;
+}
+let renameSessionId = 0;
+const useSelectionStore = create((set) => ({
+  active: false,
+  selected: /* @__PURE__ */ new Set(),
+  anchor: null,
+  rename: null,
+  toggle: () => set((state) => ({ active: !state.active, selected: /* @__PURE__ */ new Set(), anchor: null, rename: null })),
+  enable: () => set({ active: true }),
+  reset: () => set({ active: false, selected: /* @__PURE__ */ new Set(), anchor: null, rename: null }),
+  clear: () => set({ selected: /* @__PURE__ */ new Set(), anchor: null, rename: null }),
+  beginRename: (id, name, route) => set((state) => beginGroupRename(state, id, name, route, ++renameSessionId)),
+  updateRename: (sessionId, patch) => set((state) => updateGroupRename(state, sessionId, patch)),
+  finishRename: (sessionId) => set((state) => finishGroupRename(state, sessionId)),
+  reconcile: (ids) => set((state) => reconcileSelection(state, ids)),
+  setSelected: (selected) => set((state) => state.rename ? state : { selected }),
+  selectAll: (ids) => set((state) => state.rename ? state : {
+    selected: ids.every((id) => state.selected.has(id)) ? /* @__PURE__ */ new Set() : new Set(ids),
+    anchor: null
+  }),
+  click: (ids, id, modifiers) => set((state) => state.active && !state.rename ? selectRow(state.selected, state.anchor, ids, id, modifiers) : state)
+}));
 class MediaOutputs {
   files = null;
   cover = null;
@@ -19536,8 +19668,221 @@ class MediaOutputs {
     }
   }
 }
+const EditOutlinedIcon = createSvgIcon(/* @__PURE__ */ jsxRuntimeExports.jsx("path", {
+  d: "m14.06 9.02.92.92L5.92 19H5v-.92zM17.66 3c-.25 0-.51.1-.7.29l-1.83 1.83 3.75 3.75 1.83-1.83c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.2-.2-.45-.29-.71-.29m-3.6 3.19L3 17.25V21h3.75L17.81 9.94z"
+}));
+const CheckOutlinedIcon = createSvgIcon(/* @__PURE__ */ jsxRuntimeExports.jsx("path", {
+  d: "M9 16.17 4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"
+}));
+const CloseOutlinedIcon = createSvgIcon(/* @__PURE__ */ jsxRuntimeExports.jsx("path", {
+  d: "M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"
+}));
+function consumeRenameGesture(event, document2) {
+  const view = document2.defaultView;
+  let timer;
+  const capture = { capture: true };
+  const cleanup = () => {
+    view.clearTimeout(timer);
+    document2.removeEventListener("click", click, capture);
+    document2.removeEventListener("pointerup", release, capture);
+    document2.removeEventListener("pointercancel", release, capture);
+    document2.removeEventListener("pointerdown", nextGesture, capture);
+  };
+  const click = (next2) => {
+    next2.preventDefault();
+    next2.stopImmediatePropagation();
+    cleanup();
+  };
+  const release = (next2) => {
+    if (next2.pointerId !== event.pointerId) return;
+    timer = view.setTimeout(cleanup, 0);
+  };
+  const nextGesture = (next2) => {
+    if (next2 !== event) cleanup();
+  };
+  event.preventDefault();
+  event.stopPropagation();
+  document2.addEventListener("click", click, capture);
+  document2.addEventListener("pointerup", release, capture);
+  document2.addEventListener("pointercancel", release, capture);
+  document2.addEventListener("pointerdown", nextGesture, capture);
+}
+function QueueItemName({ name, dbId, canRename, selecting = false, route, onFilter, onRenamed, filterTitle = "Filter view by the workflow" }) {
+  const [editing, setEditing] = reactExports.useState(false);
+  const [draftName, setDraftName] = reactExports.useState(name);
+  const [saving, setSaving] = reactExports.useState(false);
+  const [error, setError] = reactExports.useState("");
+  const [editorHeight, setEditorHeight] = reactExports.useState(0);
+  const contentRef = reactExports.useRef(null);
+  const formRef = reactExports.useRef(null);
+  const inputRef = reactExports.useRef(null);
+  const savingRef = reactExports.useRef(false);
+  const saveRef = reactExports.useRef(null);
+  const group = useSelectionStore((state) => state.rename);
+  const groupSource = selecting && group?.sourceId === dbId;
+  const groupAffected = selecting && group?.ids.includes(dbId);
+  const isEditing = canRename && (groupSource || !selecting && editing);
+  const value = groupSource ? group.draftName : draftName;
+  const busy = groupSource ? group.saving : saving;
+  const message = groupSource ? group.error : error;
+  reactExports.useEffect(() => {
+    if (!isEditing) return;
+    const blurOutside = (event) => {
+      if (formRef.current?.contains(event.target)) return;
+      if (groupSource) consumeRenameGesture(event, document);
+      const commit = saveRef.current;
+      inputRef.current?.blur();
+      commit?.();
+    };
+    document.addEventListener("pointerdown", blurOutside, true);
+    return () => document.removeEventListener("pointerdown", blurOutside, true);
+  }, [isEditing, groupSource]);
+  const cancel = () => {
+    if (savingRef.current || busy) return;
+    if (groupSource) useSelectionStore.getState().finishRename(group.sessionId);
+    setEditing(false);
+    setError("");
+  };
+  const save = async (event) => {
+    event?.preventDefault();
+    if (savingRef.current || busy) return;
+    const batch = groupSource ? useSelectionStore.getState().rename : null;
+    if (groupSource && batch?.sessionId !== group.sessionId) return;
+    const newName = batch ? batch.draftName : draftName;
+    if (batch ? newName === batch.initialName && event?.type !== "submit" : newName === name) {
+      cancel();
+      return;
+    }
+    if (!newName.trim()) {
+      if (batch) useSelectionStore.getState().updateRename(batch.sessionId, { error: "Name cannot be empty" });
+      else setError("Name cannot be empty");
+      return;
+    }
+    savingRef.current = true;
+    if (batch) useSelectionStore.getState().updateRename(batch.sessionId, { saving: true, error: "" });
+    else {
+      setSaving(true);
+      setError("");
+    }
+    try {
+      await apiCall("queue_manager/rename", batch ? { ids: batch.ids, name: newName, route: batch.route } : { id: dbId, name: newName });
+      if (batch) useSelectionStore.getState().finishRename(batch.sessionId);
+      setEditing(false);
+      onRenamed();
+    } catch (error2) {
+      const message2 = error2.message || "Could not rename. Try again.";
+      if (batch) useSelectionStore.getState().updateRename(batch.sessionId, { saving: false, error: message2 });
+      else setError(message2);
+    } finally {
+      savingRef.current = false;
+      setSaving(false);
+    }
+  };
+  saveRef.current = save;
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "workflow-name" + (groupAffected ? " group-renaming" : ""), children: [
+    isEditing ? /* @__PURE__ */ jsxRuntimeExports.jsxs(
+      "form",
+      {
+        ref: formRef,
+        "data-selection-ignore": true,
+        className: "workflow-name-content",
+        style: { minHeight: editorHeight },
+        onSubmit: save,
+        onBlur: (event) => {
+          if (!event.currentTarget.contains(event.relatedTarget)) save();
+        },
+        "aria-busy": busy,
+        children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx(
+            "input",
+            {
+              ref: inputRef,
+              className: "workflow-name-input",
+              "aria-label": groupSource ? `Name for ${group.ids.length} selected workflows` : "Workflow name",
+              "aria-invalid": !!message,
+              title: groupSource ? `Renaming ${group.ids.length} selected workflows together` : void 0,
+              value,
+              disabled: busy,
+              autoFocus: true,
+              onFocus: (event) => event.target.select(),
+              onChange: (event) => {
+                if (groupSource) useSelectionStore.getState().updateRename(group.sessionId, { draftName: event.target.value, error: "" });
+                else {
+                  setDraftName(event.target.value);
+                  setError("");
+                }
+              },
+              onKeyDown: (event) => {
+                if (event.nativeEvent.isComposing) {
+                  if (event.key === "Enter") event.preventDefault();
+                  return;
+                }
+                if (event.key === "Escape") {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  cancel();
+                }
+              }
+            }
+          ),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("button", { type: "submit", className: "plain workflow-name-action", title: "Save name (Enter)", "aria-label": "Save name", disabled: busy, children: /* @__PURE__ */ jsxRuntimeExports.jsx(CheckOutlinedIcon, { fontSize: "small" }) }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("button", { type: "button", className: "plain workflow-name-action", onClick: cancel, title: "Cancel (Escape)", "aria-label": "Cancel rename", disabled: busy, children: /* @__PURE__ */ jsxRuntimeExports.jsx(CloseOutlinedIcon, { fontSize: "small" }) })
+        ]
+      }
+    ) : /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "workflow-name-content", ref: contentRef, children: [
+      selecting ? /* @__PURE__ */ jsxRuntimeExports.jsx(
+        "span",
+        {
+          className: groupAffected ? "workflow-name-preview" : "workflow-name-label",
+          title: groupAffected ? `Will be renamed with ${group.ids.length} selected workflows` : void 0,
+          children: groupAffected ? group.draftName : name
+        }
+      ) : /* @__PURE__ */ jsxRuntimeExports.jsx("button", { type: "button", className: "plain workflow-name-label", onClick: onFilter, title: filterTitle, children: name }),
+      canRename && /* @__PURE__ */ jsxRuntimeExports.jsx(
+        "button",
+        {
+          type: "button",
+          "data-selection-ignore": true,
+          className: "plain workflow-name-action",
+          title: group ? "Finish the current rename first" : selecting ? "Rename selected workflows (adds this job if unselected)" : "Rename workflow",
+          "aria-label": "Rename workflow",
+          disabled: !!group,
+          onClick: () => {
+            if (useSelectionStore.getState().rename) return;
+            setEditorHeight(contentRef.current?.getBoundingClientRect().height ?? 0);
+            setError("");
+            if (selecting) useSelectionStore.getState().beginRename(dbId, name, route);
+            else {
+              setDraftName(name);
+              setEditing(true);
+            }
+          },
+          children: /* @__PURE__ */ jsxRuntimeExports.jsx(EditOutlinedIcon, { fontSize: "small" })
+        }
+      )
+    ] }),
+    message && isEditing && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "workflow-name-error", role: "alert", children: message })
+  ] });
+}
+function queueWorkflow(item) {
+  const saved = item?.[3]?.extra_pnginfo?.workflow;
+  const workflow = saved && typeof saved === "object" && !Array.isArray(saved) ? saved : {};
+  const metadata = item?.[3]?.queue_manager;
+  return {
+    ...workflow,
+    id: metadata?.workflow_id ?? workflow.id ?? `api:${item?.[1]}`,
+    workflow_name: metadata?.name ?? workflow.workflow_name ?? `API job ${String(item?.[1] ?? "").slice(0, 8)}`,
+    // The parent uses ComfyUI's API loader when the original canvas is absent.
+    ...!Array.isArray(workflow.nodes) ? { api_prompt: item?.[2] } : {}
+  };
+}
+function queueNodeIDs(item) {
+  const workflow = queueWorkflow(item);
+  const ids = workflow.api_prompt ? Object.keys(workflow.api_prompt) : (workflow.nodes ?? []).map((node2) => node2.id).filter((id) => id != null);
+  return Object.fromEntries(ids.map((id) => [id, id]));
+}
 const useOptionsStore = create((set) => ({
-  Basic: {},
+  Basic: { ShowSelectionHints: true },
   Completed: {
     CoverThumbMode: "Cropped",
     GridThumbMode: "Square Fit",
@@ -19591,12 +19936,21 @@ const QueueItemRow = reactExports.memo(
     route,
     thumbMode,
     galleryOptions,
-    filters
+    filters,
+    workflowFilterMode,
+    selecting,
+    selected,
+    reorderBusy,
+    dragging,
+    reorderAnchor
   }) {
-    const { onMediaItemClick, fetchQueueItems } = reactExports.useContext(AppContext);
+    const { onMediaItemClick, fetchQueueItems, refreshQueueItems } = reactExports.useContext(AppContext);
     const openInGallery = useOptionsStore((state) => state.open_in_gallery);
+    const renaming = useSelectionStore((state) => !!state.rename);
     const dbId = item?.[3]?.db_id;
-    const workflow = item?.[3]?.extra_pnginfo?.workflow;
+    const workflow = reactExports.useMemo(() => queueWorkflow(item), [item]);
+    const selectable = !!dbId && mode !== "running";
+    const canReorder = route === "queue" || route === "archive";
     const executionStatus = item?.[3]?.execution_status;
     const failed = executionStatus?.status_str === "error";
     const executionError = executionStatus?.error;
@@ -19610,7 +19964,8 @@ const QueueItemRow = reactExports.memo(
       if (!openInGallery) {
         const file = mediaOutputs?.files?.[fileIndex];
         if (file) {
-          const src = `${baseURL}api/view?filename=${file.filename}&type=output&subfolder=${file.subfolder}`;
+          const query = new URLSearchParams({ filename: file.filename, type: "output", subfolder: file.subfolder });
+          const src = `${baseURL}api/view?${query}`;
           window.open(src, "_blank", "noopener");
           return;
         }
@@ -19618,9 +19973,9 @@ const QueueItemRow = reactExports.memo(
       onMediaItemClick({ dbID: dbId, fileIndex });
     }, [openInGallery, mediaOutputs, onMediaItemClick, dbId]);
     const cancelQueueItem = reactExports.useCallback(async () => {
-      const message = mode === "running" || mode === "external" ? "Stop the running job and delete it from the queue?" : "Delete this workflow from Queue Manager? This cannot be undone.";
+      const message = mode === "running" ? "Stop the running job and delete it from the queue?" : "Delete this workflow from Queue Manager? This cannot be undone.";
       if (!window.confirm(message)) return;
-      const cancelRoute = mode === "running" || mode === "external" ? "interrupt" : "queue";
+      const cancelRoute = mode === "running" ? "interrupt" : "queue";
       await apiCall(`api/${cancelRoute}`, { delete: [item[1]] });
     }, [mode, item]);
     const loadQueueItem = reactExports.useCallback(() => {
@@ -19629,7 +19984,10 @@ const QueueItemRow = reactExports.memo(
       }
     }, [workflow, item]);
     const archiveQueueItem = reactExports.useCallback(async () => {
-      await apiCall(`queue_manager/archive`, { archive: [dbId] });
+      await apiCall(`queue_manager/archive`, {
+        archive: [dbId],
+        front: useAppStore.getState().shiftDown === true
+      });
     }, [dbId]);
     const playItem = reactExports.useCallback(async () => {
       const { shiftDown, clientId } = useAppStore.getState();
@@ -19640,18 +19998,15 @@ const QueueItemRow = reactExports.memo(
       });
     }, [dbId]);
     const filterByWorkflow = reactExports.useCallback(() => {
-      if (!workflow?.id) return;
+      if (!workflow || selecting) return;
+      const nextFilters = withWorkflowFilter(filters, { id: workflow.id, name: workflow.workflow_name ?? "" }, workflowFilterMode);
+      if (nextFilters === filters) return;
       fetchQueueItems({
-        filters: {
-          ...filters,
-          workflow: {
-            type: "workflow",
-            value: workflow.id,
-            valueLabel: workflow.workflow_name
-          }
-        }
+        page: 0,
+        filters: nextFilters,
+        reload: true
       });
-    }, [fetchQueueItems, filters, workflow]);
+    }, [fetchQueueItems, filters, workflow, workflowFilterMode, selecting]);
     const executionTimeLabel = reactExports.useMemo(() => {
       const t = item?.[3]?.execution_time;
       if (t == null) return null;
@@ -19672,127 +20027,629 @@ const QueueItemRow = reactExports.memo(
     const showGrid = item?.[3]?.total_files > 0 && route === "completed" && thumbMode === "grid" && (galleryOptions.ShowImages || galleryOptions.ShowVideos);
     const rowIndex = index === void 0 || !info ? "" : index + 1 + info.page * info.page_size;
     return /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
-      /* @__PURE__ */ jsxRuntimeExports.jsxs("tr", { className: className ? ` ${className}` : "", children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsxs("td", { className: "px-3 py-1 serial", children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: rowIndex }),
-          loader ? /* @__PURE__ */ jsxRuntimeExports.jsx(LoaderSpinner, {}) : null
-        ] }),
-        showCover ? /* @__PURE__ */ jsxRuntimeExports.jsx("td", { className: "px-3 py-1 cover", children: mediaOutputs?.cover ? /* @__PURE__ */ jsxRuntimeExports.jsx(
-          MediaItem,
-          {
-            file: mediaOutputs.cover,
-            controls: false,
-            autoplay: false,
-            onClick: () => openOutput(0),
-            className: "play-button",
-            title: "Open gallery"
-          }
-        ) : null }) : null,
-        /* @__PURE__ */ jsxRuntimeExports.jsxs("td", { className: "px-3 py-1 text-left name", children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "name-cell", children: [
-            mediaOutputs && item[3].total_files > 0 ? /* @__PURE__ */ jsxRuntimeExports.jsx(
-              "span",
-              {
-                className: "total shiny-button",
-                title: `Total file outputs: ${mediaOutputs.total}`,
-                onClick: () => openOutput(0),
-                children: mediaOutputs.total
-              }
-            ) : null,
-            /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "plain", onClick: filterByWorkflow, title: "Filter view by the workflow", children: mode === "external" ? "External job" : workflowLabel(workflow) })
-          ] }),
-          route === "completed" && failed && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "execution-error", children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: "Failed" }),
-            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
-              executionError?.exception_type ? `${executionError.exception_type}: ` : "",
-              executionError?.exception_message || "The job failed without error details."
-            ] }),
-            executionError?.node_id != null && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
-              "Node ",
-              executionError.node_id,
-              executionError.node_type ? ` · ${executionError.node_type}` : ""
-            ] }),
-            executionError?.traceback?.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs("details", { children: [
-              /* @__PURE__ */ jsxRuntimeExports.jsx("summary", { children: "Show traceback" }),
-              /* @__PURE__ */ jsxRuntimeExports.jsx("pre", { children: Array.isArray(executionError.traceback) ? executionError.traceback.join("") : executionError.traceback })
-            ] })
-          ] }),
-          route === "completed" && executionStatus?.status_str === "interrupted" && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "execution-interrupted", children: "Interrupted" })
-        ] }),
-        route === "completed" && /* @__PURE__ */ jsxRuntimeExports.jsx("td", { className: "meta-info", children: executionTimeLabel ? /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "execution-time", title: "Execution time", children: executionTimeLabel }) : null }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx("td", { className: "px-3 py-1 text-right actions", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { justifyContent: "flex-end" }, className: "buttons", children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsx(
-            "button",
-            {
-              className: "delete red-button shiny-button",
-              onClick: cancelQueueItem,
-              title: "Delete workflow from queue",
-              children: "Delete"
-            }
-          ),
-          mode !== "external" ? /* @__PURE__ */ jsxRuntimeExports.jsx(
-            "button",
-            {
-              className: "load green-button shiny-button",
-              onClick: loadQueueItem,
-              title: "Load workflow",
-              children: "Load"
-            }
-          ) : null,
-          route === "queue" && mode !== "running" ? /* @__PURE__ */ jsxRuntimeExports.jsx(
-            "button",
-            {
-              className: "archive yellow-button shiny-button",
-              onClick: archiveQueueItem,
-              title: "Move to the archive",
-              children: "Archive"
-            }
-          ) : null,
-          route === "archive" ? /* @__PURE__ */ jsxRuntimeExports.jsxs(
-            "button",
-            {
-              className: "run blue-button shiny-button",
-              onClick: playItem,
-              title: "Move to queue",
-              children: [
-                /* @__PURE__ */ jsxRuntimeExports.jsx(PlayArrowOutlinedIcon, { fontSize: "small" }),
-                "Run"
-              ]
-            }
-          ) : null,
-          route === "completed" ? /* @__PURE__ */ jsxRuntimeExports.jsx(
-            "button",
-            {
-              className: "view violet-button shiny-button",
-              onClick: () => openOutput(0),
-              title: "View outputs in gallery",
-              children: "View"
-            }
-          ) : null
-        ] }) })
-      ] }),
-      showGrid ? /* @__PURE__ */ jsxRuntimeExports.jsx("tr", { className: "dark:odd:bg-neutral-900 odd:bg-neutral-100 gallery", children: /* @__PURE__ */ jsxRuntimeExports.jsx("td", { colSpan: 4, className: "px-3 py-1", children: /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex flex-wrap gap-2 items", children: mediaOutputs?.files?.length ? mediaOutputs.files.map((file, fileIndex) => /* @__PURE__ */ jsxRuntimeExports.jsx(
-        MediaItem,
+      /* @__PURE__ */ jsxRuntimeExports.jsxs(
+        "tr",
         {
-          file,
-          autoplay: false,
-          onClick: () => openOutput(fileIndex),
-          title: "Open gallery"
-        },
-        `${file.filename}-${file.subfolder}`
-      )) : null }) }) }) : null
+          className: (className ?? "") + (selected ? " selected" : "") + (dragging ? " reorder-moving" : ""),
+          "data-reorder-anchor": reorderAnchor,
+          "data-reorder-id": canReorder && selectable ? dbId : void 0,
+          "data-selection-id": selectable ? dbId : void 0,
+          "aria-selected": selecting && selectable ? selected : void 0,
+          children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("td", { className: "px-3 py-1 serial", children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: rowIndex }),
+              loader ? /* @__PURE__ */ jsxRuntimeExports.jsx(LoaderSpinner, {}) : null
+            ] }),
+            showCover ? /* @__PURE__ */ jsxRuntimeExports.jsx("td", { className: "px-3 py-1 cover", children: mediaOutputs?.cover ? /* @__PURE__ */ jsxRuntimeExports.jsx(
+              MediaItem,
+              {
+                file: mediaOutputs.cover,
+                controls: false,
+                autoplay: false,
+                onClick: () => openOutput(0),
+                className: "play-button",
+                title: "Open gallery"
+              }
+            ) : null }) : null,
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("td", { className: "px-3 py-1 text-left name", children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "name-cell", children: [
+                mediaOutputs && item[3].total_files > 0 ? /* @__PURE__ */ jsxRuntimeExports.jsx(
+                  "span",
+                  {
+                    className: "total shiny-button",
+                    title: `Total file outputs: ${mediaOutputs.total}`,
+                    onClick: () => openOutput(0),
+                    children: mediaOutputs.total
+                  }
+                ) : null,
+                /* @__PURE__ */ jsxRuntimeExports.jsx(
+                  QueueItemName,
+                  {
+                    name: workflow?.workflow_name ?? "",
+                    dbId,
+                    selecting,
+                    route,
+                    canRename: !!dbId && mode !== "running" && (route === "queue" || route === "archive"),
+                    onFilter: filterByWorkflow,
+                    filterTitle: workflowFilterMode === "workflow_name" ? "Filter view by this exact workflow name" : "Filter view by the workflow",
+                    onRenamed: refreshQueueItems
+                  }
+                )
+              ] }),
+              route === "completed" && failed && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "execution-error", children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: "Failed" }),
+                /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+                  executionError?.exception_type ? `${executionError.exception_type}: ` : "",
+                  executionError?.exception_message || "The job failed without error details."
+                ] }),
+                executionError?.node_id != null && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+                  "Node ",
+                  executionError.node_id,
+                  executionError.node_type ? ` · ${executionError.node_type}` : ""
+                ] }),
+                executionError?.traceback?.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs("details", { children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("summary", { children: "Show traceback" }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("pre", { children: Array.isArray(executionError.traceback) ? executionError.traceback.join("") : executionError.traceback })
+                ] })
+              ] }),
+              route === "completed" && executionStatus?.status_str === "interrupted" && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "execution-interrupted", children: "Interrupted" })
+            ] }),
+            route === "completed" && /* @__PURE__ */ jsxRuntimeExports.jsx("td", { className: "meta-info", children: executionTimeLabel ? /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "execution-time", title: "Execution time", children: executionTimeLabel }) : null }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("td", { className: "px-3 py-1 text-right actions", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { justifyContent: "flex-end" }, className: "buttons", children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx(
+                "button",
+                {
+                  className: "delete red-button shiny-button",
+                  onClick: cancelQueueItem,
+                  title: "Delete workflow from queue",
+                  "data-selection-ignore": true,
+                  children: "Delete"
+                }
+              ),
+              /* @__PURE__ */ jsxRuntimeExports.jsx(
+                "button",
+                {
+                  className: "load green-button shiny-button",
+                  onClick: loadQueueItem,
+                  title: workflow.api_prompt ? "Load API prompt (automatic node layout)" : "Load workflow",
+                  "data-selection-ignore": true,
+                  children: "Load"
+                }
+              ),
+              route === "queue" && mode !== "running" ? /* @__PURE__ */ jsxRuntimeExports.jsx(
+                "button",
+                {
+                  className: "archive yellow-button shiny-button",
+                  onClick: archiveQueueItem,
+                  title: "Move to the archive (Shift: add at the start)",
+                  "data-selection-ignore": true,
+                  children: "Archive"
+                }
+              ) : null,
+              route === "archive" ? /* @__PURE__ */ jsxRuntimeExports.jsxs(
+                "button",
+                {
+                  className: "run blue-button shiny-button",
+                  onClick: playItem,
+                  title: "Move to queue",
+                  "data-selection-ignore": true,
+                  children: [
+                    /* @__PURE__ */ jsxRuntimeExports.jsx(PlayArrowOutlinedIcon, { fontSize: "small" }),
+                    "Run"
+                  ]
+                }
+              ) : null,
+              route === "completed" ? /* @__PURE__ */ jsxRuntimeExports.jsx(
+                "button",
+                {
+                  className: "view violet-button shiny-button",
+                  onClick: () => openOutput(0),
+                  title: "View outputs in gallery",
+                  "data-selection-ignore": true,
+                  children: "View"
+                }
+              ) : null,
+              selecting && /* @__PURE__ */ jsxRuntimeExports.jsx(
+                "input",
+                {
+                  type: "checkbox",
+                  className: "row-selection",
+                  "aria-label": `Select ${workflow?.workflow_name || "job"}`,
+                  title: selectable ? "Select job (Shift: range, Alt: deselect)" : "Running jobs cannot be selected",
+                  disabled: !selectable,
+                  checked: selected,
+                  onChange: () => {
+                  }
+                }
+              )
+            ] }) }),
+            canReorder && /* @__PURE__ */ jsxRuntimeExports.jsx("td", { className: "reorder-column", "data-selection-ignore": true, children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+              "button",
+              {
+                type: "button",
+                className: "reorder-handle",
+                "data-reorder-handle": selectable ? dbId : void 0,
+                disabled: !selectable || reorderBusy || renaming,
+                "aria-label": `Reorder ${workflow?.workflow_name || "job"}`,
+                title: !selectable ? "Running jobs cannot be reordered" : renaming ? "Finish renaming first" : selecting ? "Drag to move the selected group (or use Up/Down arrow keys)" : "Drag to reorder (or use Up/Down arrow keys)",
+                children: /* @__PURE__ */ jsxRuntimeExports.jsx(DragIndicatorIcon, { fontSize: "small" })
+              }
+            ) })
+          ]
+        }
+      ),
+      showGrid ? /* @__PURE__ */ jsxRuntimeExports.jsx(
+        "tr",
+        {
+          className: "dark:odd:bg-neutral-900 odd:bg-neutral-100 gallery" + (selected ? " selected" : ""),
+          "data-selection-id": selectable ? dbId : void 0,
+          children: /* @__PURE__ */ jsxRuntimeExports.jsx("td", { colSpan: 4, className: "px-3 py-1", children: /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex flex-wrap gap-2 items", children: mediaOutputs?.files?.length ? mediaOutputs.files.map((file, fileIndex) => /* @__PURE__ */ jsxRuntimeExports.jsx(
+            MediaItem,
+            {
+              file,
+              autoplay: false,
+              onClick: () => openOutput(fileIndex),
+              title: "Open gallery"
+            },
+            `${file.filename}-${file.subfolder}`
+          )) : null }) })
+        }
+      ) : null
     ] });
   },
   (prev2, next2) => {
     const prevId = prev2.item?.[3]?.db_id;
     const nextId = next2.item?.[3]?.db_id;
     if (prevId !== nextId) return false;
-    return prev2.loader === next2.loader && prev2.index === next2.index && prev2.mode === next2.mode && prev2.route === next2.route && prev2.thumbMode === next2.thumbMode && prev2.galleryOptions === next2.galleryOptions && prev2.filters === next2.filters && prev2.info?.page === next2.info?.page && prev2.info?.page_size === next2.info?.page_size;
+    return prev2.loader === next2.loader && prev2.index === next2.index && prev2.mode === next2.mode && prev2.route === next2.route && prev2.thumbMode === next2.thumbMode && prev2.galleryOptions === next2.galleryOptions && prev2.filters === next2.filters && prev2.workflowFilterMode === next2.workflowFilterMode && prev2.selecting === next2.selecting && prev2.selected === next2.selected && prev2.reorderBusy === next2.reorderBusy && prev2.dragging === next2.dragging && prev2.reorderAnchor === next2.reorderAnchor && prev2.info?.page === next2.info?.page && prev2.info?.page_size === next2.info?.page_size && prev2.item?.[0] === next2.item?.[0] && queueWorkflow(prev2.item).workflow_name === queueWorkflow(next2.item).workflow_name && queueWorkflow(prev2.item).id === queueWorkflow(next2.item).id;
   }
 );
-const QueueItems = reactExports.memo(function QueueItems2({ running, pending, info }) {
+function bindQueueSelectionDrag(container, store, setRectangle, suppressClick) {
+  const view = container.ownerDocument.defaultView;
+  let drag = null;
+  let frame;
+  let clickTimer;
+  const point = (event) => {
+    const bounds = container.getBoundingClientRect();
+    return {
+      x: event.clientX - bounds.left + container.scrollLeft,
+      y: event.clientY - bounds.top + container.scrollTop
+    };
+  };
+  const update = () => {
+    if (!drag?.moved) return;
+    const end2 = point(drag.pointer);
+    const box = {
+      left: Math.min(drag.start.x, end2.x),
+      right: Math.max(drag.start.x, end2.x),
+      top: Math.min(drag.start.y, end2.y),
+      bottom: Math.max(drag.start.y, end2.y)
+    };
+    const bounds = container.getBoundingClientRect();
+    const rows = [...container.querySelectorAll("[data-selection-id]")].map((row) => {
+      const rect = row.getBoundingClientRect();
+      return {
+        id: Number(row.dataset.selectionId),
+        left: rect.left - bounds.left + container.scrollLeft,
+        right: rect.right - bounds.left + container.scrollLeft,
+        top: rect.top - bounds.top + container.scrollTop,
+        bottom: rect.bottom - bounds.top + container.scrollTop
+      };
+    });
+    setRectangle(box);
+    store.getState().setSelected(selectRectangle(drag.initial, rows, box, drag.pointer.altKey));
+  };
+  const autoScroll = () => {
+    if (!drag?.moved) return;
+    const bounds = container.getBoundingClientRect();
+    const y = drag.pointer.clientY;
+    const previousScrollTop = container.scrollTop;
+    if (y < bounds.top + 32) container.scrollTop -= 12;
+    else if (y > bounds.bottom - 32) container.scrollTop += 12;
+    if (previousScrollTop !== container.scrollTop) update();
+    frame = view.requestAnimationFrame(autoScroll);
+  };
+  const stop = () => {
+    const previous = drag;
+    drag = null;
+    view.cancelAnimationFrame(frame);
+    if (previous && container.hasPointerCapture(previous.pointer.pointerId)) {
+      container.releasePointerCapture(previous.pointer.pointerId);
+    }
+    container.classList.remove("drag-selecting");
+    setRectangle(null);
+    return previous;
+  };
+  const down = (event) => {
+    if (event.button !== 0 || event.isPrimary === false) return;
+    view.clearTimeout(clickTimer);
+    suppressClick(false);
+    if (store.getState().rename) return;
+    if (event.target.closest(
+      '[data-selection-ignore], thead, input, textarea, select, [contenteditable="true"], button:not(.workflow-name-label), video[controls]'
+    )) return;
+    if (event.pointerType === "touch" && !store.getState().active) return;
+    if (!container.querySelector("[data-selection-id]")) return;
+    drag = { start: point(event), pointer: event, initial: store.getState().selected, moved: false };
+  };
+  const move = (event) => {
+    if (!drag || event.pointerId !== drag.pointer.pointerId) return;
+    drag.pointer = event;
+    if (!drag.moved && Math.hypot(point(event).x - drag.start.x, point(event).y - drag.start.y) >= 4) {
+      drag.moved = true;
+      container.setPointerCapture(event.pointerId);
+      container.classList.add("drag-selecting");
+      const selection = view.getSelection();
+      if (selection?.anchorNode && container.contains(selection.anchorNode)) selection.removeAllRanges();
+      store.getState().enable();
+      frame = view.requestAnimationFrame(autoScroll);
+    }
+    if (drag.moved) {
+      event.preventDefault();
+      update();
+    }
+  };
+  const end = (event) => {
+    if (!drag || event.pointerId !== drag.pointer.pointerId) return;
+    if (drag.moved && event.type === "pointerup") {
+      drag.pointer = event;
+      update();
+    }
+    if (event.type === "pointercancel" && store.getState().active) store.getState().setSelected(drag.initial);
+    suppressClick(drag.moved);
+    stop();
+    clickTimer = view.setTimeout(() => suppressClick(false), 0);
+  };
+  const preventNativeDrag = (event) => {
+    if (drag) event.preventDefault();
+  };
+  const unsubscribe = store.subscribe((state, previous) => {
+    if (previous.active && !state.active && drag) {
+      suppressClick(drag.moved);
+      stop();
+    }
+  });
+  container.addEventListener("pointerdown", down);
+  container.addEventListener("dragstart", preventNativeDrag);
+  view.addEventListener("pointermove", move);
+  view.addEventListener("pointerup", end);
+  view.addEventListener("pointercancel", end);
+  return () => {
+    unsubscribe();
+    stop();
+    view.clearTimeout(clickTimer);
+    suppressClick(false);
+    container.removeEventListener("pointerdown", down);
+    container.removeEventListener("dragstart", preventNativeDrag);
+    view.removeEventListener("pointermove", move);
+    view.removeEventListener("pointerup", end);
+    view.removeEventListener("pointercancel", end);
+  };
+}
+function useQueueSelection(containerRef, enabled, ids) {
+  const [rectangle, setRectangle] = reactExports.useState(null);
+  const suppressClick = reactExports.useRef(false);
+  reactExports.useEffect(() => {
+    const container = containerRef.current;
+    if (!enabled || !container) {
+      setRectangle(null);
+      return;
+    }
+    return bindQueueSelectionDrag(
+      container,
+      useSelectionStore,
+      setRectangle,
+      (value) => {
+        suppressClick.current = value;
+      }
+    );
+  }, [enabled, containerRef]);
+  const onClickCapture = (event) => {
+    if (!enabled) return;
+    if (suppressClick.current) {
+      event.stopPropagation();
+      event.preventDefault();
+      return;
+    }
+    if (!useSelectionStore.getState().active || event.target.closest("[data-selection-ignore]")) return;
+    const row = event.target.closest("tbody tr");
+    if (!row) return;
+    event.stopPropagation();
+    const id = Number(row.dataset.selectionId);
+    if (ids.includes(id)) useSelectionStore.getState().click(ids, id, event);
+  };
+  return { rectangle, onClickCapture };
+}
+function reorderGroup(ids, sourceId, selection) {
+  if (!ids.includes(sourceId)) return [];
+  return ids.filter((id) => id === sourceId || selection.active && selection.selected.has(id));
+}
+function reorderTarget(rows, moving, y, direction = "down") {
+  const remaining = rows.filter((row) => !moving.includes(row.id));
+  if (!remaining.length) return null;
+  const nextIndex = remaining.findIndex((row) => y < (row.top + row.bottom) / 2);
+  if (nextIndex === -1 || direction === "up" && nextIndex > 0) {
+    const previous = nextIndex === -1 ? remaining.at(-1) : remaining[nextIndex - 1];
+    return { target_id: previous.id, position: "after", line: previous.bottom, anchorSide: "top" };
+  }
+  const next2 = remaining[nextIndex];
+  return { target_id: next2.id, position: "before", line: next2.top, anchorSide: "bottom" };
+}
+function keyboardReorder(ids, moving, direction) {
+  const index = direction === "up" ? ids.indexOf(moving[0]) - 1 : ids.indexOf(moving.at(-1)) + 1;
+  return ids[index] == null ? null : { ids: moving, target_id: ids[index], position: direction === "up" ? "before" : "after" };
+}
+function reorderChangesOrder(ids, moving, target) {
+  if (!target) return false;
+  const remaining = ids.filter((id) => !moving.includes(id));
+  const index = remaining.indexOf(target.target_id);
+  if (index < 0) return false;
+  remaining.splice(index + (target.position === "after" ? 1 : 0), 0, ...moving);
+  return remaining.some((id, i) => id !== ids[i]);
+}
+function moveSelectionTo(ids, selected, destination) {
+  const moving = ids.filter((id) => selected.has(id));
+  if (!moving.length) return null;
+  if (destination === "start" || destination === "end") return { ids: moving, destination };
+  if (destination !== "page_top" && destination !== "page_bottom") return null;
+  const remaining = ids.filter((id) => !selected.has(id));
+  if (!remaining.length) return null;
+  const target = destination === "page_top" ? { target_id: remaining[0], position: "before" } : { target_id: remaining.at(-1), position: "after" };
+  return reorderChangesOrder(ids, moving, target) ? { ids: moving, ...target } : null;
+}
+function bindQueueReorder(container, store, onPreview, onDrop) {
+  const view = container.ownerDocument.defaultView;
+  let drag = null, frame, clickTimer;
+  const rows = () => [...container.querySelectorAll("[data-reorder-id]")].map((row) => {
+    const { top, bottom } = row.getBoundingClientRect();
+    return { id: Number(row.dataset.reorderId), top, bottom };
+  });
+  const stop = () => {
+    const previous = drag;
+    if (previous?.moved) suppressRelease();
+    drag = null;
+    view.cancelAnimationFrame(frame);
+    if (previous && container.hasPointerCapture(previous.pointerId)) container.releasePointerCapture(previous.pointerId);
+    container.classList.remove("reordering");
+    onPreview(null);
+    return previous;
+  };
+  const blockClick = (event) => {
+    event.preventDefault();
+    event.stopImmediatePropagation();
+  };
+  const clearClickGuard = () => {
+    view.clearTimeout(clickTimer);
+    view.removeEventListener("click", blockClick, { capture: true });
+    view.removeEventListener("pointerup", releaseClickGuard);
+    view.removeEventListener("pointercancel", releaseClickGuard);
+    view.removeEventListener("pointerdown", clearClickGuard, { capture: true });
+  };
+  const releaseClickGuard = () => {
+    clickTimer = view.setTimeout(clearClickGuard, 0);
+  };
+  const suppressRelease = () => {
+    view.addEventListener("click", blockClick, { capture: true });
+    view.addEventListener("pointerup", releaseClickGuard);
+    view.addEventListener("pointercancel", releaseClickGuard);
+    view.addEventListener("pointerdown", clearClickGuard, { capture: true });
+  };
+  const update = () => {
+    if (!drag?.moved) return;
+    const bounds = container.getBoundingClientRect();
+    const inside = drag.pointer.clientX >= bounds.left && drag.pointer.clientX <= bounds.right && drag.pointer.clientY >= bounds.top && drag.pointer.clientY <= bounds.bottom;
+    const target = inside ? reorderTarget(rows(), drag.ids, drag.pointer.clientY, drag.direction) : null;
+    drag.target = reorderChangesOrder(drag.order, drag.ids, target) ? target : null;
+    onPreview({
+      ids: drag.ids,
+      anchorId: drag.target?.target_id,
+      anchorSide: drag.target?.anchorSide,
+      position: drag.target?.position,
+      line: drag.target ? target.line - bounds.top + container.scrollTop : null,
+      top: Math.max(0, Math.min(bounds.height - 28, drag.pointer.clientY - bounds.top)) + container.scrollTop
+    });
+  };
+  const scroll = () => {
+    if (!drag?.moved) return;
+    const bounds = container.getBoundingClientRect();
+    if (drag.pointer.clientX >= bounds.left && drag.pointer.clientX <= bounds.right) {
+      if (drag.pointer.clientY < bounds.top + 40) container.scrollTop -= 12;
+      else if (drag.pointer.clientY > bounds.bottom - 32) container.scrollTop += 12;
+    }
+    update();
+    frame = view.requestAnimationFrame(scroll);
+  };
+  const down = (event) => {
+    const handle = event.target.closest("[data-reorder-handle]");
+    if (!handle || handle.disabled || event.button !== 0 || event.isPrimary === false || store.getState().rename) return;
+    event.preventDefault();
+    const order = rows().map((row) => row.id);
+    const ids = reorderGroup(order, Number(handle.dataset.reorderHandle), store.getState());
+    if (!ids.length) return;
+    handle.focus({ preventScroll: true });
+    drag = { ids, order, pointerId: event.pointerId, pointer: event, direction: "down", startY: event.clientY, startX: event.clientX, moved: false };
+    container.setPointerCapture(event.pointerId);
+  };
+  const trackPointer = (event) => {
+    if (event.clientY < drag.pointer.clientY) drag.direction = "up";
+    else if (event.clientY > drag.pointer.clientY) drag.direction = "down";
+    drag.pointer = event;
+  };
+  const move = (event) => {
+    if (!drag || event.pointerId !== drag.pointerId) return;
+    trackPointer(event);
+    if (!drag.moved && Math.hypot(event.clientY - drag.startY, event.clientX - drag.startX) >= 4) {
+      if (store.getState().active) store.getState().setSelected(new Set(drag.ids));
+      drag.moved = true;
+      container.classList.add("reordering");
+      frame = view.requestAnimationFrame(scroll);
+    }
+    if (drag.moved) {
+      event.preventDefault();
+      update();
+    }
+  };
+  const end = (event) => {
+    if (!drag || event.pointerId !== drag.pointerId) return;
+    trackPointer(event);
+    if (drag.moved) update();
+    const previous = stop();
+    if (event.type === "pointerup" || event.type === "pointercancel") releaseClickGuard();
+    if (event.type === "pointerup" && previous.moved && previous.target) {
+      onDrop({ ids: previous.ids, target_id: previous.target.target_id, position: previous.target.position });
+    }
+  };
+  const key = (event) => {
+    if (drag && event.key === "Escape") {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      suppressRelease();
+      stop();
+      return;
+    }
+    if (drag) return;
+    const handle = event.target.closest?.("[data-reorder-handle]");
+    if (!handle || handle.disabled || store.getState().rename || !["ArrowUp", "ArrowDown"].includes(event.key)) return;
+    event.preventDefault();
+    const order = rows().map((row) => row.id);
+    const ids = reorderGroup(order, Number(handle.dataset.reorderHandle), store.getState());
+    const target = keyboardReorder(order, ids, event.key === "ArrowUp" ? "up" : "down");
+    if (!target) return;
+    if (store.getState().active) store.getState().setSelected(new Set(ids));
+    onDrop(target);
+  };
+  const nativeDrag = (event) => {
+    if (drag) event.preventDefault();
+  };
+  const unsubscribe = store.subscribe((state, previous) => {
+    if (drag && (state.active !== previous.active || state.rename)) stop();
+  });
+  container.addEventListener("pointerdown", down);
+  container.addEventListener("dragstart", nativeDrag);
+  container.addEventListener("lostpointercapture", end);
+  view.addEventListener("pointermove", move);
+  view.addEventListener("pointerup", end);
+  view.addEventListener("pointercancel", end);
+  view.addEventListener("keydown", key, { capture: true });
+  return () => {
+    unsubscribe();
+    stop();
+    container.removeEventListener("pointerdown", down);
+    container.removeEventListener("dragstart", nativeDrag);
+    container.removeEventListener("lostpointercapture", end);
+    view.removeEventListener("pointermove", move);
+    view.removeEventListener("pointerup", end);
+    view.removeEventListener("pointercancel", end);
+    view.removeEventListener("keydown", key, { capture: true });
+  };
+}
+function useQueueReorder(containerRef, enabled, data, route) {
+  const { refreshQueueItems } = reactExports.useContext(AppContext);
+  const [preview, setPreview] = reactExports.useState(null);
+  const [busy, setBusy] = reactExports.useState(false);
+  const [error, setError] = reactExports.useState("");
+  const busyRef = reactExports.useRef(false);
+  const refreshRef = reactExports.useRef(refreshQueueItems);
+  const routeRef = reactExports.useRef(route);
+  refreshRef.current = refreshQueueItems;
+  routeRef.current = route;
+  reactExports.useEffect(() => {
+    setError("");
+  }, [route]);
+  const move = reactExports.useCallback(async (request) => {
+    if (!enabled || !request || busyRef.current || useSelectionStore.getState().rename) return;
+    busyRef.current = true;
+    setBusy(true);
+    setError("");
+    try {
+      await apiCall("queue_manager/reorder", { ...request, route });
+    } catch (error2) {
+      if (routeRef.current === route) setError(error2.message === "Request failed (404)" ? "Restart ComfyUI to enable queue reordering." : error2.message || "Could not reorder. Try again.");
+    } finally {
+      try {
+        await refreshRef.current();
+      } finally {
+        busyRef.current = false;
+        setBusy(false);
+      }
+    }
+  }, [enabled, route]);
+  reactExports.useEffect(() => {
+    if (!enabled || busy || !containerRef.current) return;
+    return bindQueueReorder(containerRef.current, useSelectionStore, setPreview, move);
+  }, [enabled, busy, data, route, containerRef, move]);
+  return { preview, busy, error, move };
+}
+const VerticalAlignTopIcon = createSvgIcon(/* @__PURE__ */ jsxRuntimeExports.jsx("path", {
+  d: "M8 11h3v10h2V11h3l-4-4zM4 3v2h16V3z"
+}));
+const KeyboardArrowUpIcon = createSvgIcon(/* @__PURE__ */ jsxRuntimeExports.jsx("path", {
+  d: "M7.41 15.41 12 10.83l4.59 4.58L18 14l-6-6-6 6z"
+}));
+const KeyboardArrowDownIcon = createSvgIcon(/* @__PURE__ */ jsxRuntimeExports.jsx("path", {
+  d: "M7.41 8.59 12 13.17l4.59-4.58L18 10l-6 6-6-6z"
+}));
+const VerticalAlignBottomIcon = createSvgIcon(/* @__PURE__ */ jsxRuntimeExports.jsx("path", {
+  d: "M16 13h-3V3h-2v10H8l4 4zM4 19v2h16v-2z"
+}));
+function QueueMoveButtons({ ids, selected, route, disabled, onMove }) {
+  const list = route === "archive" ? "archive" : "queue";
+  const actions = [
+    {
+      destination: "start",
+      label: `Start of ${list}`,
+      Icon: VerticalAlignTopIcon,
+      title: `Move selected jobs to the start of the ${list}.`
+    },
+    {
+      destination: "page_top",
+      label: "Top of page",
+      Icon: KeyboardArrowUpIcon,
+      title: "Move selected jobs to top of this page"
+    },
+    {
+      destination: "page_bottom",
+      label: "Bottom of page",
+      Icon: KeyboardArrowDownIcon,
+      title: "Move selected jobs to bottom of this page"
+    },
+    {
+      destination: "end",
+      label: `End of ${list}`,
+      Icon: VerticalAlignBottomIcon,
+      title: `Move selected jobs to the end of the queue ${list}.`
+    }
+  ];
+  const renderAction = ({ destination, label, Icon: Icon2, title }) => {
+    const request = moveSelectionTo(ids, selected, destination);
+    return /* @__PURE__ */ jsxRuntimeExports.jsxs(
+      "button",
+      {
+        type: "button",
+        className: "shiny-button",
+        title,
+        disabled: disabled || !request,
+        onClick: () => onMove(request),
+        children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx(Icon2, { fontSize: "small" }),
+          label
+        ]
+      },
+      destination
+    );
+  };
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "selection-move-toolbar", role: "group", "aria-label": "Move selected jobs", "data-selection-ignore": true, children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "selection-move-start", children: actions.slice(0, 2).map(renderAction) }),
+    /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "selection-move-label", children: "- Move selection to -" }),
+    /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "selection-move-end", children: actions.slice(2).map(renderAction) })
+  ] });
+}
+const QueueItems = reactExports.memo(function QueueItems2({ running, pending, info, reorderPreview, reorderBusy }) {
   const route = useAppStore((state) => state.route);
   const filters = useAppStore((state) => state.filters);
+  const workflowFilterMode = useAppStore((state) => state.workflowFilterMode);
+  const selecting = useSelectionStore((state) => state.active);
+  const selected = useSelectionStore((state) => state.selected);
   const thumbMode = useOptionsStore((state) => state.thumb_mode);
   const galleryOptions = useOptionsStore((state) => state.Gallery);
   const stableGalleryOptions = reactExports.useMemo(() => galleryOptions, [galleryOptions]);
@@ -19803,12 +20660,16 @@ const QueueItems = reactExports.memo(function QueueItems2({ running, pending, in
         item,
         className: "running",
         loader: true,
-        mode: item?.[3]?.extra_pnginfo ? "running" : "external",
+        mode: "running",
         info,
         route,
         thumbMode,
         galleryOptions: stableGalleryOptions,
-        filters
+        filters,
+        workflowFilterMode,
+        selecting,
+        selected: false,
+        reorderBusy
       },
       item?.[3]?.db_id ?? item?.[1]
     )),
@@ -19822,7 +20683,13 @@ const QueueItems = reactExports.memo(function QueueItems2({ running, pending, in
         route,
         thumbMode,
         galleryOptions: stableGalleryOptions,
-        filters
+        filters,
+        workflowFilterMode,
+        selecting,
+        selected: selected.has(item?.[3]?.db_id),
+        reorderBusy,
+        dragging: reorderPreview?.ids.includes(item?.[3]?.db_id) ?? false,
+        reorderAnchor: reorderPreview?.anchorId === item?.[3]?.db_id ? reorderPreview.anchorSide : void 0
       },
       item?.[3]?.db_id ?? `${item?.[1]}-${index}`
     ))
@@ -19833,36 +20700,93 @@ const Queue = reactExports.memo(function Queue2({ data, isLoading, error, progre
   const thumbMode = useOptionsStore((state) => state.thumb_mode);
   const options = useOptionsStore((state) => state.Completed);
   const galleryOptions = useOptionsStore((state) => state.Gallery);
+  const selecting = useSelectionStore((state) => state.active);
+  const selected = useSelectionStore((state) => state.selected);
+  const renaming = useSelectionStore((state) => !!state.rename);
+  const containerRef = reactExports.useRef(null);
+  const ids = reactExports.useMemo(() => (data?.pending ?? []).map((item) => item?.[3]?.db_id).filter(Number.isInteger), [data]);
+  const canReorder = route === "queue" || route === "archive";
+  const reorder = useQueueReorder(containerRef, canReorder && !isLoading, data, route);
+  const { rectangle, onClickCapture } = useQueueSelection(containerRef, !isLoading && !reorder.busy, ids);
+  const allSelected = ids.length > 0 && ids.every((id) => selected.has(id));
   const coverMode = String(options.CoverThumbMode ?? "Cropped").toLowerCase().replace(/\s+/g, "_");
   const gridMode = String(options.GridThumbMode ?? "Square Fit").toLowerCase().replace(/\s+/g, "_");
   const running = data?.running ?? [];
   const pending = data?.pending ?? [];
-  return /* @__PURE__ */ jsxRuntimeExports.jsx(
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs(
     "div",
     {
-      className: "overflow-x-auto table-wrapper" + (isLoading ? " loading" : "") + " cover-" + coverMode + " grid-" + gridMode + " mode-",
+      className: "overflow-x-auto table-wrapper" + (selecting ? " selecting" : "") + (isLoading || reorder.busy ? " loading" : "") + " cover-" + coverMode + " grid-" + gridMode + " mode-",
       style: { "--job-progress": progress + "%" },
-      children: /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "table-container", children: /* @__PURE__ */ jsxRuntimeExports.jsx(jsxRuntimeExports.Fragment, { children: /* @__PURE__ */ jsxRuntimeExports.jsxs("table", { className: "min-w-full border border-0", children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsx("thead", { className: "dark:bg-neutral-800 bg-neutral-200 text-xs uppercase", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("tr", { children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsx("th", { className: "px-3 py-2 text-left", children: "#" }),
-          route === "completed" && thumbMode === "cover" && (galleryOptions.ShowImages || galleryOptions.ShowVideos) && /* @__PURE__ */ jsxRuntimeExports.jsx("th", { className: "px-3 py-2 cover", children: "Thumbnail" }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx("th", { className: "px-3 py-2 text-left workflow-column", children: "Workflow" }),
-          route === "completed" && /* @__PURE__ */ jsxRuntimeExports.jsx("th", {}),
-          /* @__PURE__ */ jsxRuntimeExports.jsx("th", { className: "px-3 py-2", align: "right", children: "Actions" })
-        ] }) }),
-        /* @__PURE__ */ jsxRuntimeExports.jsxs("tbody", { children: [
-          error && /* @__PURE__ */ jsxRuntimeExports.jsx("tr", { children: /* @__PURE__ */ jsxRuntimeExports.jsxs("td", { colSpan: 100, className: "text-red-500 text-center info-cell", children: [
-            "Loading failed: ",
-            error
-          ] }) }),
-          !isLoading && (!data || !running.length && !pending.length) && /* @__PURE__ */ jsxRuntimeExports.jsx("tr", { children: /* @__PURE__ */ jsxRuntimeExports.jsx("td", { colSpan: 100, className: "italic text-center info-cell", children: "No items." }) }),
-          isLoading && !data && /* @__PURE__ */ jsxRuntimeExports.jsxs("tr", { children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsx("td", { className: "px-3 py-1 serial", children: /* @__PURE__ */ jsxRuntimeExports.jsx(LoaderSpinner, {}) }),
-            /* @__PURE__ */ jsxRuntimeExports.jsx("td", { colSpan: 100, className: "italic text-center info-cell", children: "Loading..." })
+      children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "table-container", ref: containerRef, onClickCapture, children: /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("table", { className: "min-w-full border border-0", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("thead", { className: "dark:bg-neutral-800 bg-neutral-200 text-xs uppercase", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("tr", { children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx("th", { className: "px-3 py-2 text-left", children: "#" }),
+              route === "completed" && thumbMode === "cover" && (galleryOptions.ShowImages || galleryOptions.ShowVideos) && /* @__PURE__ */ jsxRuntimeExports.jsx("th", { className: "px-3 py-2 cover", children: "Thumbnail" }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("th", { className: "px-3 py-2 text-left workflow-column", children: "Workflow" }),
+              route === "completed" && /* @__PURE__ */ jsxRuntimeExports.jsx("th", {}),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("th", { className: "px-3 py-2 text-left", children: selecting ? /* @__PURE__ */ jsxRuntimeExports.jsxs("label", { className: "selection-heading", "data-selection-ignore": true, children: [
+                "Actions",
+                /* @__PURE__ */ jsxRuntimeExports.jsx(
+                  "input",
+                  {
+                    type: "checkbox",
+                    className: "row-selection",
+                    "aria-label": "Select all visible jobs",
+                    checked: allSelected,
+                    disabled: !ids.length || isLoading || reorder.busy,
+                    ref: (input) => {
+                      if (input) input.indeterminate = selected.size > 0 && !allSelected;
+                    },
+                    onChange: () => useSelectionStore.getState().selectAll(ids)
+                  }
+                )
+              ] }) : "Actions" }),
+              canReorder && /* @__PURE__ */ jsxRuntimeExports.jsx("th", { className: "reorder-column", "aria-label": "Reorder jobs", title: "Drag handles to reorder jobs in this tab" })
+            ] }) }),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("tbody", { children: [
+              canReorder && reorder.error && /* @__PURE__ */ jsxRuntimeExports.jsx("tr", { children: /* @__PURE__ */ jsxRuntimeExports.jsx("td", { colSpan: 100, className: "selection-error", role: "alert", children: reorder.error }) }),
+              error && /* @__PURE__ */ jsxRuntimeExports.jsx("tr", { children: /* @__PURE__ */ jsxRuntimeExports.jsxs("td", { colSpan: 100, className: "text-red-500 text-center info-cell", children: [
+                "Loading failed: ",
+                error
+              ] }) }),
+              !isLoading && (!data || !running.length && !pending.length) && /* @__PURE__ */ jsxRuntimeExports.jsx("tr", { children: /* @__PURE__ */ jsxRuntimeExports.jsx("td", { colSpan: 100, className: "italic text-center info-cell", children: "No items." }) }),
+              isLoading && !data && /* @__PURE__ */ jsxRuntimeExports.jsxs("tr", { children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx("td", { className: "px-3 py-1 serial", children: /* @__PURE__ */ jsxRuntimeExports.jsx(LoaderSpinner, {}) }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("td", { colSpan: 100, className: "italic text-center info-cell", children: "Loading..." })
+              ] }),
+              data && /* @__PURE__ */ jsxRuntimeExports.jsx(QueueItems, { running, pending, info: data.info, reorderPreview: reorder.preview, reorderBusy: reorder.busy || isLoading })
+            ] })
           ] }),
-          data && /* @__PURE__ */ jsxRuntimeExports.jsx(QueueItems, { running, pending, info: data.info })
-        ] })
-      ] }) }) })
+          reorder.preview && /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
+            reorder.preview.line != null && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "reorder-line", style: { top: reorder.preview.line } }),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "reorder-label", role: "status", style: { top: reorder.preview.top }, children: [
+              "Move ",
+              reorder.preview.ids.length,
+              " ",
+              reorder.preview.ids.length === 1 ? "job" : "jobs",
+              reorder.preview.position && ` ${reorder.preview.position} highlighted row`
+            ] })
+          ] }),
+          selecting && rectangle && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "selection-rectangle", style: {
+            left: rectangle.left,
+            top: rectangle.top,
+            width: rectangle.right - rectangle.left,
+            height: rectangle.bottom - rectangle.top
+          } })
+        ] }) }),
+        canReorder && selecting && selected.size > 0 && /* @__PURE__ */ jsxRuntimeExports.jsx(
+          QueueMoveButtons,
+          {
+            ids,
+            selected,
+            route,
+            disabled: isLoading || reorder.busy || renaming,
+            onMove: reorder.move
+          }
+        )
+      ]
     }
   );
 });
@@ -29369,7 +30293,7 @@ function Gallery({ items, activeItem }) {
     ] }),
     galleryItems && mediaItem && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "image-box", children: [
       /* @__PURE__ */ jsxRuntimeExports.jsxs("header", { children: [
-        workflowLabel(mediaItem.queueItem.workflow),
+        mediaItem.queueItem.workflow.workflow_name,
         " ",
         /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { children: [
           "(",
@@ -29492,35 +30416,18 @@ function SplashScreen({ onClick }) {
     /* @__PURE__ */ jsxRuntimeExports.jsx(Button, { className: "close", onClick, children: /* @__PURE__ */ jsxRuntimeExports.jsx(CloseSharpIcon, {}) }),
     /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "splash-content", children: [
       /* @__PURE__ */ jsxRuntimeExports.jsx("h1", { children: "ComfyUI Queue Manager" }),
-      /* @__PURE__ */ jsxRuntimeExports.jsx("h4", { className: "sub", children: "Version: v0.1.0" }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("h4", { className: "sub", children: "Version: v0.2.1" }),
       /* @__PURE__ */ jsxRuntimeExports.jsxs("h4", { className: "sub", children: [
-        "Released: 25",
+        "Released: 18",
         /* @__PURE__ */ jsxRuntimeExports.jsx("sup", { children: "th" }),
-        " January 2026"
+        " October 2026"
       ] }),
       /* @__PURE__ */ jsxRuntimeExports.jsx("h2", { children: "What's new?" }),
-      /* @__PURE__ */ jsxRuntimeExports.jsx("h3", { children: "Previews and gallery" }),
-      /* @__PURE__ */ jsxRuntimeExports.jsx("p", { children: "Release v0.1.0 introduces a big new feature: outputs previews and gallery." }),
-      /* @__PURE__ */ jsxRuntimeExports.jsxs("p", { children: [
-        "Head over to the ",
-        /* @__PURE__ */ jsxRuntimeExports.jsx("b", { children: "Completed" }),
-        " tab to see previews from generated outputs (only new jobs completed after this release was introduced). Click on media item to see it in ",
-        /* @__PURE__ */ jsxRuntimeExports.jsx("b", { children: "Gallery" }),
-        " mode. Keyboard shortcuts available. "
-      ] }),
-      /* @__PURE__ */ jsxRuntimeExports.jsx("h3", { children: "Settings" }),
-      /* @__PURE__ */ jsxRuntimeExports.jsxs("p", { children: [
-        "A new settings panel is available in ",
-        /* @__PURE__ */ jsxRuntimeExports.jsx("b", { children: "ComfyUI Menu -> Settings -> Queue Manager" }),
-        " where you can influence certain features of the extension."
-      ] }),
-      /* @__PURE__ */ jsxRuntimeExports.jsx("h3", { children: "New style and UI improvements" }),
-      /* @__PURE__ */ jsxRuntimeExports.jsx("p", { children: "An attempt to make the UI look less motley. " }),
-      /* @__PURE__ */ jsxRuntimeExports.jsx("p", { children: "More functional pagination experience, especially if you hoard tens of pages." }),
-      /* @__PURE__ */ jsxRuntimeExports.jsx("h3", { children: "Completion Time" }),
-      /* @__PURE__ */ jsxRuntimeExports.jsx("p", { children: "From now on completed jobs will show total execution time." }),
       /* @__PURE__ */ jsxRuntimeExports.jsx("h3", { children: "Bugfixes" }),
-      /* @__PURE__ */ jsxRuntimeExports.jsx("p", { children: "A couple of minor unreported issues discovered throughout. Check Release Notes for more details." }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("ul", { className: "list-disc pl-5 space-y-1", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("li", { children: "Fixed empty image or GIF output lists crashing job completion and stopping further prompt execution." }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("li", { children: "Restored Pause/Resume and Clear pending buttons on ComfyUI 0.41 after the toolbar refactor." })
+      ] }),
       /* @__PURE__ */ jsxRuntimeExports.jsxs("p", { children: [
         /* @__PURE__ */ jsxRuntimeExports.jsx("br", {}),
         /* @__PURE__ */ jsxRuntimeExports.jsxs("i", { children: [
@@ -29570,6 +30477,12 @@ function FooterToggle({ pressed, label, onClick, children }) {
   );
 }
 function Home() {
+  const selecting = useSelectionStore((state) => state.active);
+  const selected = useSelectionStore((state) => state.selected);
+  const groupRename = useSelectionStore((state) => state.rename);
+  const [selectionBusy, setSelectionBusy] = reactExports.useState(false);
+  const [selectionError, setSelectionError] = reactExports.useState("");
+  const selectionBusyRef = reactExports.useRef(false);
   const [appStatus, setAppStatus] = reactExports.useState({
     loading: true,
     reloading: false,
@@ -29577,6 +30490,7 @@ function Home() {
     queue: null
   });
   const options = useOptionsStore((state) => state);
+  const showSelectionHints = useOptionsStore((state) => state.Basic.ShowSelectionHints !== false);
   const pageSize = useOptionsStore((state) => state.Basic.PageSize);
   const previousPageSizeRef = reactExports.useRef(pageSize);
   const completedListOrder = useOptionsStore((state) => state.Completed.ListOrder);
@@ -29585,6 +30499,7 @@ function Home() {
   const setOption = useOptionsStore((state) => state.setOption);
   const setDirectOption = useOptionsStore((state) => state.setDirectOption);
   const filters = useAppStore((state) => state.filters);
+  const workflowFilter = getWorkflowFilter(filters);
   const route = useAppStore((state) => state.route);
   const mode = useAppStore((state) => state.mode);
   const shiftDown = useAppStore((state) => state.shiftDown);
@@ -29606,6 +30521,7 @@ function Home() {
   const [showFooterActions, setShowFooterActions] = reactExports.useState(false);
   const latestThumbSizePxRef = reactExports.useRef(150);
   const fetchIdRef = reactExports.useRef(0);
+  const latestViewRef = reactExports.useRef({ route: "queue", page: 0 });
   reactExports.useMemo(() => {
     const f = filters ? JSON.stringify(filters) : "";
     const order = route === "completed" ? String(completedListOrder ?? "") : "";
@@ -29672,8 +30588,10 @@ function Home() {
       console.error("Failed to fetch options");
     }
   }, [setAllOptions, updateCoverSize, updateThumbnailSize]);
-  const fetchQueueItems = reactExports.useCallback(async ({ page, route: requestedRoute, filters: filters2, reload = false } = {}) => {
+  const fetchQueueItems = reactExports.useCallback(async ({ page, route: requestedRoute, filters: filters2, reload = false, preserveSelection = false } = {}) => {
+    if (!preserveSelection) useSelectionStore.getState().clear();
     const fetchId = ++fetchIdRef.current;
+    latestViewRef.current = { route: requestedRoute || route, page: page ?? 0 };
     let queryArgs = "";
     if (page !== void 0 && page !== null) queryArgs = `?page=${page}`;
     queryArgs = appendFilters(queryArgs, filters2);
@@ -29691,6 +30609,11 @@ function Home() {
       if (!response.ok) throw new Error("Network response was not ok");
       const queue = await response.json();
       if (fetchId !== fetchIdRef.current) return;
+      latestViewRef.current.page = queue.info?.page ?? 0;
+      if (preserveSelection) {
+        if (page != null && queue.info?.page !== page) useSelectionStore.getState().clear();
+        else useSelectionStore.getState().reconcile((queue.pending ?? []).map((item) => item?.[3]?.db_id).filter(Number.isInteger));
+      }
       if (requestedRoute) {
         setRoute(requestedRoute);
         if (requestedRoute === "completed") {
@@ -29705,6 +30628,7 @@ function Home() {
       setAppStatus((prev2) => ({ ...prev2, loading: false, error: null, queue, reloading: false }));
     } catch (error) {
       if (fetchId !== fetchIdRef.current) return;
+      useSelectionStore.getState().clear();
       setAppStatus((prev2) => ({
         ...prev2,
         loading: false,
@@ -29724,15 +30648,6 @@ function Home() {
       fetchQueueItems({ page: 0, reload: true });
     }
   }, [pageSize, completedListOrder, route, fetchQueueItems]);
-  function getNodeIDs(nodes) {
-    const nodeIDs = {};
-    for (const node2 of nodes) {
-      if (node2.id) {
-        nodeIDs[node2.id] = node2.id;
-      }
-    }
-    return nodeIDs;
-  }
   function getTheJob(jobID, queue) {
     if (!queue) {
       return null;
@@ -29751,12 +30666,69 @@ function Home() {
   }
   async function archiveAll() {
     try {
-      let queryArgs = appendFilters("");
+      let queryArgs = appendFilters(`?front=${useAppStore.getState().shiftDown === true}`);
       const response = await fetch(`${baseURL}queue_manager/archive-queue${queryArgs}`);
     } catch (error) {
       console.error("Error fetching queue items:", error);
     }
   }
+  async function actOnSelection(action) {
+    if (!selecting || !selected.size || selectionBusyRef.current) return;
+    if (action === "delete" && !window.confirm(
+      `Delete the ${selected.size} selected item${selected.size === 1 ? "" : "s"}? This cannot be undone.`
+    )) return;
+    const actionFetchId = fetchIdRef.current;
+    selectionBusyRef.current = true;
+    setSelectionBusy(true);
+    setSelectionError("");
+    try {
+      const response = await fetch(`${baseURL}queue_manager/selection`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action,
+          route,
+          ids: [...selected],
+          client_id: useAppStore.getState().clientId,
+          front: useAppStore.getState().shiftDown === true
+        })
+      });
+      if (!response.ok) {
+        if (response.status === 404) throw new Error("Selection actions require the updated backend. Restart ComfyUI and try again.");
+        const error = await response.json().catch(() => null);
+        throw new Error(error?.error || `Selection action failed (${response.status})`);
+      }
+      const result = await response.json();
+      if (action === "export") {
+        const url = URL.createObjectURL(new Blob([JSON.stringify(result)], { type: "application/json" }));
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = `comfyui-${route}-selected-export-${(/* @__PURE__ */ new Date()).toISOString().replace(/[:.]/g, "-")}.json`;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 1e3);
+      } else if (useAppStore.getState().route === route && fetchIdRef.current === actionFetchId) {
+        await fetchQueueItems({ page: appStatus.queue?.info?.page ?? 0, preserveSelection: true });
+      }
+    } catch (error) {
+      setSelectionError(error.message);
+    } finally {
+      selectionBusyRef.current = false;
+      setSelectionBusy(false);
+    }
+  }
+  reactExports.useEffect(() => {
+    if (!selecting) return;
+    const onKeyDown = (event) => {
+      if (event.key === "Escape") {
+        useSelectionStore.getState().reset();
+        event.preventDefault();
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [selecting]);
   async function playAllArchive() {
     await apiCall("queue_manager/play-archive", {
       client_id: useAppStore.getState().clientId,
@@ -29794,8 +30766,8 @@ function Home() {
   const onQueueStatusUpdated = (event) => {
     switch (event.data.message.name) {
       case "status":
-        if (route === "queue" || route === "completed") {
-          fetchQueueItems(appStatus.queue && appStatus.queue.info ? appStatus.queue.info.page : 0);
+        if (latestViewRef.current.route === "queue" || latestViewRef.current.route === "completed") {
+          fetchQueueItems({ ...latestViewRef.current, preserveSelection: true });
         }
         break;
       case "execution_start":
@@ -29803,7 +30775,7 @@ function Home() {
           const { prompt_id } = event.data.message.detail;
           const theJob = getTheJob(prompt_id, appStatus.queue);
           if (theJob) {
-            const nodeIDs = getNodeIDs(theJob[3].extra_pnginfo.workflow.nodes);
+            const nodeIDs = queueNodeIDs(theJob);
             setProgress((prev2) => ({
               ...prev2,
               id: prompt_id,
@@ -29850,7 +30822,7 @@ function Home() {
         }
         break;
       case "queue-manager-queue-updated":
-        fetchQueueItems();
+        fetchQueueItems({ ...latestViewRef.current, preserveSelection: true });
         break;
     }
   };
@@ -29876,6 +30848,10 @@ function Home() {
       case "QM_QueueManager_Hello":
         useAppStore.getState().setClientId(event.data.clientId);
         setAllOptions({ ...event.data.settings });
+        break;
+      case "QM_SelectionHintsSaveFailed":
+        setOption("Basic", "ShowSelectionHints", true);
+        setSelectionError("Could not save the hints preference. Please try again.");
         break;
       case "QM_Setting_Changed":
         {
@@ -29903,6 +30879,7 @@ function Home() {
       return;
     }
     const file = e.target.files[0];
+    useSelectionStore.getState().clear();
     const formData = new FormData();
     formData.append("queue_json", file);
     formData.append("client_id", useAppStore.getState().clientId);
@@ -29930,6 +30907,7 @@ function Home() {
   });
   const openGallery = reactExports.useCallback((galleryData2 = null) => {
     if (galleryData2) {
+      useSelectionStore.getState().clear();
       window.parent.postMessage({
         type: "QM_Gallery_Show"
       }, "*");
@@ -29947,7 +30925,7 @@ function Home() {
             dbID: item[3].db_id,
             promptID: item[1],
             number: item[0],
-            workflow: item[3].extra_pnginfo.workflow,
+            workflow: queueWorkflow(item),
             outputs
           });
         }
@@ -29987,9 +30965,10 @@ function Home() {
   const openSplash = useEvent(() => {
     setShowSplash(true);
   });
+  const refreshQueueItems = useEvent(() => fetchQueueItems({ ...latestViewRef.current, preserveSelection: true }));
   const appContextValue = reactExports.useMemo(() => {
-    return { onMediaItemClick, openSplash, fetchQueueItems };
-  }, [onMediaItemClick, openSplash, fetchQueueItems]);
+    return { onMediaItemClick, openSplash, fetchQueueItems, refreshQueueItems };
+  }, [onMediaItemClick, openSplash, fetchQueueItems, refreshQueueItems]);
   const closeSplash = useEvent((event) => {
     setShowSplash(false);
     if (!options.splash_screen || options.splash_screen !== options.__version__) {
@@ -30013,7 +30992,7 @@ function Home() {
     if (currentJob.id && currentJob.integrity === false) {
       const theJob = getTheJob(currentJob.id, appStatus.queue);
       if (theJob) {
-        const nodeIDs = getNodeIDs(theJob[3].extra_pnginfo.workflow.nodes);
+        const nodeIDs = queueNodeIDs(theJob);
         for (const nodeID in currentJob.nodes) {
           if (currentJob.nodes[nodeID] === true) {
             nodeIDs[nodeID] = true;
@@ -30095,73 +31074,145 @@ function Home() {
             children: "Completed"
           }
         ),
-        shiftDown && route === "archive" && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "play-first", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "selection-toolbar", children: [
+          selecting && /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "selection-count", role: "status", children: groupRename ? `Renaming ${groupRename.ids.length}` : `${selected.size} selected` }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(
+            "button",
+            {
+              type: "button",
+              className: "selection-toggle shiny-button",
+              "aria-label": "Select queue items",
+              "aria-pressed": selecting,
+              title: selecting ? "Exit selection mode (Escape)" : "Select queue items",
+              disabled: appStatus.loading || selectionBusy,
+              onClick: () => {
+                setSelectionError("");
+                useSelectionStore.getState().toggle();
+              },
+              children: /* @__PURE__ */ jsxRuntimeExports.jsx(CheckBoxOutlinedIcon, {})
+            }
+          )
+        ] }),
+        shiftDown && (route === "archive" || route === "queue") && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "play-first", children: [
           /* @__PURE__ */ jsxRuntimeExports.jsx(UploadSharpIcon, {}),
-          " Press Run to queue at front"
+          route === "queue" ? "Press Archive to add at start of Archive" : "Press Run to queue at front"
         ] })
       ] }),
-      isFilterOn() && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "filters flex items-center p-2", children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsx("h2", { children: "Filters:" }),
-        Object.values(filters).map(
-          (filter) => /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "filter flex items-center", children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsxs(
-              "span",
-              {
-                className: "inline-flex text-neutral-800 dark:text-neutral-200 close label",
-                children: [
-                  /* @__PURE__ */ jsxRuntimeExports.jsxs(
-                    "span",
-                    {
-                      className: "type",
-                      children: [
-                        filter.type + ": ",
-                        " "
-                      ]
-                    }
-                  ),
-                  filter.valueLabel
-                ]
-              }
-            ),
-            /* @__PURE__ */ jsxRuntimeExports.jsx(
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "queue-controls", children: [
+        selecting && showSelectionHints && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "selection-help", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: "Click or drag to select · Hold Shift to select a range · Hold Alt to deselect a range · Esc: exit" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs(
+            "button",
+            {
+              type: "button",
+              className: "selection-help-dismiss",
+              title: "Hide hints. Re-enable in Settings → Queue Manager → Basic → Show selection mode hints.",
+              onClick: () => {
+                setSelectionError("");
+                setOption("Basic", "ShowSelectionHints", false);
+                window.parent.postMessage({ type: "QM_DismissSelectionHints" }, new URL(baseURL, window.location.href).origin);
+              },
+              children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx(CloseIcon, {}),
+                " Don't show again"
+              ]
+            }
+          )
+        ] }),
+        selectionError && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "selection-error", role: "alert", children: selectionError }),
+        isFilterOn() && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "filters", children: [
+          workflowFilter && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "workflow-filter-mode", role: "group", "aria-label": "Filter mode", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: "Filter by:" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "workflow-filter-mode-buttons", children: [
+              ["workflow", "Workflow", "All jobs from this workflow, including renamed jobs"],
+              ["workflow_name", "Workflow name", "Jobs with this exact name, including matching names from other workflows"]
+            ].map(([filterMode, label, description]) => /* @__PURE__ */ jsxRuntimeExports.jsx(
               "button",
               {
-                className: "shiny-button close ",
+                type: "button",
+                "aria-pressed": workflowFilter.mode === filterMode,
+                disabled: selecting || appStatus.loading || filterMode === "workflow" && !workflowFilter.id,
+                title: description,
                 onClick: () => {
-                  const prev2 = useAppStore.getState().filters;
-                  const newFilters = (({ [filter.type]: _, ...f }) => f)(prev2);
-                  fetchQueueItems({ filters: newFilters });
+                  if (workflowFilter.mode === filterMode) return;
+                  fetchQueueItems({
+                    page: 0,
+                    filters: withWorkflowFilter(filters, workflowFilter, filterMode),
+                    reload: true
+                  });
                 },
-                children: /* @__PURE__ */ jsxRuntimeExports.jsx("svg", { viewBox: "0 0 24 24", width: "1.2em", height: "1.2em", children: /* @__PURE__ */ jsxRuntimeExports.jsx(
-                  "path",
+                children: label
+              },
+              filterMode
+            )) })
+          ] }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "filters-summary", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("h2", { children: "Filters:" }),
+            Object.values(filters).map(
+              (filter) => /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "filter flex items-center", children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsxs(
+                  "span",
                   {
-                    fill: "currentColor",
-                    d: "M19 6.41L17.59 5L12 10.59L6.41 5L5 6.41L10.59 12L5 17.59L6.41 19L12 13.41L17.59 19L19 17.59L13.41 12L19 6.41Z"
+                    className: "inline-flex text-neutral-800 dark:text-neutral-200 close label",
+                    children: [
+                      /* @__PURE__ */ jsxRuntimeExports.jsxs(
+                        "span",
+                        {
+                          className: "type",
+                          children: [
+                            (filter.type === "workflow_name" ? "workflow name" : filter.type) + ": ",
+                            " "
+                          ]
+                        }
+                      ),
+                      /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "filter-value", title: filter.valueLabel, children: filter.valueLabel })
+                    ]
                   }
-                ) })
+                ),
+                /* @__PURE__ */ jsxRuntimeExports.jsx(
+                  "button",
+                  {
+                    className: "shiny-button close ",
+                    disabled: selecting,
+                    "aria-label": `Remove ${filter.type === "workflow_name" ? "workflow name" : filter.type} filter`,
+                    onClick: () => {
+                      const prev2 = useAppStore.getState().filters;
+                      const newFilters = (({ [filter.type]: _, ...f }) => f)(prev2);
+                      fetchQueueItems({ filters: newFilters });
+                    },
+                    children: /* @__PURE__ */ jsxRuntimeExports.jsx("svg", { viewBox: "0 0 24 24", width: "1.2em", height: "1.2em", children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+                      "path",
+                      {
+                        fill: "currentColor",
+                        d: "M19 6.41L17.59 5L12 10.59L6.41 5L5 6.41L10.59 12L5 17.59L6.41 19L12 13.41L17.59 19L19 17.59L13.41 12L19 6.41Z"
+                      }
+                    ) })
+                  }
+                )
+              ] }, filter.type)
+            ),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs(
+              "button",
+              {
+                className: "close close-all ml-auto shiny-button",
+                disabled: selecting,
+                onClick: () => {
+                  fetchQueueItems({ filters: {} });
+                },
+                children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("svg", { viewBox: "0 0 24 24", width: "1.2em", height: "1.2em", children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+                    "path",
+                    {
+                      fill: "currentColor",
+                      d: "M19 6.41L17.59 5L12 10.59L6.41 5L5 6.41L10.59 12L5 17.59L6.41 19L12 13.41L17.59 19L19 17.59L13.41 12L19 6.41Z"
+                    }
+                  ) }),
+                  "Clear filters"
+                ]
               }
             )
-          ] }, filter.type)
-        ),
-        /* @__PURE__ */ jsxRuntimeExports.jsxs(
-          "button",
-          {
-            className: "close close-all ml-auto shiny-button",
-            onClick: () => {
-              fetchQueueItems({ filters: {} });
-            },
-            children: [
-              /* @__PURE__ */ jsxRuntimeExports.jsx("svg", { viewBox: "0 0 24 24", width: "1.2em", height: "1.2em", children: /* @__PURE__ */ jsxRuntimeExports.jsx(
-                "path",
-                {
-                  fill: "currentColor",
-                  d: "M19 6.41L17.59 5L12 10.59L6.41 5L5 6.41L10.59 12L5 17.59L6.41 19L12 13.41L17.59 19L19 17.59L13.41 12L19 6.41Z"
-                }
-              ) }),
-              "Clear filters"
-            ]
-          }
-        )
+          ] })
+        ] })
       ] }),
       /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "queue-table", children: /* @__PURE__ */ jsxRuntimeExports.jsx(
         Queue,
@@ -30225,6 +31276,7 @@ function Home() {
           /* @__PURE__ */ jsxRuntimeExports.jsx(
             Pagination,
             {
+              disabled: appStatus.loading,
               shape: "rounded",
               variant: "outlined",
               boundaryCount: 2,
@@ -30239,6 +31291,7 @@ function Home() {
           appStatus.queue.info.last_page > 10 && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "page-selector", children: /* @__PURE__ */ jsxRuntimeExports.jsx(
             Select,
             {
+              disabled: appStatus.loading,
               value: appStatus.queue.info.page,
               onChange: (event) => {
                 const pageNum = event.target.value;
@@ -30277,8 +31330,50 @@ function Home() {
             ) })
           }
         ) }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { id: "footer-actions", className: "p-2 flex actions", hidden: !showFooterActions, children: /* @__PURE__ */ jsxRuntimeExports.jsxs(Stack, { direction: "row", spacing: 1, className: "min-w-full buttons", children: [
-          appStatus.queue && (appStatus.queue.running.length > 0 || appStatus.queue.pending.length > 0) && /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { id: "footer-actions", className: "p-2 flex actions", hidden: !showFooterActions && !selecting, children: /* @__PURE__ */ jsxRuntimeExports.jsxs(Stack, { direction: "row", spacing: 1, className: "min-w-full buttons", children: [
+          selecting && /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
+            route === "queue" && /* @__PURE__ */ jsxRuntimeExports.jsxs(
+              "button",
+              {
+                className: "shiny-button yellow-button",
+                disabled: !selected.size || selectionBusy || appStatus.loading,
+                onClick: () => actOnSelection("archive"),
+                children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsx(Inventory2SharpIcon, {}),
+                  " Archive Selected"
+                ]
+              }
+            ),
+            route === "archive" && /* @__PURE__ */ jsxRuntimeExports.jsxs(
+              "button",
+              {
+                className: "shiny-button blue-button",
+                disabled: !selected.size || selectionBusy || appStatus.loading,
+                onClick: () => actOnSelection("play"),
+                children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsx(PlayArrowOutlinedIcon, {}),
+                  " Run Selected"
+                ]
+              }
+            ),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { className: "shiny-button", disabled: !selected.size || selectionBusy || appStatus.loading, onClick: () => actOnSelection("export"), children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx(FileDownloadOutlinedIcon, {}),
+              " Export Selected"
+            ] }),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs(
+              "button",
+              {
+                className: "shiny-button red-button delete order-last",
+                disabled: !selected.size || selectionBusy || appStatus.loading,
+                onClick: () => actOnSelection("delete"),
+                children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsx(DeleteOutlineSharpIcon, {}),
+                  " Delete Selected"
+                ]
+              }
+            )
+          ] }),
+          !selecting && appStatus.queue && (appStatus.queue.running.length > 0 || appStatus.queue.pending.length > 0) && /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
             route === "queue" && /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
               /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { onClick: archiveAll, className: "shiny-button yellow-button", children: [
                 /* @__PURE__ */ jsxRuntimeExports.jsx(Inventory2SharpIcon, {}),
@@ -30376,7 +31471,7 @@ function Home() {
               )
             ] })
           ] }),
-          ["queue", "archive"].includes(route) && /* @__PURE__ */ jsxRuntimeExports.jsx(
+          !selecting && ["queue", "archive"].includes(route) && /* @__PURE__ */ jsxRuntimeExports.jsx(
             "form",
             {
               method: "post",

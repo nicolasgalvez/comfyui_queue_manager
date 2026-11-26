@@ -2,13 +2,18 @@
 "use client";
 
 import React, { memo, useCallback, useContext, useMemo } from "react";
-import { apiCall, msgLoadWorkflow, workflowLabel } from "../internals/functions";
+import { apiCall, msgLoadWorkflow } from "../internals/functions";
 import { AppContext } from "../internals/app-context";
 import { MediaItem } from "../components/MediaItem";
+import DragIndicatorIcon from "@mui/icons-material/DragIndicator";
+import {useSelectionStore} from "../stores/selectionStore";
 import PlayArrowOutlinedIcon from "@mui/icons-material/PlayArrowOutlined";
 import { MediaOutputs } from "../models/MediaOutputs";
 import { LoaderSpinner } from "../components/LoaderSpinner";
 import {useAppStore} from "@/app/stores/appStore";
+import { QueueItemName } from "./QueueItemName";
+import {withWorkflowFilter} from "../internals/workflowFilters.mjs";
+import {queueWorkflow} from "../internals/queueMetadata.mjs";
 import {useOptionsStore} from "@/app/stores/optionsStore";
 import {baseURL} from "@/app/internals/config";
 
@@ -25,12 +30,21 @@ export const QueueItemRow = memo(
     thumbMode,
     galleryOptions,
     filters,
+    workflowFilterMode,
+    selecting,
+    selected,
+    reorderBusy,
+    dragging,
+    reorderAnchor,
   }) {
-    const { onMediaItemClick, fetchQueueItems } = useContext(AppContext);
+    const { onMediaItemClick, fetchQueueItems, refreshQueueItems } = useContext(AppContext);
     const openInGallery = useOptionsStore((state) => state.open_in_gallery);
 
+    const renaming = useSelectionStore((state) => !!state.rename);
     const dbId = item?.[3]?.db_id;
-    const workflow = item?.[3]?.extra_pnginfo?.workflow;
+    const workflow = useMemo(() => queueWorkflow(item), [item]);
+    const selectable = !!dbId && mode !== "running";
+    const canReorder = route === "queue" || route === "archive";
     const executionStatus = item?.[3]?.execution_status;
     const failed = executionStatus?.status_str === "error";
     const executionError = executionStatus?.error;
@@ -48,8 +62,8 @@ export const QueueItemRow = memo(
       if (!openInGallery) {
         const file = mediaOutputs?.files?.[fileIndex];
         if (file) {
-          const src = `${baseURL}api/view?filename=${file.filename}` +
-                      `&type=output&subfolder=${file.subfolder}`;
+          const query = new URLSearchParams({ filename: file.filename, type: "output", subfolder: file.subfolder });
+          const src = `${baseURL}api/view?${query}`;
           window.open(src, "_blank", "noopener");
           return;
         }
@@ -58,12 +72,12 @@ export const QueueItemRow = memo(
     }, [openInGallery, mediaOutputs, onMediaItemClick, dbId]);
 
     const cancelQueueItem = useCallback(async () => {
-      const message = mode === "running" || mode === "external"
+      const message = mode === "running"
         ? "Stop the running job and delete it from the queue?"
         : "Delete this workflow from Queue Manager? This cannot be undone.";
       if (!window.confirm(message)) return;
 
-      const cancelRoute = mode === "running" || mode === "external" ? "interrupt" : "queue";
+      const cancelRoute = mode === "running" ? "interrupt" : "queue";
       await apiCall(`api/${cancelRoute}`, { delete: [item[1]] });
     }, [mode, item]);
 
@@ -74,7 +88,10 @@ export const QueueItemRow = memo(
     }, [workflow, item]);
 
     const archiveQueueItem = useCallback(async () => {
-      await apiCall(`queue_manager/archive`, { archive: [dbId] });
+      await apiCall(`queue_manager/archive`, {
+        archive: [dbId],
+        front: useAppStore.getState().shiftDown === true,
+      });
     }, [dbId]);
 
     const playItem = useCallback(async () => {
@@ -88,19 +105,17 @@ export const QueueItemRow = memo(
     }, [dbId]);
 
     const filterByWorkflow = useCallback(() => {
-      if (!workflow?.id) return;
+      if (!workflow || selecting) return;
+
+      const nextFilters = withWorkflowFilter(filters, {id: workflow.id, name: workflow.workflow_name ?? ""}, workflowFilterMode);
+      if (nextFilters === filters) return;
 
       fetchQueueItems({
-        filters: {
-          ...filters,
-          workflow: {
-            type: "workflow",
-            value: workflow.id,
-            valueLabel: workflow.workflow_name,
-          },
-        },
+        page: 0,
+        filters: nextFilters,
+        reload: true,
       });
-    }, [fetchQueueItems, filters, workflow]);
+    }, [fetchQueueItems, filters, workflow, workflowFilterMode, selecting]);
 
 const executionTimeLabel = useMemo(() => {
   const t = item?.[3]?.execution_time;
@@ -145,7 +160,11 @@ const executionTimeLabel = useMemo(() => {
         * Queue Item Details
         *
         */}
-        <tr className={className ? ` ${className}` : ""}>
+        <tr className={(className ?? "") + (selected ? " selected" : "") + (dragging ? " reorder-moving" : "")}
+            data-reorder-anchor={reorderAnchor}
+            data-reorder-id={canReorder && selectable ? dbId : undefined}
+            data-selection-id={selectable ? dbId : undefined}
+            aria-selected={selecting && selectable ? selected : undefined}>
           <td className="px-3 py-1 serial">
             <span>{rowIndex}</span>
             {loader ? <LoaderSpinner /> : null}
@@ -180,13 +199,16 @@ const executionTimeLabel = useMemo(() => {
                 </span>
               ) : null}
 
-              <button className="plain" onClick={filterByWorkflow} title="Filter view by the workflow">
-                {mode === "external"
-                  ? "External job"
-                  : workflowLabel(workflow)}
-              </button>
-
-
+              <QueueItemName
+                name={workflow?.workflow_name ?? ""}
+                dbId={dbId}
+                selecting={selecting}
+                route={route}
+                canRename={!!dbId && mode !== "running" && (route === "queue" || route === "archive")}
+                onFilter={filterByWorkflow}
+                filterTitle={workflowFilterMode === "workflow_name" ? "Filter view by this exact workflow name" : "Filter view by the workflow"}
+                onRenamed={refreshQueueItems}
+              />
             </div>
             {route === "completed" && failed && (
               <div className="execution-error">
@@ -228,25 +250,26 @@ const executionTimeLabel = useMemo(() => {
                 className="delete red-button shiny-button"
                 onClick={cancelQueueItem}
                 title="Delete workflow from queue"
+                data-selection-ignore
               >
                 Delete
               </button>
 
-              {mode !== "external" ? (
-                <button
-                  className="load green-button shiny-button"
-                  onClick={loadQueueItem}
-                  title="Load workflow"
-                >
-                  Load
-                </button>
-              ) : null}
+              <button
+                className="load green-button shiny-button"
+                onClick={loadQueueItem}
+                title={workflow.api_prompt ? "Load API prompt (automatic node layout)" : "Load workflow"}
+                data-selection-ignore
+              >
+                Load
+              </button>
 
               {route === "queue" && mode !== "running" ? (
                 <button
                   className="archive yellow-button shiny-button"
                   onClick={archiveQueueItem}
-                  title="Move to the archive"
+                  title="Move to the archive (Shift: add at the start)"
+                  data-selection-ignore
                 >
                   Archive
                 </button>
@@ -257,6 +280,7 @@ const executionTimeLabel = useMemo(() => {
                   className="run blue-button shiny-button"
                   onClick={playItem}
                   title="Move to queue"
+                  data-selection-ignore
                 >
                   <PlayArrowOutlinedIcon fontSize="small" />
                   Run
@@ -269,12 +293,26 @@ const executionTimeLabel = useMemo(() => {
                   className="view violet-button shiny-button"
                   onClick={() => openOutput(0)}
                   title="View outputs in gallery"
+                  data-selection-ignore
                 >
                   View
                 </button>
               ) : null}
+              {selecting && <input type="checkbox" className="row-selection"
+                aria-label={`Select ${workflow?.workflow_name || "job"}`}
+                title={selectable ? "Select job (Shift: range, Alt: deselect)" : "Running jobs cannot be selected"}
+                disabled={!selectable} checked={selected} onChange={() => {}} />}
             </div>
           </td>
+          {canReorder && <td className="reorder-column" data-selection-ignore>
+            <button type="button" className="reorder-handle" data-reorder-handle={selectable ? dbId : undefined}
+              disabled={!selectable || reorderBusy || renaming}
+              aria-label={`Reorder ${workflow?.workflow_name || "job"}`}
+              title={!selectable ? "Running jobs cannot be reordered" : renaming ? "Finish renaming first" :
+                selecting ? "Drag to move the selected group (or use Up/Down arrow keys)" : "Drag to reorder (or use Up/Down arrow keys)"}>
+              <DragIndicatorIcon fontSize="small" />
+            </button>
+          </td>}
         </tr>
 
         {/*
@@ -283,7 +321,8 @@ const executionTimeLabel = useMemo(() => {
         *
         */}
         {showGrid ? (
-          <tr className="dark:odd:bg-neutral-900 odd:bg-neutral-100 gallery">
+          <tr className={"dark:odd:bg-neutral-900 odd:bg-neutral-100 gallery" + (selected ? " selected" : "")}
+              data-selection-id={selectable ? dbId : undefined}>
             <td colSpan={4} className="px-3 py-1">
               <div className="flex flex-wrap gap-2 items">
                 {mediaOutputs?.files?.length
@@ -318,8 +357,17 @@ const executionTimeLabel = useMemo(() => {
       prev.thumbMode === next.thumbMode &&
       prev.galleryOptions === next.galleryOptions &&
       prev.filters === next.filters &&
+      prev.workflowFilterMode === next.workflowFilterMode &&
+      prev.selecting === next.selecting &&
+      prev.selected === next.selected &&
+      prev.reorderBusy === next.reorderBusy &&
+      prev.dragging === next.dragging &&
+      prev.reorderAnchor === next.reorderAnchor &&
       prev.info?.page === next.info?.page &&
-      prev.info?.page_size === next.info?.page_size
+      prev.info?.page_size === next.info?.page_size &&
+      prev.item?.[0] === next.item?.[0] &&
+      queueWorkflow(prev.item).workflow_name === queueWorkflow(next.item).workflow_name &&
+      queueWorkflow(prev.item).id === queueWorkflow(next.item).id
     );
   }
 );

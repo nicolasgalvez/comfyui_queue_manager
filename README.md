@@ -15,9 +15,10 @@ An extension supporting more streamlined prompt queue management.
   - [Archive](#archive)
   - [Export and Import](#export-and-import)
   - [Filter by workflow](#filter-by-workflow)
+  - [Rename queued workflows](#rename-queued-workflows)
   - [Restore client focus](#restore-client-focus)
   - [Workflow Name node](#workflow-name-node)
-  - [External jobs](#external-jobs)
+  - [API-submitted jobs](#api-submitted-jobs)
   - [Comfy API / Partner Nodes](#comfy-api--partner-nodes)
   - [Gallery / output previews](#gallery--output-previews)
     - [Gallery view](#gallery-view)
@@ -42,18 +43,24 @@ refreshing or restarting ComfyUI. A successful rerun replaces the previous error
 This applies to jobs completed after installing this version; errors discarded
 by older versions are unavailable. Interrupted jobs are labelled separately.
 
-## Important
+## Note
 
-- EARLY ACCESS RELEASE, PROOF OF CONCEPT, PROTOTYPE. This is an early access release of the ComfyUI Queue Manager. While fully functional, things will change, a lot.
-- Releasing just because I want to get feedback and free labour for testing. Been using it for a while now, and it helped me immensely to manage my renders.
-- Many features still not implemented, but the core functionality is there and roadmap is set.
+- As of October 2026 I consider this project to be completed.
+- All intended features work as expected and no new major features are planned.
+- Fixes and compatibility adjustment will happed as needed.
+- New features might appear whenever I deem them useful for managing the queue.
 
 ## Features
-- Persistence. Queue is now saved in a local database and restored on ComfyUI restart.
-- Option to archive queue items to play them later.
-- Export and import queue to / from a file.
-- Pause and resume queue.
-- Filter by workflows and then archive, delete and export filtered view only.
+
+- Persist queues across ComfyUI restarts.
+- Archive jobs and run them later.
+- Export and import queues.
+- Pause and resume the queue.
+- Rename pending and archived jobs individually or as a selected group.
+- Select multiple queued jobs to act on them.
+- Reorder pending and archived jobs individually or as a selection
+- Filter by workflow or by exact workflow name.
+- Gallery mode – easily preview rendered jobs (images and videos) in a comprehensive viewer
 
 ## Compatibility
 - This extension requires the new ComfyUI menu.
@@ -70,31 +77,23 @@ by older versions are unavailable. Interrupted jobs are labelled separately.
 - If there is enough demand for multi-user support I will consider adding it in future releases.
 
 ## Roadmap
-In no particular order, just some ideas I have for the future of this extension.
-- [ ] Queue Manager nodes. On top of Workflow Name node add some other queue related strings you could use to streamline your workflows i.e. custom file names.
-- [ ] Bin. Can't think of a use case for it yet but I feel like it should be there at some stage.
-- [ ] More columns in the queue table. Suggest your favourites.
-- [ ] Better user and dev docs.
-- [ ] Ability to rename worklows in the queue.
-- [x] ~~Better progress feedback for longer running actions (like import).~~
-- [x] ~~Options. Toggles, big red buttons, levers and valves to control Queue Manager's behavior. Now everything is hardcoded.~~
-- [x] ~~Cover images, thumbnails, previews of rendered images in the queue. In other words what we have in core queue History with some spices added.~~
-
-and other things I forgot about.
+As of October 2026 no new major features are planned. This might change if I come up with a good idea or with something specific while working with ComfyUI
 
 ## Manual
 ### Pause / Resume Queue
-Click the pause button to pause the queue.
+Click the blue pause button in ComfyUI's extension controls to pause the queue.
 Currently running workflow will finish, but no new workflows will be started until you resume the queue.
 
-![pause.png](readme-img/pause.png)
+Enable **Settings → Queue Manager → Basic → Clean caches on Pause** to request ComfyUI's model and execution-cache cleanup whenever you click Pause. This option is off by default. Cleanup waits for the current workflow to finish; resuming may require models to reload and nodes to recompute.
 
-Click the play button to resume the queue.
+![ComfyUI toolbar with a red arrow pointing to the blue Pause button](readme-img/queue-controls-pause.jpg)
 
-![resume.png](readme-img/resume.png)
+Click the blue play button to resume the queue.
+
+![ComfyUI toolbar with a red arrow pointing to the blue Resume button](readme-img/queue-controls-resume.jpg)
 
 ### Stop / Clear Queue
-Queue Manager restores the native ComfyUI queue stop / clear queue button that was removed in ComfyUI v0.4.0. Enjoy.
+Click the red square button beside Pause/Resume to clear pending jobs. It is disabled when the queue is empty.
 
 ### Running and main Queue Manager window
 You can start running jobs as usual using the Run button in the main ComfyUI window.
@@ -115,6 +114,8 @@ When button on the bottom has a asterisk `*` next to it, it means that the actio
 
 When in the **Queue** tab you can archive individual items by clicking the **Archive** button in the actions columns or you can archive all items in the queue by clicking the **Archive All** button on the bottom of the window.
 
+In Queue mode hold **Shift** while clicking **Archive**, **Archive Selected**, or **Archive All** to place the jobs at the start of the Archive. A hint in the Queue header confirms this while Shift is held.
+
 Similarly, when in **Archive** tab you can play archived items by clicking the **Run** button in the actions column or you can play all archived items by clicking the **Run All** button on the bottom of the window.
 
 #### Run at front of the queue
@@ -129,14 +130,62 @@ When holding Shift pressed a small indicator message will appear on top of the w
 You can export items from any tab (Queue, Archive, Completed) to a file by clicking the Export Queue/Archive/Completed button on the bottom of the window.
 You can import items from a file to the Queue or to the Archive by clicking the Import Queue/Archive button on the bottom of the window.
 
-### Filter by workflow
-You can filter the currently displayed list of items by workflow by clicking on the name in the workflow column.
+### Filter by workflow or name
+Click a name in the Workflow column to filter the list. Above the active filters, use **Filter by: Workflow / Workflow name** to switch modes:
+
+- **Workflow** shows jobs with the same workflow ID, including jobs that have been renamed.
+- **Workflow name** matches the selected saved name exactly, including case, across workflows.
+
+Note: renaming a job can remove it from an exact-name view if it no longer matches.
+
+![Dark-mode Queue Manager with an arrow highlighting the Workflow / Workflow name filter switch](readme-img/workflow-filter-modes-dark.jpg)
 
 Once filtered out the group actions on the bottom of the window (like `Archive All *`, `Run All *`, `Delete All *`) will only apply to the filtered items.
 
 Asterisk `*` next to the button label indicates that the action will be applied to the filtered items only.
 
-![filters.png](readme-img/filters.png)
+### Select queue items
+Click the checkbox icon to the right of the Queue / Archive / Completed tabs, or start dragging across the job list with your mouse, to enter selection mode. Outside selection mode, a normal click still filters the list or opens the gallery; dragging across rows selects them instead.
+
+The hints below the tabs can be dismissed with **Don't show again**. To restore them, enable **Settings → Queue Manager → Basic → Show selection mode hints**.
+
+- Click a row or its checkbox to select or deselect it.
+- **Shift-click** selects a range from the last row clicked without Shift; **Shift+Alt-click** deselects that range.
+- Drag a rectangle to add every row it touches. Hold **Alt** while dragging to deselect those rows.
+- Use the checkbox in the column header to select or clear all items on page.
+- Press **Escape** or click the selection toggle again to exit.
+
+While selecting, filters are disabled.  Footer actions become **Archive Selected**, **Run Selected**, **Export Selected**, and **Delete Selected**, as appropriate for the current tab. They stay disabled until at least one job is selected.
+
+![Dark-mode Queue selection with individual actions, three selected jobs, and enabled paging](readme-img/selection-queue-dark.jpg)
+
+Selection mode stays on until you click its toggle, press **Escape**, or reload the browser.
+
+In Archive, **Run** moves an individual job to the queue while the remaining visible selections stay selected. **Run Selected** applies to the selected group.
+
+![Dark-mode Archive selection after running one job, with two remaining jobs selected and individual Run buttons available](readme-img/selection-archive-dark.jpg)
+
+### Reorder workflows
+Drag the handle in the far-right column of the **Queue** or **Archive** tab to move a job within that tab. A blue line marks the drop position. Releasing the handle saves the order immediately; press **Escape** while dragging to cancel.
+
+Dragging **up** places the jobs immediately **after the row above** the drop position; dragging **down** places them immediately **before the row below**. The anchor row is lightly highlighted with faded arrows: **downward arrows** on the upper anchor and **upward arrows** on the lower anchor. At the very top or bottom, jobs go before the first or after the last available row.
+
+In selection mode, dragging a handle moves the selected jobs together, keeping their existing queue order. Dragging an unselected job adds it to that group. You can also focus a handle and press **Up** or **Down** to move a job or selected group one step.
+
+With jobs selected, a  **- Move selection to -** movement controls appear below the list: **Start of queue / Top of page** on the left, and **Bottom of page / End of queue** on the right. In Archive, the start/end buttons refer to the archive. Start/end use the full tab, including jobs hidden by filters and jobs on other pages. Top/bottom of page move the group before the first or after the last unselected job on the visible page;
+
+Drag reordering is available in Queue and Archive, within the current page;
+
+### Rename queued workflows
+Click the pencil at the right edge of a pending or archived job's Workflow cell to edit its name. Moving focus outside the editor saves a changed name. You can also press **Enter** or click the checkmark to save; press **Escape** or click the cross to cancel. Empty names are rejected.
+
+![Dark-mode Queue Manager with arrows pointing to the rename pencil and inline name editor](readme-img/rename-queue-items-dark.jpg)
+
+Names use the same filename sanitization as the Workflow Name node.
+
+In selection mode, clicking a pencil renames the selected group. If that row was not selected, it is added to the group. Clicking outside the input saves a changed name. **Enter** or the checkmark also saves. **Escape** or the cross cancels the whole edit. Enter/checkmark can also apply the source name unchanged to the group.
+
+Jobs that have started running, disappeared, or moved to another tab are skipped. As with an individual rename, jobs may leave an exact-name filtered view after saving.
 
 ### Restore client focus
 When you restart ComfyUI or browser, you might lose the client focus. When that happens the progress of running renders in ComfyUI will no longer update (no progress view, no previews, no highlights which nodes is being executed).
@@ -146,19 +195,55 @@ To restore the client focus, click the three vertical dots menu and select `Take
 ![focus.png](readme-img/focus.png)
 
 ### Workflow Name node
-You can use the Workflow Name node to get the name of the currently running workflow.
-Typical use case is to connect the `workflow_name` output to a node that accepts a string input, like **Save Image**'s `filename_prefix`, to have output images saved with the workflow's name as a prefix.
 
-![workflow_name_use_case.png](web/docs/workflow_name_use_case.png)
+Use Workflow Name to name queue entries and supply a filename prefix to other nodes. Type a value in `text` or connect a string to that same input. Custom values are sanitized for filenames; empty values fall back to the workflow filename, then an empty string if no filename is available.
 
-### External jobs
-- Some third parties that queue through API don't supply full ComfyUI workflow context (i.e. ComfyUI plugin for Krita).
-- Since these renders won't benefit from the Queue Manager features we delegate these jobs to native queue handler and mark as external.
-- These jobs will appear in the native queue side bar; and the Queue Manager itself will indicate if such job is currently running.
+Non-exhaustive list of typical use cases:
 
-![external-job.png](readme-img/external-job.png)
-- Also any such jobs will always take precedence over items queued in Queue Manager.
-- **IMPORTANT! This accommodation for such external jobs is a workaround measure.** When I have time I will investigate if there is a better way to handle this scenario. To avoid potential conflicts and unexpected behavior it's recommended to avoid using such third party plugins while running jobs from Queue Manager (and vice versa).
+#### Name a queue entry
+
+Enter a custom name such as `Hello`. The output can remain disconnected: Queue Manager still reads the node when queuing and uses the name for the queue entry.
+
+![Workflow Name with Hello entered in the text field and its output disconnected](web/docs/workflow_name_use_case.png)
+
+#### Save images using the workflow filename
+
+Leave `text` empty and connect `workflow_name` to **Save Image**'s `filename_prefix` to use the workflow filename as the prefix for saved images.
+
+![Workflow Name with empty text connected to Save Image's filename_prefix](web/docs/workflow_name_use_case_2.png)
+
+#### Supply a custom name from another node
+
+Connect a string to `text` to supply the name from another node. In this example, `Hello` names the queue entry and provides the filename prefix for Save Image. A connected value replaces the manually entered text.
+
+![A string containing Hello connected through Workflow Name to Save Image's filename_prefix](web/docs/workflow_name_use_case_3.png)
+
+Queue Manager uses the first active Workflow Name node in the submitted prompt, ignoring muted or bypassed nodes. Connected values are read when available at queue time and may differ from the values produced during rendering. See the [node documentation](web/docs/Workflow%20Name.md) for sanitization and fallback details.
+
+### API-submitted jobs
+
+For available endpoints and request/response examples, see the [API guide](API.md).
+
+Jobs submitted through ComfyUI's `/prompt` API are managed alongside jobs from the GUI.
+
+Unnamed submissions receive an **API job + short prompt ID** label. Each submission has its own workflow identity unless the caller provides one, so filtering by workflow does not combine unrelated API jobs. Renaming or replaying a job retains its identity.
+
+API callers can optionally include this `extra_data` field in their `/prompt` request:
+
+```json
+{
+  "extra_data": {
+    "queue_manager": {
+      "name": "Batch render",
+      "workflow_id": "my-api-workflow"
+    }
+  }
+}
+```
+
+Both fields are optional. Reuse `workflow_id` to group submissions in the workflow filter. These fields describe the Queue Manager entry; they do not change node inputs or the runtime output of a Workflow Name node.
+
+**Load** uses the saved GUI workflow when available. Otherwise it uses ComfyUI to reconstruct the nodes and connections with an automatic layout. Original positions, groups, and other canvas-only information cannot be recovered from an API prompt.
 
 ### Comfy API / Partner Nodes
 1. This extension supports usage of Comfy API (Partner Nodes) in queued workflows.
@@ -171,10 +256,12 @@ Typical use case is to connect the `workflow_name` output to a node that accepts
 - In the **Completed** tab you can view outputs (images and videos) of finished jobs.
 - **Completed** tab can display results in 3 different modes: List, Cover, Grid.
 - In **List** no media previews are shown, only job details. In **Cover** mode a first image is shown in the table. In **Grid** mode all media outputs (depending on settings) are shown in a grid layout.
+
 ![modes.png](readme-img/modes.png)
 - In every mode a small indicator next to the workflow name shows how many media outputs were produced by the job.
 - Clicking on a thumbnail or outputs indicator opens the Gallery view.
 - In Cover and Grid modes you can adjust size of the thumbnails using the slider on the bottom right of the window.
+
 ![mediaitem.png](readme-img/mediaitem.png)
 #### Gallery view
 - In the **Gallery** view you can see all media outputs from the currently displayed **Completed** page. This is important to note: only outputs from jobs on current page will show in the gallery i.e. if there are 100 jobs per page then only outputs from those 100 jobs will be displayed in the gallery.
@@ -187,6 +274,7 @@ Typical use case is to connect the `workflow_name` output to a node that accepts
   - **Escape**: close Gallery view
   - **T**: toggle thumbnails on / off
 - On the bottom of the Gallery is a progress bar showing your current position in the list of media items. You can also use it to quickly skip to a specific media item by clicking on it.
+
 ![gallery-view.png](readme-img/gallery-view.png)
 - By default videos are played automatically. You can change that in extension settings (see below).
 - When workflow produces both images and video outputs then images are hidden by default to reduce clutter (since most of the time these will be individual frames of the video). You can toggle visibility of these images in extension settings (see below).
@@ -220,21 +308,22 @@ Check the error message in the ComfyUI terminal to identify the affected custom 
 - Before updating ComfyUI or custom nodes it's best to finish all queued and archived jobs to avoid potential incompatibility issues with new versions of ComfyUI or custom nodes.
 - While the ComfyUI Queue Manager offers data persistence between restarts and crashes as well as import/export functionality, it's not intended to provide a long term storage for queue jobs. Updates to ComfyUI and custom nodes might introduce breaking changes that will affect queued and archived jobs and make them unplayable. Run your queued and archived jobs as soon as possible to avoid such issues.
 
+## Queue Manager API
+See [API.md](API.md) for more details about all available endpoints and parameters.
 
 ## Development
-Don't lol. Things will change and move around a lot.
-Nevertheless, here are some pointers if you have some PR ideas for critical fixes or features:
+TLDR:
 - `/web` is the front end part of the extension.
-  - Inside is `.gui` folder which is hidden from default ComfyUI UI, but it's where the build version of the Queue Manager is.
+  - The `.gui` folder holds the built Queue Manager app. Its leading dot prevents ComfyUI from loading it automatically; the sidebar iframe loads it explicitly when opened.
 - The core front end functionality of the Queue Manager is a React web app loaded in an iframe (from  `.gui` folder). It communicates with loading part of the extension by postMessage API.
 - Server side (python) part of the extension is in `/src/comfyui_queue_manager`
 - Source code for the React app is in `/src/gui`. I use bun to build it but you can as well use npm.
 - database is in `/data/` (sqlite files are created automatically on first run after installation)
 
-Better docs will come later.
-
-## Have fun!
-Queue all the way to the moon.
+See [DEVELOPMENT.md](DEVELOPMENT.md) for more detailed setup, builds, checks and contribution steps.
 
 ## Release Notes
 For detailed release notes please see [CHANGELOG.md](CHANGELOG.md).
+
+## Have fun!
+Queue all the way to the moon.

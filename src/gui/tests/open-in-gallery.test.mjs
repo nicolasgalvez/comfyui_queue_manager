@@ -14,7 +14,7 @@ const item = [1, 'prompt-1', {}, {
   outputs: { '1': { images: [{ filename: 'test.png', subfolder: '', type: 'output' }] } },
 }];
 
-async function openCompletedTab(server, openInGallery) {
+async function openCompletedTab(server, openInGallery, queueItem = item) {
   const browser = await chromium.launch();
   const page = await browser.newPage();
   await page.route('**/*', async route => {
@@ -23,7 +23,7 @@ async function openCompletedTab(server, openInGallery) {
       splash_screen: '1', __version__: '1', Gallery: { ShowImages: true }, open_in_gallery: openInGallery,
     } });
     if (path === '/queue_manager/queue') return route.fulfill({ json: {
-      running: [], pending: [item], info: { page: 0, page_size: 20, last_page: 0, total: 1 },
+      running: [], pending: [queueItem], info: { page: 0, page_size: 20, last_page: 0, total: 1 },
     } });
     if (path.startsWith('/api/') || path.startsWith('/queue_manager/')) return route.fulfill({ json: {} });
     return route.continue();
@@ -63,6 +63,31 @@ test('open_in_gallery off opens the output the ComfyUI way, in a new tab', { tim
     assert.match(popup.url(), /\/api\/view\?filename=test\.png(&|$)/);
     // The gallery must not have opened as a side effect.
     await expect(result.page.locator('body')).not.toHaveClass(/gallery-open/);
+  } finally {
+    await browser?.close();
+    await new Promise(resolve => server.close(resolve));
+  }
+});
+
+// A file name or subfolder holding URL syntax must reach /api/view as written.
+// Unencoded, "a&b #1+c.png" asks the server for the file "a" and drops the rest.
+test('a new-tab URL carries a file name and subfolder with &, # and + intact', { timeout: 30000 }, async () => {
+  const server = await serveFrontend();
+  let browser;
+  try {
+    const odd = structuredClone(item);
+    odd[3].outputs['1'].images[0] = { filename: 'a&b #1+c.png', subfolder: 'my clips/take #2', type: 'output' };
+    const result = await openCompletedTab(server, false, odd);
+    browser = result.browser;
+    const [popup] = await Promise.all([
+      result.page.context().waitForEvent('page'),
+      result.page.getByTitle('Open gallery').first().click(),
+    ]);
+    await popup.waitForLoadState('domcontentloaded').catch(() => {});
+    const params = new URL(popup.url()).searchParams;
+    assert.equal(params.get('filename'), 'a&b #1+c.png');
+    assert.equal(params.get('subfolder'), 'my clips/take #2');
+    assert.equal(params.get('type'), 'output');
   } finally {
     await browser?.close();
     await new Promise(resolve => server.close(resolve));

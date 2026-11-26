@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "comfyui_queue_manager"
-version = "0.1.0"
+version = "0.2.1"
 description = "An extension supporting more streamlined prompt queue management."
 readme = "README.md"
 license = {file = "LICENSE"}
@@ -20,6 +20,7 @@ dev = [
     "mypy",  # linting
     "pre-commit", # runs linting on commit
     "pytest",  # testing
+    "aiohttp",  # ComfyUI provides it at run time; tests import qm_server directly
     "ruff",  # linting
 ]
 
@@ -60,7 +61,8 @@ disable_error_code = "attr-defined"
 # extend-exclude = ["static", "ci/templates"]
 line-length = 140
 src = ["src", "tests"]
-target-version = "py39"
+# The code uses match statements, which need Python 3.10.
+target-version = "py310"
 
 # Add rules to ban exec/eval
 [tool.ruff.lint]

@@ -12,30 +12,8 @@ import os
 from .helpers import reveal_file
 from .qm_db import get_conn, read_query, read_single, write_query, write_many
 from .qm_log import qm_log
-
-
-# Placeholders used when a prompt's extra_data carries no workflow metadata at all,
-# or a workflow dict without a workflow_name/id (e.g. API clients such as comfyui-mcp
-# that attach extra_pnginfo.workflow without the fields the ComfyUI UI always sets).
-WORKFLOW_NAME_PLACEHOLDER = "(unnamed)"
-WORKFLOW_ID_PLACEHOLDER = ""
-
-
-def workflow_meta(extra_data):
-    """Return (workflow_name, workflow_id) from a prompt's extra_data.
-
-    extra_data is item[3] of a native queue item / prompt tuple. It may be
-    missing extra_pnginfo entirely, extra_pnginfo may be missing "workflow",
-    or "workflow" may be missing "workflow_name" / "id" - all observed from
-    API clients that submit prompts without ComfyUI's own UI metadata. In
-    every such case this returns placeholders instead of raising KeyError,
-    so the prompt can still be queued, executed and logged.
-    """
-    workflow = (extra_data or {}).get("extra_pnginfo", {}).get("workflow", {})
-    return (
-        workflow.get("workflow_name", WORKFLOW_NAME_PLACEHOLDER),
-        workflow.get("id", WORKFLOW_ID_PLACEHOLDER),
-    )
+from .nodes import resolve_workflow_name
+from .queue_metadata import prepare_queue_item, queue_metadata, rename_queue_item
 
 
 class QM_Queue:
@@ -112,7 +90,7 @@ class QM_Queue:
             pending = []
             total_rows = 0
             last_page = 0
-            order_string = "ORDER BY number"
+            order_string = "ORDER BY number, queue.id"
             join_string = ""
             select_string = "SELECT queue.id as id, prompt, number"
 
@@ -120,7 +98,7 @@ class QM_Queue:
                 case "queue":
                     running.extend(self.native_queue.currently_running.values())
                 case "archive":
-                    order_string = "ORDER BY queue.updated_at, number"
+                    order_string = f"ORDER BY {self._archive_order()}"
                 case "completed":
                     order_string = "ORDER BY queue.updated_at ASC" if order == "asc" else "ORDER BY queue.updated_at DESC"
                     order_string += (
@@ -135,6 +113,17 @@ class QM_Queue:
             where_clauses = [self.get_route_query(route)]
 
             where_string, params = self.get_filters(filters, where_clauses)
+
+            # Apply the same selection to native running rows, which are not
+            # part of the paginated database query below.
+            if running and filters:
+                running_where, running_params = self.get_filters(filters, [])
+                if running_where:
+                    placeholders = ", ".join("?" for _ in running)
+                    running_where = f"prompt_id IN ({placeholders}) AND {running_where}"
+                    running_params = tuple(item[1] for item in running) + running_params
+                    matching_ids = {row[0] for row in read_query(f"SELECT prompt_id FROM queue WHERE {running_where}", running_params)}
+                    running = [item for item in running if item[1] in matching_ids]
 
             if page_size > 0:
                 total_rows = read_single(f"""SELECT COUNT(*) FROM queue WHERE {where_string}""", params)[0]
@@ -279,11 +268,12 @@ class QM_Queue:
 
                 db_row = read_single("SELECT id FROM queue WHERE prompt_id = ?", (prompt_id,))
                 if db_row is None:
-                    # An interrupted/deleted job must still leave the native queue.
-                    if process_item:
-                        self.original_task_done(item_id, history_result, status, process_item)
-                    else:
+                    # Most likely the job was interrupted and the handler already deleted the item.
+                    # Preserve ComfyUI's cleanup callback so sensitive fields stay out of native history.
+                    if process_item is None:
                         self.original_task_done(item_id, history_result, status)
+                    else:
+                        self.original_task_done(item_id, history_result, status, process_item)
                     return
                 db_id = db_row[0]
 
@@ -318,9 +308,8 @@ class QM_Queue:
                         elif "gifs" in output:
                             images = output["gifs"]
 
-                        if images is not None:
-                            if images[0]["type"] == "output":
-                                outputs[node_id] = output
+                        if images and images[0]["type"] == "output":
+                            outputs[node_id] = output
 
                     if len(outputs) > 0:
                         # Save outputs to the meta table
@@ -373,15 +362,11 @@ class QM_Queue:
         # logging.info(json.dumps(item))
 
         with self.native_queue.mutex:
-            # if item[3]["extra_pnginfo"] is not set then we pass it to original put
-            # It suggests request does not come from ComfyUI but from external source (like API or some app's plugin) - as such they won't benefit from queue manager features
-            if "extra_pnginfo" not in item[3] or "workflow" not in item[3]["extra_pnginfo"]:
-                # item = tuple(item)
-                self.original_put(tuple(item))
-                return
+            # API prompts are fully executable without the GUI's workflow metadata.
+            item = prepare_queue_item(item)
+            metadata = queue_metadata(item)
 
             # Add the item to the database
-            name, workflow_id = workflow_meta(item[3])
             write_query(
                 """
                 INSERT OR REPLACE INTO queue (prompt_id, number, name, workflow_id, prompt)
@@ -390,8 +375,8 @@ class QM_Queue:
                 (
                     item[1],
                     item[0],
-                    name,
-                    workflow_id,
+                    metadata["name"],
+                    metadata["workflow_id"],
                     json.dumps(item),
                 ),
             )
@@ -403,30 +388,27 @@ class QM_Queue:
                 # get item from database which has highest priority and higher than this
                 item = read_single(
                     """
-                    SELECT number, prompt
+                    SELECT number, prompt, updated_at
                     FROM queue
                     WHERE status = 0 AND number <= ?
-                    ORDER BY number
+                    ORDER BY number, id
                     LIMIT 1
                 """,
                     (item[0],),
                 )
 
                 if item is not None:
-                    # Convert the item to a tuple
-                    item = tuple(json.loads(item[1]))
-
-                    # Backwards compatibility: if item[5] does not exist, create it with empty dict
-                    if len(item) < 6:
-                        item = item + ({},)
-
-                    self.original_put(item)
+                    self.original_put(self._pending_prompt(item))
             else:  # just notify frontend that we have a new item
                 PromptServer.instance.queue_updated()
 
     def queue_get(self, timeout=None):
         with self.pause_lock:
             while self.paused:
+                # Let ComfyUI process cleanup without waiting for the pause timeout.
+                # Leave the flags intact for the native worker to consume.
+                if self.native_queue.get_flags(reset=False):
+                    return None
                 self.pause_lock.wait(timeout=timeout)
                 if timeout is not None and self.paused:  # if timed out and we are still paused
                     return None  # give up
@@ -442,26 +424,12 @@ class QM_Queue:
                     SELECT number, prompt, updated_at
                     FROM queue
                     WHERE status = 0
-                    ORDER BY number
+                    ORDER BY number, id
                     LIMIT 1
                 """)
 
                 if item_db is not None:
-                    item = json.loads(item_db[1])
-
-                    # SIML: TODO: Perhaps use different column to check timestamp? i.e. queued_at since item might be updated for other reasons?
-                    # If we have takeover client then we need to set the client_id in the prompt
-                    if self.takeover_client and self.takeover_client["timestamp"] > item_db[2]:
-                        item[3]["client_id"] = self.takeover_client["client_id"]
-
-                    # Native format is a tuple
-                    item = tuple(item)
-
-                    # Backwards compatibility: if item[5] does not exist, create it with empty dict
-                    if len(item) < 6:
-                        item = item + ({},)
-
-                    heapq.heappush(self.native_queue.queue, item)
+                    heapq.heappush(self.native_queue.queue, self._pending_prompt(item_db))
 
             queue_item = self.original_get(
                 timeout
@@ -477,10 +445,9 @@ class QM_Queue:
                 """,
                     (queue_item[0][1],),
                 )
-                name, _ = workflow_meta(queue_item[0][3])
                 qm_log.info(
                     "Executing workflow: \033[33m%s\033[0m at %s",
-                    name,
+                    queue_metadata(queue_item[0])["name"],
                     queue_item[0][0],
                 )
                 return queue_item  # (item, task_counter)
@@ -492,7 +459,194 @@ class QM_Queue:
     # ================== NON-HIJACK METHODS =====================
     # ===========================================================
 
-    def toggle_playback(self):
+    def _pending_prompt(self, row):
+        # Saved prompt[0] can predate a reorder, archive replay or restoration.
+        item = json.loads(row["prompt"])
+        item[0] = row["number"]
+        if self.takeover_client and self.takeover_client["timestamp"] > row["updated_at"]:
+            item[3]["client_id"] = self.takeover_client["client_id"]
+        if len(item) < 6:
+            item.append({})
+        return tuple(item)
+
+    @staticmethod
+    def _archive_order(reverse=False):
+        direction = "DESC" if reverse else "ASC"
+        fields = ("queue.archive_order IS NULL", "queue.archive_order", "queue.updated_at", "queue.number", "queue.id")
+        return ", ".join(f"{field} {direction}" for field in fields)
+
+    def reorder_items(self, ids, target_id=None, position=None, route="queue", destination=None):
+        """Move jobs together relative to an anchor or to the start/end of their tab."""
+        if not isinstance(route, str) or route not in ("queue", "archive"):
+            raise ValueError("Reordering is only available in Queue or Archive")
+        if not isinstance(ids, list) or not 1 <= len(ids) <= 200 or any(type(item) is not int or item <= 0 for item in ids):
+            raise ValueError("Select between 1 and 200 valid jobs")
+        if destination is not None:
+            if destination not in ("start", "end"):
+                raise ValueError("Destination must be start or end")
+            if target_id is not None or position is not None:
+                raise ValueError("Choose a destination or an anchor, not both")
+        else:
+            if type(target_id) is not int or target_id <= 0 or target_id in ids:
+                raise ValueError("Choose a different job in this tab as the drop target")
+            if position not in ("before", "after"):
+                raise ValueError("Position must be before or after")
+
+        with self.native_queue.mutex:
+            running = {item[1] for item in self.native_queue.currently_running.values()}
+            sort = self._archive_order() if route == "archive" else "number, id"
+            rows = read_query(
+                f"SELECT id, prompt_id, number, updated_at, archive_order FROM queue WHERE status = ? ORDER BY {sort}",
+                (3 if route == "archive" else 0,),
+            )
+            rows = [row for row in rows if row["prompt_id"] not in running]
+            requested = set(ids)
+            moving = [row for row in rows if row["id"] in requested]
+            remaining = [row for row in rows if row["id"] not in requested]
+            expected_status = "archived" if route == "archive" else "pending"
+            if destination is None:
+                target_index = next((i for i, row in enumerate(remaining) if row["id"] == target_id), None)
+                if target_index is None:
+                    raise RuntimeError(f"The drop target is no longer {expected_status}. Refresh and try again.")
+                index = target_index + (position == "after")
+            else:
+                # Resolve the full-list boundary under the lock, including jobs
+                # outside the browser's page/filter and any newly submitted jobs.
+                index = 0 if destination == "start" else len(remaining)
+            if not moving:
+                raise RuntimeError(f"These jobs are no longer {expected_status}. Refresh and try again.")
+            reordered = remaining[:index] + moving + remaining[index:]
+            if [row["id"] for row in reordered] == [row["id"] for row in rows]:
+                return {"ids": [row["id"] for row in moving], "changed": False}
+
+            if route == "archive":
+                # Archive positions are independent of execution priorities and timestamps.
+                with get_conn():
+                    for archive_order, row in enumerate(reordered):
+                        if row["archive_order"] == archive_order:
+                            continue
+                        write_query("UPDATE queue SET archive_order = ? WHERE id = ?", (archive_order, row["id"]), False)
+                        write_query(
+                            "UPDATE queue SET updated_at = ? WHERE id = ? AND updated_at != ?",
+                            (row["updated_at"], row["id"], row["updated_at"]),
+                            False,
+                        )
+                moved_ids = [row["id"] for row in moving]
+                PromptServer.instance.send_sync("queue-manager-queue-updated", {"reordered": moved_ids})
+                return {"ids": moved_ids, "changed": True}
+
+            # Reuse existing priority slots, keeping the range compatible with new
+            # submissions and Run at front. Old/imported queues can contain ties.
+            numbers = [row["number"] for row in rows]
+            if len(set(numbers)) != len(numbers):
+                start = min(0, numbers[0])
+                numbers = list(range(start, start + len(rows)))
+
+            # Prepare the new native heap before writing anything. Keep unmanaged
+            # native entries intact, but replace managed prefetches with the new head.
+            managed_ids = {row["prompt_id"] for row in rows}
+            native = [item for item in self.native_queue.queue if item[1] not in managed_ids]
+            if not self.paused:
+                head = reordered[0]
+                cached = next((item for item in self.native_queue.queue if item[1] == head["prompt_id"]), None)
+                if cached is not None:
+                    item = (numbers[0], *cached[1:])
+                else:
+                    saved = read_single("SELECT prompt FROM queue WHERE id = ?", (head["id"],))
+                    item = self._pending_prompt({**dict(head), "number": numbers[0], "prompt": saved["prompt"]})
+                native.append(item)
+            heapq.heapify(native)
+
+            with get_conn():
+                for row, number in zip(reordered, numbers):
+                    if row["number"] == number:
+                        continue
+                    write_query("UPDATE queue SET number = ? WHERE id = ?", (number, row["id"]), False)
+                    # Ordering must not change archive age or the takeover cutoff.
+                    write_query(
+                        "UPDATE queue SET updated_at = ? WHERE id = ? AND updated_at != ?",
+                        (row["updated_at"], row["id"], row["updated_at"]),
+                        False,
+                    )
+            PromptServer.instance.number = max(PromptServer.instance.number, abs(numbers[0]), abs(numbers[-1]))
+            self.native_queue.queue = native
+            self.native_queue.not_empty.notify()
+            moved_ids = [row["id"] for row in moving]
+            PromptServer.instance.send_sync("queue-manager-queue-updated", {"reordered": moved_ids})
+            PromptServer.instance.queue_updated()
+            return {"ids": moved_ids, "changed": True}
+
+    def rename_item(self, db_id, name):
+        """Rename a pending or archived job, including its saved workflow metadata."""
+        if type(db_id) is not int or db_id < 1:
+            raise ValueError("Invalid queue item ID")
+        if not isinstance(name, str):
+            raise ValueError("Name must be a string")
+        name = resolve_workflow_name(name)
+        if not name:
+            raise ValueError("Name cannot be empty")
+
+        with self.native_queue.mutex:
+            row = read_single("SELECT prompt_id, prompt, status, updated_at FROM queue WHERE id = ?", (db_id,))
+            if row is None:
+                raise LookupError("Queue item no longer exists")
+            if row["status"] not in (0, 3) or any(item[1] == row["prompt_id"] for item in self.native_queue.currently_running.values()):
+                raise RuntimeError("Only pending or archived jobs can be renamed")
+
+            self._rename_rows([row], name, [db_id])
+            PromptServer.instance.send_sync("queue-manager-queue-updated", {"renamed": db_id})
+            return name
+
+    def rename_items(self, ids, name, route):
+        """Rename the selected jobs still pending in this tab in one transaction."""
+        if not isinstance(route, str) or route not in ("queue", "archive"):
+            raise ValueError("Only pending or archived jobs can be renamed")
+        if not isinstance(ids, list) or not 1 <= len(ids) <= 200 or any(type(item) is not int or item <= 0 for item in ids):
+            raise ValueError("Select between 1 and 200 valid jobs")
+        if not isinstance(name, str):
+            raise ValueError("Name must be a string")
+        name = resolve_workflow_name(name)
+        if not name:
+            raise ValueError("Name cannot be empty")
+
+        with self.native_queue.mutex:
+            ids = list(dict.fromkeys(ids))
+            placeholders = ",".join("?" for _ in ids)
+            rows = read_query(
+                f"SELECT id, prompt_id, prompt, updated_at FROM queue WHERE id IN ({placeholders}) AND status = ?",
+                [*ids, 0 if route == "queue" else 3],
+            )
+            running = {item[1] for item in self.native_queue.currently_running.values()}
+            rows = [row for row in rows if row["prompt_id"] not in running]
+            renamed = [row["id"] for row in rows]
+            if rows:
+                self._rename_rows(rows, name, renamed)
+                PromptServer.instance.send_sync("queue-manager-queue-updated", {"renamed": renamed})
+            return {"ids": renamed, "name": name}
+
+    def _rename_rows(self, rows, name, ids):
+        # Prepare every prompt before writing; malformed metadata must not leave a partial batch.
+        prompts = []
+        for row in rows:
+            prompt = json.loads(row["prompt"])
+            rename_queue_item(prompt, name)
+            prompts.append(json.dumps(prompt))
+        with get_conn():
+            for row, db_id, prompt in zip(rows, ids, prompts):
+                write_query("UPDATE queue SET name = ?, prompt = ? WHERE id = ?", (name, prompt, db_id), False)
+                # Preserve archive ordering and the client-takeover cutoff after the update trigger.
+                write_query(
+                    "UPDATE queue SET updated_at = ? WHERE id = ? AND updated_at != ?",
+                    (row["updated_at"], db_id, row["updated_at"]),
+                    False,
+                )
+        # Preserve node inputs, heap priority and sensitive data in prefetched native copies.
+        prompt_ids = {row["prompt_id"] for row in rows}
+        for item in self.native_queue.queue:
+            if item[1] in prompt_ids:
+                rename_queue_item(item, name)
+
+    def toggle_playback(self, clean_caches=False):
         with self.pause_lock:
             # Toggle the playback of the queue
             self.paused = not self.paused
@@ -514,6 +668,12 @@ class QM_Queue:
                 # remove the pending item from the native queue if we are paused
                 self.native_queue.queue = []
                 PromptServer.instance.queue_updated()
+                if clean_caches:
+                    # Use the same flags as ComfyUI's /free endpoint. The worker
+                    # unloads models and resets node caches after the current job.
+                    self.native_queue.set_flag("unload_models", True)
+                    self.native_queue.set_flag("free_memory", True)
+                    self.pause_lock.notify()
                 # native queue might also be locked waiting for an item to be available
                 # we need to notify it to wake up so it can move on, and so we can reach the pause lock
                 # and avoid executing a new item while we are paused
@@ -552,61 +712,40 @@ class QM_Queue:
                 WHERE status = 0
             """)
 
-    # Set status of pending and running items to 3 (archived)
-    def archive_queue(self, filters=None):
+    def archive_queue(self, filters=None, front=False):
+        """Archive pending jobs in queue order, optionally before the existing archive."""
         with self.native_queue.mutex:
-            where_string, params = self.get_filters(filters, ["status = 0"])
+            where, params = self.get_filters(filters, ["status = 0"])
+            rows = read_query(f"SELECT id, prompt_id FROM queue WHERE {where} ORDER BY number, id", params)
+            running = {item[1] for item in self.native_queue.currently_running.values()}
+            rows = [row for row in rows if row["prompt_id"] not in running]
+            if not rows:
+                return 0
 
-            # Archive the queue from the database
-            total = write_query(
-                f"""
-                UPDATE queue
-                SET status = 3
-                WHERE {where_string}
-            """,
-                params,
-            )
+            if front:
+                first_order = read_single("SELECT MIN(archive_order) FROM queue WHERE status = 3")[0]
+                first_order = (first_order if first_order is not None else 0) - len(rows)
 
-            # remove the items from the native queue and heapify queue
-            self.native_queue.queue = []
+            with get_conn():
+                for offset, row in enumerate(rows):
+                    write_query("UPDATE queue SET status = 3 WHERE id = ?", (row["id"],), False)
+                    if front:
+                        # Set the position after the status trigger clears any old archive slot.
+                        write_query("UPDATE queue SET archive_order = ? WHERE id = ?", (first_order + offset, row["id"]), False)
+
+            # Remove only archived jobs from the native prefetch heap.
+            prompt_ids = {row["prompt_id"] for row in rows}
+            self.native_queue.queue = [item for item in self.native_queue.queue if item[1] not in prompt_ids]
             heapq.heapify(self.native_queue.queue)
-
-            # If affected any rows notify the frontend that the queue and archive have been archived
-            if total > 0:
-                qm_log.info("Queue Archived: %d item(s)", total)
-                PromptServer.instance.queue_updated()
-                PromptServer.instance.send_sync("queue-manager-queue-updated", {"total_moved": total})
-            else:
-                qm_log.info("No items to archive")
-
+            self.native_queue.not_empty.notify()
+            total = len(rows)
+            qm_log.info("Queue Archived: %d item(s)", total)
+            PromptServer.instance.queue_updated()
+            PromptServer.instance.send_sync("queue-manager-queue-updated", {"total_moved": total})
             return total
 
-    def archive_items(self, items):
-        """
-        Archive items to the database
-        """
-        with self.native_queue.mutex:
-            # Archive the item from the database
-
-            archived = 0
-            for item in items:
-                archived += write_query(
-                    """
-                    UPDATE queue
-                    SET status = 3
-                    WHERE id = ?
-                """,
-                    (item,),
-                    False,
-                )
-
-            get_conn().commit()
-
-            if archived > 0:
-                qm_log.info("Queue Item Archived: %d item(s)", archived)
-                PromptServer.instance.send_sync("queue-manager-queue-updated", {"total_moved": archived})
-
-            return archived
+    def archive_items(self, items, front=False):
+        return self.archive_queue({"items": items}, front=front)
 
     def delete_running(self, prompt_id=None):
         with self.native_queue.mutex:
@@ -694,11 +833,8 @@ class QM_Queue:
             # Play the item from the database
             where_string, params = self.get_filters(filters, ["status = 3"])
 
-            # If front we queue from last to first to retain order after applying negative priority
-            if front:
-                order = "DESC"
-            else:
-                order = "ASC"
+            # Reverse the full archive order when assigning negative front priorities.
+            order = self._archive_order(reverse=front)
 
             # Get the archived items from the database
             rows = read_query(
@@ -706,7 +842,7 @@ class QM_Queue:
                 SELECT id, prompt
                 FROM queue
                 WHERE {where_string}
-                ORDER BY updated_at {order}, `number` {order}
+                ORDER BY {order}
             """,
                 params,
             )
@@ -738,6 +874,11 @@ class QM_Queue:
             )
 
             if moved > 0:
+                if front:
+                    # Run All and Run Selected must both honor the new first job.
+                    managed_ids = {row[0] for row in read_query("SELECT prompt_id FROM queue WHERE status = 0")}
+                    self.native_queue.queue = [item for item in self.native_queue.queue if item[1] not in managed_ids]
+                    heapq.heapify(self.native_queue.queue)
                 # Notify native queue lock so if it's waiting it can move on and go for next iteration
                 PromptServer.instance.prompt_queue.not_empty.notify()
 
@@ -745,6 +886,40 @@ class QM_Queue:
                 PromptServer.instance.send_sync("queue-manager-queue-updated", {"total_moved": moved})
                 PromptServer.instance.queue_updated()
             return moved
+
+    def selection_action(self, action, route, ids, client_id=None, front=False):
+        """Act only on explicitly selected jobs still belonging to this tab."""
+        allowed = {"queue": {"archive", "delete", "export"}, "archive": {"play", "delete", "export"}, "completed": {"delete", "export"}}
+        if not isinstance(route, str) or route not in allowed or not isinstance(action, str) or action not in allowed[route]:
+            raise ValueError("Invalid selection action or tab")
+        if not isinstance(ids, list) or not 1 <= len(ids) <= 200 or any(type(item) is not int or item <= 0 for item in ids):
+            raise ValueError("Select between 1 and 200 valid jobs")
+
+        with self.native_queue.mutex:
+            filters = {"items": list(dict.fromkeys(ids))}
+            where, params = self.get_filters(filters, [self.get_route_query(route)])
+            rows = read_query(f"SELECT id, prompt_id FROM queue WHERE {where}", params)
+            # A selected pending job may have started since the browser loaded it.
+            # Never act on a running job, or on a job that moved to another tab.
+            if action == "export":
+                if not rows:
+                    return []
+                return [item[:5] for item in self.get_full_queue(route, {"items": [row["id"] for row in rows]})]
+            if not rows:
+                return 0
+            if action == "play":
+                return self.play_archive(client_id, filters, front)
+
+            if action == "archive":
+                return self.archive_queue(filters, front=front)
+
+            affected = write_query(f"DELETE FROM queue WHERE {where}", params)
+            prompt_ids = {row["prompt_id"] for row in rows}
+            self.native_queue.queue = [item for item in self.native_queue.queue if item[1] not in prompt_ids]
+            heapq.heapify(self.native_queue.queue)
+            PromptServer.instance.queue_updated()
+            PromptServer.instance.send_sync("queue-manager-queue-updated", {"selected": affected})
+            return affected
 
     def delete_from_queue(self, route="queue", filters=None):
         with self.native_queue.mutex:
@@ -775,6 +950,8 @@ class QM_Queue:
             query_params = []
 
             for item in items:
+                item = list(prepare_queue_item(item))
+                metadata = queue_metadata(item)
                 # TODO: Check if the item is a list, has the correct length, and contains valid data format
                 # SIML: Check if all prompts in the queue are valid
 
@@ -787,13 +964,12 @@ class QM_Queue:
                     item[5] = {"api_key_comfy_org": api_key_comfy_org} if api_key_comfy_org is not None else {}
 
                 PromptServer.instance.number += 1
-                name, workflow_id = workflow_meta(item[3])
                 query_params.append(
                     (
                         item[1],
                         PromptServer.instance.number,
-                        name,
-                        workflow_id,
+                        metadata["name"],
+                        metadata["workflow_id"],
                         json.dumps(item),
                         status,
                     )
@@ -903,6 +1079,19 @@ class QM_Queue:
                 if key == "workflow":
                     where_clauses.append("workflow_id = ?")
                     params.append(the_filter["value"])
+                elif key == "workflow_name":
+                    where_clauses.append("name = ? COLLATE BINARY")
+                    params.append(the_filter["value"])
+                elif key == "items":
+                    if (
+                        not isinstance(the_filter, list)
+                        or not 1 <= len(the_filter) <= 200
+                        or any(type(item) is not int or item <= 0 for item in the_filter)
+                    ):
+                        where_clauses.append("0")
+                    else:
+                        where_clauses.append(f"queue.id IN ({', '.join('?' for _ in the_filter)})")
+                        params.extend(the_filter)
                 # elif key == "checkpoint":
                 #     where_clauses.append("name LIKE ?")
                 #     params.append(f"%{value}%")
