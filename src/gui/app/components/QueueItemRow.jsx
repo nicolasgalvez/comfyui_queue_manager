@@ -62,8 +62,8 @@ export const QueueItemRow = memo(
       if (!openInGallery) {
         const file = mediaOutputs?.files?.[fileIndex];
         if (file) {
-          const src = `${baseURL}api/view?filename=${file.filename}` +
-                      `&type=output&subfolder=${file.subfolder}`;
+          const query = new URLSearchParams({ filename: file.filename, type: "output", subfolder: file.subfolder });
+          const src = `${baseURL}api/view?${query}`;
           window.open(src, "_blank", "noopener");
           return;
         }

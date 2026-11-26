@@ -60,7 +60,8 @@ disable_error_code = "attr-defined"
 # extend-exclude = ["static", "ci/templates"]
 line-length = 140
 src = ["src", "tests"]
-target-version = "py39"
+# The code uses match statements, which need Python 3.10.
+target-version = "py310"
 
 # Add rules to ban exec/eval
 [tool.ruff.lint]
