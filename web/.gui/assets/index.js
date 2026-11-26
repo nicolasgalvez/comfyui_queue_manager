@@ -19052,6 +19052,12 @@ const WallpaperSharpIcon = createSvgIcon(/* @__PURE__ */ jsxRuntimeExports.jsx("
 const ViewModuleSharpIcon = createSvgIcon(/* @__PURE__ */ jsxRuntimeExports.jsx("path", {
   d: "M14.67 5v6.5H9.33V5zm1 6.5H21V5h-5.33zm-1 7.5v-6.5H9.33V19zm1-6.5V19H21v-6.5zm-7.34 0H3V19h5.33zm0-1V5H3v6.5z"
 }));
+const CollectionsSharpIcon = createSvgIcon(/* @__PURE__ */ jsxRuntimeExports.jsx("path", {
+  d: "M22 18V2H6v16zm-11-6 2.03 2.71L16 11l4 5H8zM2 6v16h16v-2H4V6z"
+}));
+const OpenInNewSharpIcon = createSvgIcon(/* @__PURE__ */ jsxRuntimeExports.jsx("path", {
+  d: "M19 19H5V5h7V3H3v18h18v-9h-2zM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3z"
+}));
 const UploadSharpIcon = createSvgIcon(/* @__PURE__ */ jsxRuntimeExports.jsx("path", {
   d: "M9 16h6v-6h4l-7-7-7 7h4zm-4 2h14v2H5z"
 }));
@@ -19875,6 +19881,50 @@ function queueNodeIDs(item) {
   const ids = workflow.api_prompt ? Object.keys(workflow.api_prompt) : (workflow.nodes ?? []).map((node2) => node2.id).filter((id) => id != null);
   return Object.fromEntries(ids.map((id) => [id, id]));
 }
+const useOptionsStore = create((set) => ({
+  Basic: { ShowSelectionHints: true },
+  Completed: {
+    CoverThumbMode: "Cropped",
+    GridThumbMode: "Square Fit",
+    ListOrder: "Newest first"
+  },
+  Gallery: {},
+  thumb_mode: "cover",
+  thumb_size: 150,
+  cover_size: 50,
+  show_gallery_ui: true,
+  open_in_gallery: true,
+  /**
+   * Set a single option within a category
+   */
+  setOption: (category, key, value) => set((state) => ({
+    ...state,
+    [category]: {
+      ...state[category],
+      [key]: value
+    }
+  })),
+  /**
+   * Set all options within a category
+   */
+  setOptionsCategory: (category, options) => set((state) => ({
+    ...state,
+    [category]: options
+  })),
+  /**
+   * Set all options
+   */
+  setAllOptions: (allOptions) => set(() => ({
+    ...allOptions
+  })),
+  /**
+   * Set a single option directly on the root state
+   */
+  setDirectOption: (key, value) => set((state) => ({
+    ...state,
+    [key]: value
+  }))
+}));
 const QueueItemRow = reactExports.memo(
   function QueueItemRow2({
     item,
@@ -19895,18 +19945,35 @@ const QueueItemRow = reactExports.memo(
     reorderAnchor
   }) {
     const { onMediaItemClick, fetchQueueItems, refreshQueueItems } = reactExports.useContext(AppContext);
+    const openInGallery = useOptionsStore((state) => state.open_in_gallery);
     const renaming = useSelectionStore((state) => !!state.rename);
     const dbId = item?.[3]?.db_id;
     const workflow = reactExports.useMemo(() => queueWorkflow(item), [item]);
     const selectable = !!dbId && mode !== "running";
     const canReorder = route === "queue" || route === "archive";
+    const executionStatus = item?.[3]?.execution_status;
+    const failed = executionStatus?.status_str === "error";
+    const executionError = executionStatus?.error;
     const mediaOutputs = reactExports.useMemo(() => {
       if (item?.[3]?.outputs && route === "completed") {
         return new MediaOutputs(item[3], galleryOptions);
       }
       return null;
     }, [item, route, galleryOptions]);
+    const openOutput = reactExports.useCallback((fileIndex) => {
+      if (!openInGallery) {
+        const file = mediaOutputs?.files?.[fileIndex];
+        if (file) {
+          const src = `${baseURL}api/view?filename=${file.filename}&type=output&subfolder=${file.subfolder}`;
+          window.open(src, "_blank", "noopener");
+          return;
+        }
+      }
+      onMediaItemClick({ dbID: dbId, fileIndex });
+    }, [openInGallery, mediaOutputs, onMediaItemClick, dbId]);
     const cancelQueueItem = reactExports.useCallback(async () => {
+      const message = mode === "running" ? "Stop the running job and delete it from the queue?" : "Delete this workflow from Queue Manager? This cannot be undone.";
+      if (!window.confirm(message)) return;
       const cancelRoute = mode === "running" ? "interrupt" : "queue";
       await apiCall(`api/${cancelRoute}`, { delete: [item[1]] });
     }, [mode, item]);
@@ -19978,35 +20045,54 @@ const QueueItemRow = reactExports.memo(
                 file: mediaOutputs.cover,
                 controls: false,
                 autoplay: false,
-                onClick: () => onMediaItemClick({ dbID: dbId, fileIndex: 0 }),
+                onClick: () => openOutput(0),
                 className: "play-button",
                 title: "Open gallery"
               }
             ) : null }) : null,
-            /* @__PURE__ */ jsxRuntimeExports.jsx("td", { className: "px-3 py-1 text-left name", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "name-cell", children: [
-              mediaOutputs && item[3].total_files > 0 ? /* @__PURE__ */ jsxRuntimeExports.jsx(
-                "span",
-                {
-                  className: "total shiny-button",
-                  title: `Total file outputs: ${mediaOutputs.total}`,
-                  onClick: () => onMediaItemClick({ dbID: dbId, fileIndex: 0 }),
-                  children: mediaOutputs.total
-                }
-              ) : null,
-              /* @__PURE__ */ jsxRuntimeExports.jsx(
-                QueueItemName,
-                {
-                  name: workflow?.workflow_name ?? "",
-                  dbId,
-                  selecting,
-                  route,
-                  canRename: !!dbId && mode !== "running" && (route === "queue" || route === "archive"),
-                  onFilter: filterByWorkflow,
-                  filterTitle: workflowFilterMode === "workflow_name" ? "Filter view by this exact workflow name" : "Filter view by the workflow",
-                  onRenamed: refreshQueueItems
-                }
-              )
-            ] }) }),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("td", { className: "px-3 py-1 text-left name", children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "name-cell", children: [
+                mediaOutputs && item[3].total_files > 0 ? /* @__PURE__ */ jsxRuntimeExports.jsx(
+                  "span",
+                  {
+                    className: "total shiny-button",
+                    title: `Total file outputs: ${mediaOutputs.total}`,
+                    onClick: () => openOutput(0),
+                    children: mediaOutputs.total
+                  }
+                ) : null,
+                /* @__PURE__ */ jsxRuntimeExports.jsx(
+                  QueueItemName,
+                  {
+                    name: workflow?.workflow_name ?? "",
+                    dbId,
+                    selecting,
+                    route,
+                    canRename: !!dbId && mode !== "running" && (route === "queue" || route === "archive"),
+                    onFilter: filterByWorkflow,
+                    filterTitle: workflowFilterMode === "workflow_name" ? "Filter view by this exact workflow name" : "Filter view by the workflow",
+                    onRenamed: refreshQueueItems
+                  }
+                )
+              ] }),
+              route === "completed" && failed && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "execution-error", children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: "Failed" }),
+                /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+                  executionError?.exception_type ? `${executionError.exception_type}: ` : "",
+                  executionError?.exception_message || "The job failed without error details."
+                ] }),
+                executionError?.node_id != null && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
+                  "Node ",
+                  executionError.node_id,
+                  executionError.node_type ? ` · ${executionError.node_type}` : ""
+                ] }),
+                executionError?.traceback?.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs("details", { children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("summary", { children: "Show traceback" }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("pre", { children: Array.isArray(executionError.traceback) ? executionError.traceback.join("") : executionError.traceback })
+                ] })
+              ] }),
+              route === "completed" && executionStatus?.status_str === "interrupted" && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "execution-interrupted", children: "Interrupted" })
+            ] }),
             route === "completed" && /* @__PURE__ */ jsxRuntimeExports.jsx("td", { className: "meta-info", children: executionTimeLabel ? /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "execution-time", title: "Execution time", children: executionTimeLabel }) : null }),
             /* @__PURE__ */ jsxRuntimeExports.jsx("td", { className: "px-3 py-1 text-right actions", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { style: { justifyContent: "flex-end" }, className: "buttons", children: [
               /* @__PURE__ */ jsxRuntimeExports.jsx(
@@ -20056,7 +20142,7 @@ const QueueItemRow = reactExports.memo(
                 "button",
                 {
                   className: "view violet-button shiny-button",
-                  onClick: () => onMediaItemClick({ dbID: dbId, fileIndex: 0 }),
+                  onClick: () => openOutput(0),
                   title: "View outputs in gallery",
                   "data-selection-ignore": true,
                   children: "View"
@@ -20101,7 +20187,7 @@ const QueueItemRow = reactExports.memo(
             {
               file,
               autoplay: false,
-              onClick: () => onMediaItemClick({ dbID: dbId, fileIndex }),
+              onClick: () => openOutput(fileIndex),
               title: "Open gallery"
             },
             `${file.filename}-${file.subfolder}`
@@ -20117,49 +20203,6 @@ const QueueItemRow = reactExports.memo(
     return prev2.loader === next2.loader && prev2.index === next2.index && prev2.mode === next2.mode && prev2.route === next2.route && prev2.thumbMode === next2.thumbMode && prev2.galleryOptions === next2.galleryOptions && prev2.filters === next2.filters && prev2.workflowFilterMode === next2.workflowFilterMode && prev2.selecting === next2.selecting && prev2.selected === next2.selected && prev2.reorderBusy === next2.reorderBusy && prev2.dragging === next2.dragging && prev2.reorderAnchor === next2.reorderAnchor && prev2.info?.page === next2.info?.page && prev2.info?.page_size === next2.info?.page_size && prev2.item?.[0] === next2.item?.[0] && queueWorkflow(prev2.item).workflow_name === queueWorkflow(next2.item).workflow_name && queueWorkflow(prev2.item).id === queueWorkflow(next2.item).id;
   }
 );
-const useOptionsStore = create((set) => ({
-  Basic: { ShowSelectionHints: true },
-  Completed: {
-    CoverThumbMode: "Cropped",
-    GridThumbMode: "Square Fit",
-    ListOrder: "Newest first"
-  },
-  Gallery: {},
-  thumb_mode: "cover",
-  thumb_size: 150,
-  cover_size: 50,
-  show_gallery_ui: true,
-  /**
-   * Set a single option within a category
-   */
-  setOption: (category, key, value) => set((state) => ({
-    ...state,
-    [category]: {
-      ...state[category],
-      [key]: value
-    }
-  })),
-  /**
-   * Set all options within a category
-   */
-  setOptionsCategory: (category, options) => set((state) => ({
-    ...state,
-    [category]: options
-  })),
-  /**
-   * Set all options
-   */
-  setAllOptions: (allOptions) => set(() => ({
-    ...allOptions
-  })),
-  /**
-   * Set a single option directly on the root state
-   */
-  setDirectOption: (key, value) => set((state) => ({
-    ...state,
-    [key]: value
-  }))
-}));
 function bindQueueSelectionDrag(container, store, setRectangle, suppressClick) {
   const view = container.ownerDocument.defaultView;
   let drag = null;
@@ -29747,7 +29790,17 @@ function ThumbSlider({ onChange, onChangeCommitted, value, min, max, step = 10 }
     onCommitment(null, newValue);
   }
   return /* @__PURE__ */ jsxRuntimeExports.jsxs(Stack, { spacing: 1, direction: "row", sx: { alignItems: "center", mb: 1 }, p: 1, className: "thumb-size-slider", children: [
-    /* @__PURE__ */ jsxRuntimeExports.jsx(PhotoOutlinedIcon, { fontSize: "small", onClick: stepDown, className: "thumb-size-icon" }),
+    /* @__PURE__ */ jsxRuntimeExports.jsx(
+      "button",
+      {
+        type: "button",
+        "aria-label": "Smaller thumbnails",
+        title: "Smaller thumbnails",
+        onClick: stepDown,
+        className: "inline-flex cursor-pointer m-0! p-0!",
+        children: /* @__PURE__ */ jsxRuntimeExports.jsx(PhotoOutlinedIcon, { fontSize: "small", className: "thumb-size-icon" })
+      }
+    ),
     /* @__PURE__ */ jsxRuntimeExports.jsx(
       Slider,
       {
@@ -29760,7 +29813,17 @@ function ThumbSlider({ onChange, onChangeCommitted, value, min, max, step = 10 }
         value: val
       }
     ),
-    /* @__PURE__ */ jsxRuntimeExports.jsx(PhotoOutlinedIcon, { fontSize: "large", onClick: stepUp, className: "thumb-size-icon" })
+    /* @__PURE__ */ jsxRuntimeExports.jsx(
+      "button",
+      {
+        type: "button",
+        "aria-label": "Larger thumbnails",
+        title: "Larger thumbnails",
+        onClick: stepUp,
+        className: "inline-flex cursor-pointer m-0! p-0!",
+        children: /* @__PURE__ */ jsxRuntimeExports.jsx(PhotoOutlinedIcon, { fontSize: "large", className: "thumb-size-icon" })
+      }
+    )
   ] });
 }
 const DisabledByDefaultIcon = createSvgIcon(/* @__PURE__ */ jsxRuntimeExports.jsx("path", {
@@ -30027,6 +30090,7 @@ function Gallery({ items, activeItem }) {
     }, "*");
   });
   const deleteWorkflow = useEvent(async (event) => {
+    if (!window.confirm("Delete this workflow from Queue Manager? This cannot be undone.")) return;
     try {
       await apiCall(`api/queue`, {
         delete: [mediaItem.queueItem.promptID]
@@ -30361,7 +30425,7 @@ function SplashScreen({ onClick }) {
       /* @__PURE__ */ jsxRuntimeExports.jsx("h3", { children: "Bugfixes" }),
       /* @__PURE__ */ jsxRuntimeExports.jsxs("ul", { className: "list-disc pl-5 space-y-1", children: [
         /* @__PURE__ */ jsxRuntimeExports.jsx("li", { children: "Fixed empty image or GIF output lists crashing job completion and stopping further prompt execution." }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx("li", { children: "Restored Pause/Resume and Clear pending buttons on ComfyUI 0.41 through its compatibility menu API." })
+        /* @__PURE__ */ jsxRuntimeExports.jsx("li", { children: "Restored Pause/Resume and Clear pending buttons on ComfyUI 0.41 after the toolbar refactor." })
       ] }),
       /* @__PURE__ */ jsxRuntimeExports.jsxs("p", { children: [
         /* @__PURE__ */ jsxRuntimeExports.jsx("br", {}),
@@ -30397,6 +30461,20 @@ const VisuallyHiddenInput = styled("input")({
   whiteSpace: "nowrap",
   width: 1
 });
+function FooterToggle({ pressed, label, onClick, children }) {
+  return /* @__PURE__ */ jsxRuntimeExports.jsx(
+    "button",
+    {
+      type: "button",
+      "aria-pressed": pressed,
+      "aria-label": label,
+      title: label,
+      onClick,
+      className: "inline-flex cursor-pointer m-0! rounded-[5px]! p-[5px]! transition-all duration-200\n                       hover:bg-neutral-500 hover:text-white dark:hover:bg-black dark:hover:text-inherit\n                       aria-pressed:bg-white aria-pressed:text-black\n                       dark:aria-pressed:bg-neutral-700 dark:aria-pressed:text-white",
+      children
+    }
+  );
+}
 function Home() {
   const selecting = useSelectionStore((state) => state.active);
   const selected = useSelectionStore((state) => state.selected);
@@ -30439,6 +30517,7 @@ function Home() {
   });
   const [galleryData, setGallery] = reactExports.useState(null);
   const [showSplash, setShowSplash] = reactExports.useState(false);
+  const [showFooterActions, setShowFooterActions] = reactExports.useState(false);
   const latestThumbSizePxRef = reactExports.useRef(150);
   const fetchIdRef = reactExports.useRef(0);
   const latestViewRef = reactExports.useRef({ route: "queue", page: 0 });
@@ -30594,6 +30673,9 @@ function Home() {
   }
   async function actOnSelection(action) {
     if (!selecting || !selected.size || selectionBusyRef.current) return;
+    if (action === "delete" && !window.confirm(
+      `Delete the ${selected.size} selected item${selected.size === 1 ? "" : "s"}? This cannot be undone.`
+    )) return;
     const actionFetchId = fetchIdRef.current;
     selectionBusyRef.current = true;
     setSelectionBusy(true);
@@ -30654,6 +30736,9 @@ function Home() {
     });
   }
   async function deleteFromQueue() {
+    const scope = route === "archive" ? "archived workflows" : route === "completed" ? "completed jobs" : "pending workflows";
+    const selection = isFilterOn() ? `all ${scope} matching the current filters` : `all ${scope}`;
+    if (!window.confirm(`Delete ${selection} across all pages? This cannot be undone.`)) return;
     let queryArgs = appendFilters("?route=" + route);
     try {
       const response = await fetch(`${baseURL}queue_manager/queue${queryArgs}`, {
@@ -30664,6 +30749,7 @@ function Home() {
     }
   }
   async function clearPending() {
+    if (!window.confirm("Delete all pending workflows across all pages? This cannot be undone.")) return;
     try {
       const response = await fetch(`${baseURL}api/queue`, {
         method: "POST",
@@ -30870,6 +30956,10 @@ function Home() {
   const setThumbMode = useEvent((mode2) => {
     setDirectOption("thumb_mode", mode2);
     apiCall("queue_manager/options", { key: "thumb_mode", value: mode2 }, "POST");
+  });
+  const setOpenInGallery = useEvent((value) => {
+    setDirectOption("open_in_gallery", value);
+    apiCall("queue_manager/options", { key: "open_in_gallery", value }, "POST");
   });
   const openSplash = useEvent(() => {
     setShowSplash(true);
@@ -31135,39 +31225,31 @@ function Home() {
       ) }),
       /* @__PURE__ */ jsxRuntimeExports.jsxs("footer", { className: "footer", children: [
         route === "completed" && (options.Gallery.ShowImages || options.Gallery.ShowVideos) && /* @__PURE__ */ jsxRuntimeExports.jsxs(Stack, { spacing: 1, direction: "row", sx: { alignItems: "center" }, children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsxs(
-            Stack,
-            {
-              spacing: 1,
-              className: "thumb-mode",
-              direction: "row",
-              sx: { alignItems: "center", justifyContent: "start", flex: 1 },
-              p: 1,
-              children: [
-                /* @__PURE__ */ jsxRuntimeExports.jsx("div", { title: "No thumbnails", children: /* @__PURE__ */ jsxRuntimeExports.jsx(
-                  ImageNotSupportedSharpIcon,
-                  {
-                    className: options.thumb_mode === "none" ? "active" : "",
-                    onClick: () => setThumbMode("none")
-                  }
-                ) }),
-                /* @__PURE__ */ jsxRuntimeExports.jsx("div", { title: "Cover image only", children: /* @__PURE__ */ jsxRuntimeExports.jsx(
-                  WallpaperSharpIcon,
-                  {
-                    className: options.thumb_mode === "cover" ? "active" : "",
-                    onClick: () => setThumbMode("cover")
-                  }
-                ) }),
-                /* @__PURE__ */ jsxRuntimeExports.jsx("div", { title: "Show all outputs", children: /* @__PURE__ */ jsxRuntimeExports.jsx(
-                  ViewModuleSharpIcon,
-                  {
-                    className: options.thumb_mode === "grid" ? "active" : "",
-                    onClick: () => setThumbMode("grid")
-                  }
-                ) })
-              ]
-            }
-          ),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { role: "group", "aria-label": "Thumbnails", className: "thumb-mode flex flex-1 items-center gap-2 p-2", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx(FooterToggle, { pressed: options.thumb_mode === "none", label: "No thumbnails", onClick: () => setThumbMode("none"), children: /* @__PURE__ */ jsxRuntimeExports.jsx(ImageNotSupportedSharpIcon, {}) }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx(FooterToggle, { pressed: options.thumb_mode === "cover", label: "Cover image only", onClick: () => setThumbMode("cover"), children: /* @__PURE__ */ jsxRuntimeExports.jsx(WallpaperSharpIcon, {}) }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx(FooterToggle, { pressed: options.thumb_mode === "grid", label: "Show all outputs", onClick: () => setThumbMode("grid"), children: /* @__PURE__ */ jsxRuntimeExports.jsx(ViewModuleSharpIcon, {}) })
+          ] }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { role: "group", "aria-label": "Where outputs open", className: "open-in-gallery-mode flex items-center gap-2 p-2", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx(
+              FooterToggle,
+              {
+                pressed: !!options.open_in_gallery,
+                label: "Open outputs in the built-in gallery",
+                onClick: () => setOpenInGallery(true),
+                children: /* @__PURE__ */ jsxRuntimeExports.jsx(CollectionsSharpIcon, {})
+              }
+            ),
+            /* @__PURE__ */ jsxRuntimeExports.jsx(
+              FooterToggle,
+              {
+                pressed: !options.open_in_gallery,
+                label: "Open outputs in a new tab",
+                onClick: () => setOpenInGallery(false),
+                children: /* @__PURE__ */ jsxRuntimeExports.jsx(OpenInNewSharpIcon, {})
+              }
+            )
+          ] }),
           options.thumb_mode === "grid" && /* @__PURE__ */ jsxRuntimeExports.jsx(
             ThumbSlider,
             {
@@ -31226,7 +31308,28 @@ function Home() {
             }
           ) })
         ] }) }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "p-2 flex actions", children: /* @__PURE__ */ jsxRuntimeExports.jsxs(Stack, { direction: "row", spacing: 1, className: "min-w-full buttons", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "footer-actions-toggle-row", children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "button",
+          {
+            type: "button",
+            className: "footer-actions-toggle",
+            "aria-label": showFooterActions ? "Close footer actions" : "Open footer actions",
+            title: showFooterActions ? "Close footer actions" : "Open footer actions",
+            "aria-expanded": showFooterActions,
+            "aria-controls": "footer-actions",
+            onClick: () => setShowFooterActions((shown) => !shown),
+            children: /* @__PURE__ */ jsxRuntimeExports.jsx("svg", { width: "10", height: "10", viewBox: "0 0 10 10", "aria-hidden": "true", focusable: "false", children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+              "path",
+              {
+                d: showFooterActions ? "M2 2L8 8M8 2L2 8" : "M1 7L5 3L9 7",
+                fill: "none",
+                stroke: "currentColor",
+                strokeWidth: "1.5"
+              }
+            ) })
+          }
+        ) }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { id: "footer-actions", className: "p-2 flex actions", hidden: !showFooterActions && !selecting, children: /* @__PURE__ */ jsxRuntimeExports.jsxs(Stack, { direction: "row", spacing: 1, className: "min-w-full buttons", children: [
           selecting && /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
             route === "queue" && /* @__PURE__ */ jsxRuntimeExports.jsxs(
               "button",
