@@ -20,6 +20,7 @@ dev = [
     "mypy",  # linting
     "pre-commit", # runs linting on commit
     "pytest",  # testing
+    "aiohttp",  # ComfyUI provides it at run time; tests import qm_server directly
     "ruff",  # linting
 ]
 
